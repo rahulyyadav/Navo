@@ -1,11 +1,109 @@
 import { router } from 'expo-router';
-import { ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import {
+  Animated,
+  Easing,
+  ImageBackground,
+  LayoutChangeEvent,
+  PanResponder,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const manasluImage = require('../../assets/navo-onboarding-himalaya.png');
 
+const CONTROL_SIZE = 62;
+const COMPLETE_AT = 0.82;
+
 export default function OnboardingScreen() {
-  const start = () => router.replace('/discover');
+  const [trackWidth, setTrackWidth] = useState(0);
+  const travel = Math.max(trackWidth - CONTROL_SIZE, 0);
+  const travelRef = useRef(0);
+  const dragStartRef = useRef(0);
+  const progress = useRef(new Animated.Value(0)).current;
+  travelRef.current = travel;
+
+  const openLogin = () => router.replace('/login');
+
+  const animateTo = (toValue: number, onComplete?: () => void) => {
+    Animated.timing(progress, {
+      duration: toValue === 0 ? 360 : 260,
+      easing: toValue === 0 ? Easing.out(Easing.cubic) : Easing.inOut(Easing.cubic),
+      toValue,
+      useNativeDriver: false,
+    }).start(({ finished }) => {
+      if (finished) onComplete?.();
+    });
+  };
+
+  const finishGesture = (dx: number, velocityX: number) => {
+    const maxTravel = travelRef.current;
+    const position = Math.min(Math.max(dragStartRef.current + dx, 0), maxTravel);
+    const shouldComplete = maxTravel > 0 && (position >= maxTravel * COMPLETE_AT || (position > maxTravel * 0.55 && velocityX > 0.65));
+
+    if (shouldComplete) {
+      animateTo(maxTravel, openLogin);
+    } else {
+      animateTo(0);
+    }
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 2,
+      onPanResponderGrant: () => {
+        progress.stopAnimation((value) => {
+          dragStartRef.current = value;
+        });
+      },
+      onPanResponderMove: (_, gesture) => {
+        const next = Math.min(Math.max(dragStartRef.current + gesture.dx, 0), travelRef.current);
+        progress.setValue(next);
+      },
+      onPanResponderRelease: (_, gesture) => finishGesture(gesture.dx, gesture.vx),
+      onPanResponderTerminate: (_, gesture) => finishGesture(gesture.dx, gesture.vx),
+      onPanResponderTerminationRequest: () => false,
+    }),
+  ).current;
+
+  const onTrackLayout = ({ nativeEvent }: LayoutChangeEvent) => {
+    setTrackWidth(nativeEvent.layout.width);
+  };
+
+  const animationRange = travel > 0 ? travel : 1;
+  const fillWidth = progress.interpolate({
+    inputRange: [0, animationRange],
+    outputRange: [CONTROL_SIZE / 2, trackWidth],
+    extrapolate: 'clamp',
+  });
+  const planeColor = progress.interpolate({
+    inputRange: [0, animationRange * 0.55, animationRange],
+    outputRange: ['#FFFFFF', '#5F6947', '#182016'],
+    extrapolate: 'clamp',
+  });
+  const controlColor = progress.interpolate({
+    inputRange: [0, animationRange],
+    outputRange: ['#DEFF7A', '#FFFFFF'],
+    extrapolate: 'clamp',
+  });
+  const planeRotation = progress.interpolate({
+    inputRange: [0, animationRange],
+    outputRange: ['-14deg', '45deg'],
+    extrapolate: 'clamp',
+  });
+  const wakeOpacity = progress.interpolate({
+    inputRange: [0, Math.max(animationRange * 0.12, 1), animationRange],
+    outputRange: [0, 0.55, 0.9],
+    extrapolate: 'clamp',
+  });
+  const promptOpacity = progress.interpolate({
+    inputRange: [0, Math.max(animationRange * 0.35, 1)],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
 
   return (
     <ImageBackground imageStyle={styles.backgroundImage} source={manasluImage} resizeMode="cover" style={styles.background}>
@@ -17,7 +115,7 @@ export default function OnboardingScreen() {
 
           <View pointerEvents="none" style={styles.flightPath}>
             <View style={styles.arc} />
-            <Text style={styles.airplane}>✈</Text>
+            <Text style={styles.airplane}>✈︎</Text>
           </View>
 
           <View style={styles.introRow}>
@@ -35,21 +133,27 @@ export default function OnboardingScreen() {
         <View style={styles.spacer} />
 
         <View style={styles.bottomControls}>
-          <View style={styles.startTrack}>
-            <Pressable
-              accessibilityHint="Opens Navo's trip planning experience"
-              accessibilityLabel="Start Navo"
-              onPress={start}
-              style={({ pressed }) => [styles.startCircle, pressed && styles.pressed]}
+          <View
+            accessibilityHint="Drag the airplane to the right to continue"
+            accessibilityLabel="Slide to begin"
+            accessibilityRole="button"
+            accessible
+            onAccessibilityTap={() => animateTo(travelRef.current, openLogin)}
+            onLayout={onTrackLayout}
+            style={styles.startTrack}
+            {...panResponder.panHandlers}
+          >
+            <Animated.View pointerEvents="none" style={[styles.whiteFill, { width: fillWidth }]} />
+            <Animated.Text pointerEvents="none" style={[styles.slideText, { opacity: promptOpacity }]}>Slide to begin</Animated.Text>
+
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.planeControl, { backgroundColor: controlColor, transform: [{ translateX: progress }] }]}
             >
-              <Text style={styles.startPlane}>✈</Text>
-            </Pressable>
-            <Pressable accessibilityRole="button" onPress={start} style={styles.startCopyButton}>
-              <Text style={styles.startText}>Start</Text>
-            </Pressable>
-            <Pressable accessibilityLabel="Start Navo" onPress={start} style={styles.chevronsButton}>
-              <Text style={styles.chevrons}>›››</Text>
-            </Pressable>
+              <Animated.View style={[styles.wake, styles.wakeTop, { opacity: wakeOpacity }]} />
+              <Animated.View style={[styles.wake, styles.wakeBottom, { opacity: wakeOpacity }]} />
+              <Animated.Text style={[styles.startPlane, { color: planeColor, transform: [{ rotate: planeRotation }] }]}>✈︎</Animated.Text>
+            </Animated.View>
           </View>
         </View>
       </SafeAreaView>
@@ -77,19 +181,21 @@ const styles = StyleSheet.create({
   activeLine: { backgroundColor: '#FFFFFF', borderRadius: 2, height: 4, width: 48 },
   description: { color: 'rgba(255,255,255,0.88)', flex: 1, fontSize: 16, fontWeight: '400', lineHeight: 24, maxWidth: 250 },
   spacer: { flex: 1 },
-  bottomControls: { alignItems: 'center', flexDirection: 'row', paddingBottom: 16, width: '100%' },
+  bottomControls: { paddingBottom: 16, width: '100%' },
   startTrack: {
-    alignItems: 'center', borderColor: 'rgba(196,225,247,0.52)', borderRadius: 50, borderWidth: 1.5,
-    flex: 1, flexDirection: 'row', height: 68, paddingRight: 15, width: '100%',
+    backgroundColor: '#DEFF7A', borderRadius: 40, height: CONTROL_SIZE, overflow: 'hidden', position: 'relative', width: '100%',
   },
-  startCircle: {
-    alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 50, height: 68, justifyContent: 'center',
-    shadowColor: '#061829', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 11, width: 68,
+  whiteFill: { backgroundColor: '#FFFFFF', bottom: 0, left: 0, position: 'absolute', top: 0 },
+  slideText: {
+    color: '#25301D', fontSize: 16, fontWeight: '600', left: CONTROL_SIZE, lineHeight: CONTROL_SIZE,
+    position: 'absolute', right: CONTROL_SIZE, textAlign: 'center',
   },
-  pressed: { opacity: 0.84, transform: [{ scale: 0.96 }] },
-  startPlane: { color: '#11273A', fontSize: 27, transform: [{ rotate: '-14deg' }] },
-  startCopyButton: { alignItems: 'center', flex: 1, height: '100%', justifyContent: 'center' },
-  startText: { color: '#FFFFFF', fontSize: 17, fontWeight: '500' },
-  chevronsButton: { alignItems: 'center', height: '100%', justifyContent: 'center', minWidth: 50 },
-  chevrons: { color: 'rgba(255,255,255,0.46)', fontSize: 31, fontWeight: '200', letterSpacing: -6, marginRight: 4 },
+  planeControl: {
+    alignItems: 'center', borderRadius: CONTROL_SIZE / 2, height: CONTROL_SIZE,
+    justifyContent: 'center', left: 0, position: 'absolute', top: 0, width: CONTROL_SIZE,
+  },
+  startPlane: { fontSize: 27, zIndex: 2 },
+  wake: { backgroundColor: '#25301D', borderRadius: 3, height: 3, left: -25, position: 'absolute', width: 35 },
+  wakeTop: { top: 24, transform: [{ rotate: '7deg' }] },
+  wakeBottom: { bottom: 23, left: -19, transform: [{ rotate: '-7deg' }], width: 29 },
 });
