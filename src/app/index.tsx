@@ -35,10 +35,6 @@ export default function OnboardingScreen() {
         <View style={styles.spacer} />
 
         <View style={styles.bottomControls}>
-          <Pressable accessibilityLabel="Previous onboarding page" disabled style={styles.backButton}>
-            <Text style={styles.backIcon}>←</Text>
-          </Pressable>
-
           <View style={styles.startTrack}>
             <Pressable
               accessibilityHint="Opens Navo's trip planning experience"
@@ -81,22 +77,17 @@ const styles = StyleSheet.create({
   activeLine: { backgroundColor: '#FFFFFF', borderRadius: 2, height: 4, width: 48 },
   description: { color: 'rgba(255,255,255,0.88)', flex: 1, fontSize: 16, fontWeight: '400', lineHeight: 24, maxWidth: 250 },
   spacer: { flex: 1 },
-  bottomControls: { alignItems: 'center', flexDirection: 'row', gap: 10, paddingBottom: 18 },
-  backButton: {
-    alignItems: 'center', borderColor: 'rgba(196,225,247,0.52)', borderRadius: 50, borderWidth: 1.5,
-    height: 78, justifyContent: 'center', opacity: 0.85, width: 78,
-  },
-  backIcon: { color: '#FFFFFF', fontSize: 37, fontWeight: '200', marginTop: -3 },
+  bottomControls: { alignItems: 'center', flexDirection: 'row', paddingBottom: 16, width: '100%' },
   startTrack: {
     alignItems: 'center', borderColor: 'rgba(196,225,247,0.52)', borderRadius: 50, borderWidth: 1.5,
-    flex: 1, flexDirection: 'row', height: 78, paddingRight: 17,
+    flex: 1, flexDirection: 'row', height: 68, paddingRight: 15, width: '100%',
   },
   startCircle: {
-    alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 50, height: 78, justifyContent: 'center',
-    shadowColor: '#061829', shadowOffset: { width: 0, height: 7 }, shadowOpacity: 0.2, shadowRadius: 12, width: 78,
+    alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 50, height: 68, justifyContent: 'center',
+    shadowColor: '#061829', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 11, width: 68,
   },
   pressed: { opacity: 0.84, transform: [{ scale: 0.96 }] },
-  startPlane: { color: '#11273A', fontSize: 31, transform: [{ rotate: '-14deg' }] },
+  startPlane: { color: '#11273A', fontSize: 27, transform: [{ rotate: '-14deg' }] },
   startCopyButton: { alignItems: 'center', flex: 1, height: '100%', justifyContent: 'center' },
   startText: { color: '#FFFFFF', fontSize: 17, fontWeight: '500' },
   chevronsButton: { alignItems: 'center', height: '100%', justifyContent: 'center', minWidth: 50 },
