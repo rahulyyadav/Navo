@@ -1,105 +1,104 @@
-import { Link } from 'expo-router';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { router } from 'expo-router';
+import { ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Screen } from '@/components/Screen';
-import { SectionHeading } from '@/components/SectionHeading';
-import { StatusPill } from '@/components/StatusPill';
-import { colors, radius, shadow } from '@/theme/tokens';
+const manasluImage = require('../../assets/navo-onboarding-himalaya.png');
 
-const suggestions = ['6 days · ABC', 'First high-altitude trek', 'Quiet route · October'];
+export default function OnboardingScreen() {
+  const start = () => router.replace('/discover');
 
-export default function HomeScreen() {
   return (
-    <Screen>
-      <View style={styles.topbar}>
-        <View style={styles.brandMark}><Text style={styles.brandLetter}>N</Text></View>
-        <Text style={styles.brand}>navo</Text>
-        <StatusPill label="Prototype" />
-      </View>
+    <ImageBackground imageStyle={styles.backgroundImage} source={manasluImage} resizeMode="cover" style={styles.background}>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        <View style={styles.content}>
+          <Text style={styles.titleLight}>Find New Places</Text>
+          <Text style={styles.titleBold}>your journey</Text>
+          <Text style={styles.titleLight}>begins here.</Text>
 
-      <View style={styles.hero}>
-        <Text style={styles.kicker}>PLAN WITH CONTEXT</Text>
-        <Text style={styles.heroTitle}>A clearer way into the mountains.</Text>
-        <Text style={styles.heroCopy}>
-          Tell Navo your time, experience, and pace. It builds a route-linked plan, checks the difficult parts,
-          and prepares the essentials for offline use.
-        </Text>
-      </View>
-
-      <View style={styles.promptCard}>
-        <Text style={styles.promptLabel}>Where do you want to go?</Text>
-        <TextInput
-          multiline
-          placeholder="I have six days for Annapurna Base Camp in October. It is my first trek above 3,000 m..."
-          placeholderTextColor="#87928D"
-          style={styles.input}
-        />
-        <View style={styles.suggestions}>
-          {suggestions.map((suggestion) => (
-            <View key={suggestion} style={styles.suggestion}><Text style={styles.suggestionText}>{suggestion}</Text></View>
-          ))}
-        </View>
-        <Link href="/plan" asChild>
-          <Pressable style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
-            <Text style={styles.primaryButtonText}>Build a sample plan</Text>
-            <Text style={styles.arrow}>→</Text>
-          </Pressable>
-        </Link>
-      </View>
-
-      <SectionHeading eyebrow="Why Navo" title="A plan that shows its work" />
-      <View style={styles.featureGrid}>
-        <View style={styles.featureCard}>
-          <Text style={styles.featureNumber}>01</Text>
-          <Text style={styles.featureTitle}>Grounded</Text>
-          <Text style={styles.featureCopy}>Plans connect to curated route records instead of invented coordinates.</Text>
-        </View>
-        <View style={styles.featureCard}>
-          <Text style={styles.featureNumber}>02</Text>
-          <Text style={styles.featureTitle}>Checked</Text>
-          <Text style={styles.featureCopy}>Ordinary code audits route continuity, workload, elevation, and missing facts.</Text>
-        </View>
-      </View>
-
-      <Link href="/safety" asChild>
-        <Pressable style={styles.offlineCard}>
-          <View>
-            <Text style={styles.offlineKicker}>OFFLINE-FIRST</Text>
-            <Text style={styles.offlineTitle}>Carry the essentials past the last signal.</Text>
+          <View pointerEvents="none" style={styles.flightPath}>
+            <View style={styles.arc} />
+            <Text style={styles.airplane}>✈</Text>
           </View>
-          <Text style={styles.offlineArrow}>↗</Text>
-        </Pressable>
-      </Link>
-    </Screen>
+
+          <View style={styles.introRow}>
+            <View style={styles.pagination}>
+              <View style={styles.dot} />
+              <View style={styles.dot} />
+              <View style={styles.activeLine} />
+            </View>
+            <Text style={styles.description}>
+              Plan each trek, understand the hard parts, and carry the essentials beyond the last signal.
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.spacer} />
+
+        <View style={styles.bottomControls}>
+          <Pressable accessibilityLabel="Previous onboarding page" disabled style={styles.backButton}>
+            <Text style={styles.backIcon}>←</Text>
+          </Pressable>
+
+          <View style={styles.startTrack}>
+            <Pressable
+              accessibilityHint="Opens Navo's trip planning experience"
+              accessibilityLabel="Start Navo"
+              onPress={start}
+              style={({ pressed }) => [styles.startCircle, pressed && styles.pressed]}
+            >
+              <Text style={styles.startPlane}>✈</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" onPress={start} style={styles.startCopyButton}>
+              <Text style={styles.startText}>Start</Text>
+            </Pressable>
+            <Pressable accessibilityLabel="Start Navo" onPress={start} style={styles.chevronsButton}>
+              <Text style={styles.chevrons}>›››</Text>
+            </Pressable>
+          </View>
+        </View>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  topbar: { alignItems: 'center', flexDirection: 'row', gap: 9, paddingBottom: 26, paddingTop: 12 },
-  brandMark: { alignItems: 'center', backgroundColor: colors.forest, borderRadius: 12, height: 36, justifyContent: 'center', width: 36 },
-  brandLetter: { color: colors.paper, fontSize: 17, fontWeight: '900' },
-  brand: { color: colors.ink, flex: 1, fontSize: 22, fontWeight: '900', letterSpacing: -0.8 },
-  hero: { paddingBottom: 23, paddingTop: 4 },
-  kicker: { color: colors.ember, fontSize: 11, fontWeight: '800', letterSpacing: 1.7, marginBottom: 10 },
-  heroTitle: { color: colors.ink, fontSize: 42, fontWeight: '900', letterSpacing: -1.7, lineHeight: 44, maxWidth: 345 },
-  heroCopy: { color: colors.muted, fontSize: 16, lineHeight: 24, marginTop: 15, maxWidth: 360 },
-  promptCard: { ...shadow, backgroundColor: colors.white, borderColor: colors.line, borderRadius: radius.lg, borderWidth: 1, marginBottom: 36, padding: 18 },
-  promptLabel: { color: colors.ink, fontSize: 13, fontWeight: '800', marginBottom: 9 },
-  input: { backgroundColor: '#F4F6F2', borderRadius: radius.md, color: colors.ink, fontSize: 15, lineHeight: 22, minHeight: 116, padding: 15, textAlignVertical: 'top' },
-  suggestions: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginVertical: 13 },
-  suggestion: { backgroundColor: colors.paper, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 6 },
-  suggestionText: { color: colors.moss, fontSize: 11, fontWeight: '700' },
-  primaryButton: { alignItems: 'center', backgroundColor: colors.forest, borderRadius: radius.md, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 17, paddingVertical: 15 },
-  pressed: { opacity: 0.85, transform: [{ scale: 0.99 }] },
-  primaryButtonText: { color: colors.white, fontSize: 15, fontWeight: '800' },
-  arrow: { color: colors.white, fontSize: 20 },
-  featureGrid: { flexDirection: 'row', gap: 11, marginBottom: 30 },
-  featureCard: { backgroundColor: colors.mist, borderRadius: radius.md, flex: 1, minHeight: 178, padding: 15 },
-  featureNumber: { color: colors.fern, fontSize: 11, fontWeight: '900', letterSpacing: 1.3 },
-  featureTitle: { color: colors.ink, fontSize: 20, fontWeight: '800', marginBottom: 8, marginTop: 25 },
-  featureCopy: { color: colors.muted, fontSize: 13, lineHeight: 19 },
-  offlineCard: { alignItems: 'flex-end', backgroundColor: colors.ember, borderRadius: radius.lg, flexDirection: 'row', justifyContent: 'space-between', padding: 20 },
-  offlineKicker: { color: '#FCE5DA', fontSize: 10, fontWeight: '900', letterSpacing: 1.4, marginBottom: 7 },
-  offlineTitle: { color: colors.white, fontSize: 21, fontWeight: '800', lineHeight: 26, maxWidth: 265 },
-  offlineArrow: { color: colors.white, fontSize: 27 },
+  background: { backgroundColor: '#193A5D', flex: 1 },
+  backgroundImage: { transform: [{ scale: 1.2 }, { translateY: -44 }] },
+  safe: { flex: 1, paddingHorizontal: 25 },
+  content: { marginTop: 62 },
+  titleLight: { color: '#FFFFFF', fontSize: 45, fontWeight: '300', letterSpacing: -1.5, lineHeight: 49 },
+  titleBold: { color: '#FFFFFF', fontSize: 45, fontWeight: '800', letterSpacing: -1.7, lineHeight: 49 },
+  flightPath: { height: 135, position: 'absolute', right: -48, top: 80, width: 165 },
+  arc: {
+    borderColor: 'rgba(255,255,255,0.72)', borderLeftWidth: 0, borderRadius: 100, borderRightWidth: 3,
+    borderStyle: 'solid', borderTopWidth: 3, height: 110, opacity: 0.88, position: 'absolute',
+    transform: [{ rotate: '18deg' }], width: 162,
+  },
+  airplane: { color: '#FFFFFF', fontSize: 49, left: -10, position: 'absolute', top: 23, transform: [{ rotate: '-14deg' }] },
+  introRow: { alignItems: 'flex-start', flexDirection: 'row', marginTop: 46 },
+  pagination: { alignItems: 'center', flexDirection: 'row', gap: 8, marginRight: 20, marginTop: 14 },
+  dot: { backgroundColor: 'rgba(255,255,255,0.78)', borderRadius: 3, height: 6, width: 6 },
+  activeLine: { backgroundColor: '#FFFFFF', borderRadius: 2, height: 4, width: 48 },
+  description: { color: 'rgba(255,255,255,0.88)', flex: 1, fontSize: 16, fontWeight: '400', lineHeight: 24, maxWidth: 250 },
+  spacer: { flex: 1 },
+  bottomControls: { alignItems: 'center', flexDirection: 'row', gap: 10, paddingBottom: 18 },
+  backButton: {
+    alignItems: 'center', borderColor: 'rgba(196,225,247,0.52)', borderRadius: 50, borderWidth: 1.5,
+    height: 78, justifyContent: 'center', opacity: 0.85, width: 78,
+  },
+  backIcon: { color: '#FFFFFF', fontSize: 37, fontWeight: '200', marginTop: -3 },
+  startTrack: {
+    alignItems: 'center', borderColor: 'rgba(196,225,247,0.52)', borderRadius: 50, borderWidth: 1.5,
+    flex: 1, flexDirection: 'row', height: 78, paddingRight: 17,
+  },
+  startCircle: {
+    alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 50, height: 78, justifyContent: 'center',
+    shadowColor: '#061829', shadowOffset: { width: 0, height: 7 }, shadowOpacity: 0.2, shadowRadius: 12, width: 78,
+  },
+  pressed: { opacity: 0.84, transform: [{ scale: 0.96 }] },
+  startPlane: { color: '#11273A', fontSize: 31, transform: [{ rotate: '-14deg' }] },
+  startCopyButton: { alignItems: 'center', flex: 1, height: '100%', justifyContent: 'center' },
+  startText: { color: '#FFFFFF', fontSize: 17, fontWeight: '500' },
+  chevronsButton: { alignItems: 'center', height: '100%', justifyContent: 'center', minWidth: 50 },
+  chevrons: { color: 'rgba(255,255,255,0.46)', fontSize: 31, fontWeight: '200', letterSpacing: -6, marginRight: 4 },
 });

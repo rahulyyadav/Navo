@@ -26,7 +26,8 @@ The mobile client never receives the Nebius API key. Model calls, safety-rule ev
 
 ## Initial mobile structure
 
-- `src/app/index.tsx`: trip-planning entry point and product story
+- `src/app/index.tsx`: cinematic onboarding entry point
+- `src/app/discover.tsx`: trip-planning entry point and product story
 - `src/app/plan.tsx`: sample day plan and visible AI audit
 - `src/app/safety.tsx`: offline-pack and emergency-boundary experience
 - `src/components/`: shared visual components

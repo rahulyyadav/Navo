@@ -13,7 +13,7 @@ Navo is not a rescue service, medical tool, replacement for a licensed guide, or
 ## Current starter
 
 - Expo SDK 57 + React Native + TypeScript
-- Expo Router with three initial screens: Home, Plan, and Safety
+- Expo Router with a cinematic onboarding screen plus Home, Plan, and Safety screens
 - A polished static vertical slice for the initial product direction
 - Full execution plan and architecture notes for both teammates
 - MIT-licensed public repository structure
@@ -49,12 +49,13 @@ Run both commands before opening a pull request.
 ## Repository map
 
 ```text
-src/app/                 Expo Router screens and navigation
+src/app/                 Expo Router onboarding, product screens, and navigation
 src/components/          Reusable product UI
 src/data/                Typed demonstration data
 src/theme/               Shared visual tokens
 docs/ARCHITECTURE.md     Planned mobile/backend/AI boundaries
 docs/TEAM_WORKFLOW.md    Branches, reviews, and daily coordination
+docs/UI_UX_PLAN.md       Onboarding flow and product design rules
 HACKATHON_EXECUTION_PLAN.md
 output/pdf/              Shareable PDF version of the plan
 ```
