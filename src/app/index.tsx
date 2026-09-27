@@ -81,7 +81,7 @@ export default function OnboardingScreen() {
   });
   const planeRotation = progress.interpolate({
     inputRange: [0, Math.max(animationRange * 0.35, 1), animationRange],
-    outputRange: ['-14deg', '24deg', '24deg'],
+    outputRange: ['-14deg', '0deg', '0deg'],
     extrapolate: 'clamp',
   });
   const wakeOpacity = progress.interpolate({
