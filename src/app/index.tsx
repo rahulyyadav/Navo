@@ -79,19 +79,9 @@ export default function OnboardingScreen() {
     outputRange: [CONTROL_SIZE / 2, trackWidth],
     extrapolate: 'clamp',
   });
-  const planeColor = progress.interpolate({
-    inputRange: [0, animationRange * 0.55, animationRange],
-    outputRange: ['#FFFFFF', '#5F6947', '#182016'],
-    extrapolate: 'clamp',
-  });
-  const controlColor = progress.interpolate({
-    inputRange: [0, animationRange],
-    outputRange: ['#DEFF7A', '#FFFFFF'],
-    extrapolate: 'clamp',
-  });
   const planeRotation = progress.interpolate({
-    inputRange: [0, animationRange],
-    outputRange: ['-14deg', '45deg'],
+    inputRange: [0, Math.max(animationRange * 0.35, 1), animationRange],
+    outputRange: ['-14deg', '24deg', '24deg'],
     extrapolate: 'clamp',
   });
   const wakeOpacity = progress.interpolate({
@@ -148,11 +138,11 @@ export default function OnboardingScreen() {
 
             <Animated.View
               pointerEvents="none"
-              style={[styles.planeControl, { backgroundColor: controlColor, transform: [{ translateX: progress }] }]}
+              style={[styles.planeControl, { transform: [{ translateX: progress }] }]}
             >
               <Animated.View style={[styles.wake, styles.wakeTop, { opacity: wakeOpacity }]} />
               <Animated.View style={[styles.wake, styles.wakeBottom, { opacity: wakeOpacity }]} />
-              <Animated.Text style={[styles.startPlane, { color: planeColor, transform: [{ rotate: planeRotation }] }]}>✈︎</Animated.Text>
+              <Animated.Text style={[styles.startPlane, { transform: [{ rotate: planeRotation }] }]}>✈︎</Animated.Text>
             </Animated.View>
           </View>
         </View>
@@ -191,11 +181,12 @@ const styles = StyleSheet.create({
     position: 'absolute', right: CONTROL_SIZE, textAlign: 'center',
   },
   planeControl: {
-    alignItems: 'center', borderRadius: CONTROL_SIZE / 2, height: CONTROL_SIZE,
+    alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: 'rgba(37,48,29,0.08)', borderRadius: CONTROL_SIZE / 2,
+    borderWidth: 1, height: CONTROL_SIZE,
     justifyContent: 'center', left: 0, position: 'absolute', top: 0, width: CONTROL_SIZE,
   },
-  startPlane: { fontSize: 27, zIndex: 2 },
-  wake: { backgroundColor: '#25301D', borderRadius: 3, height: 3, left: -25, position: 'absolute', width: 35 },
-  wakeTop: { top: 24, transform: [{ rotate: '7deg' }] },
-  wakeBottom: { bottom: 23, left: -19, transform: [{ rotate: '-7deg' }], width: 29 },
+  startPlane: { color: '#25301D', fontSize: 27, zIndex: 2 },
+  wake: { backgroundColor: 'rgba(37,48,29,0.72)', borderRadius: 2, height: 2, left: -27, position: 'absolute' },
+  wakeTop: { top: 24, width: 36 },
+  wakeBottom: { bottom: 24, left: -20, width: 29 },
 });
