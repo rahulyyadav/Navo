@@ -48,3 +48,9 @@ tmp/
 # generated native folders
 /ios
 /android
+
+# Supabase public configuration stays local; keep the blank template.
+.env
+.env.local
+.env.*
+!.env.example

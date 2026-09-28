@@ -1,90 +1,60 @@
-import { StyleSheet, Text, View } from 'react-native';
-
-import { Screen } from '@/components/Screen';
-import { SectionHeading } from '@/components/SectionHeading';
-import { StatusPill } from '@/components/StatusPill';
-import { auditChecks, samplePlan } from '@/data/demo';
+import { useEffect, useRef, useState } from 'react';
+import { Linking, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { Backdrop, Badge, Button, Card, Chip, Field, Heading, Notice, Reveal, SectionTitle } from '@/components/ui';
+import { useNavo } from '@/context/NavoContext';
+import { treks } from '@/data/treks';
+import { readJSON, writeJSON } from '@/lib/storage';
+import { emptyPreparation, essentials, normalizePreparation, trekkingResources, validDepartureDate, type Preparation } from '@/services/preparation';
 import { colors, radius } from '@/theme/tokens';
 
 export default function PlanScreen() {
-  return (
-    <Screen>
-      <View style={styles.intro}>
-        <StatusPill label="Demonstration plan" tone="orange" />
-        <SectionHeading eyebrow="Annapurna region" title="Six days, shaped around your limits" />
-        <Text style={styles.disclaimer}>The route facts below are interface placeholders, not verified trekking guidance.</Text>
-      </View>
-
-      <View style={styles.summary}>
-        <View><Text style={styles.summaryLabel}>PACE</Text><Text style={styles.summaryValue}>Steady</Text></View>
-        <View style={styles.divider} />
-        <View><Text style={styles.summaryLabel}>DAYS</Text><Text style={styles.summaryValue}>6</Text></View>
-        <View style={styles.divider} />
-        <View><Text style={styles.summaryLabel}>HIGH POINT</Text><Text style={styles.summaryValue}>Demo</Text></View>
-      </View>
-
-      <Text style={styles.sectionLabel}>DAY BY DAY</Text>
-      <View style={styles.timeline}>
-        {samplePlan.map((item, index) => (
-          <View key={item.day} style={styles.dayRow}>
-            <View style={styles.timelineRail}>
-              <View style={[styles.dayDot, item.status === 'watch' && styles.dayDotWatch]}><Text style={styles.dayNumber}>{item.day}</Text></View>
-              {index < samplePlan.length - 1 ? <View style={styles.rail} /> : null}
-            </View>
-            <View style={styles.dayCard}>
-              <View style={styles.dayTopline}>
-                <Text style={styles.dayRoute}>{item.from} → {item.to}</Text>
-                <StatusPill label={item.status === 'watch' ? 'Review' : 'Checked'} tone={item.status === 'watch' ? 'orange' : 'green'} />
-              </View>
-              <Text style={styles.dayMeta}>{item.duration} · {item.elevation} · {item.distance}</Text>
-            </View>
-          </View>
-        ))}
-      </View>
-
-      <View style={styles.auditCard}>
-        <Text style={styles.auditKicker}>AI PLAN AUDIT</Text>
-        <Text style={styles.auditTitle}>The plan does not pass silently.</Text>
-        <Text style={styles.auditCopy}>Navo exposes the checks, gaps, and repair requests behind the final itinerary.</Text>
-        <View style={styles.checks}>
-          {auditChecks.map(([label, value]) => (
-            <View key={label} style={styles.checkRow}>
-              <Text style={styles.checkLabel}>{label}</Text>
-              <Text style={[styles.checkValue, value.includes('Review') && styles.checkWarning]}>{value}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-    </Screen>
-  );
+  const { userId } = useNavo();
+  const params = useLocalSearchParams<{ trek?: string }>();
+  const [trekId, setTrekId] = useState(treks.find(t => t.id === params.trek)?.id ?? treks[0].id);
+  const [plan, setPlan] = useState<Preparation>(emptyPreparation);
+  const [loaded, setLoaded] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
+  const lock = useRef(false);
+  const trek = treks.find(t => t.id === trekId)!;
+  const key = `preparation:${userId}:${trekId}`;
+  useEffect(() => {
+    let active = true;
+    readJSON(key).then(value => { if (active) { setPlan(normalizePreparation(value)); setLoaded(true); } }).catch(() => { if (active) setError('Your saved preparation could not be loaded. Reopen this screen to retry.'); });
+    return () => { active = false; };
+  }, [key]);
+  function change(patch: Partial<Preparation>) { setPlan(current => ({ ...current, ...patch })); setSaved(false); }
+  async function save() {
+    if (!loaded || lock.current) return false;
+    if (!validDepartureDate(plan.date)) { setError('Use a real departure date in YYYY-MM-DD format.'); return false; }
+    lock.current = true; setBusy(true); setError('');
+    try { await writeJSON(key, plan); setSaved(true); return true; }
+    catch { setError('Could not save on this device. Your changes are still on screen; try again.'); return false; }
+    finally { lock.current = false; setBusy(false); }
+  }
+  async function share() {
+    try { await Share.share({ message: `My Navo trek preparation\n${trek.name}\nDeparture: ${plan.date || 'Not set'}\n${plan.checked.length}/${essentials.length} preparation items checked\n${plan.notes}\nApproximate route overview only. Confirm itinerary, conditions and permits with a qualified local guide.` }); }
+    catch { setError('Sharing is unavailable on this device.'); }
+  }
+  return <Backdrop><ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+    <Reveal><Badge label="YOUR TRAIL PREPARATION" tone="lime" /><Heading title="A little planning. A better journey." subtitle="Build a practical checklist for your Nepal trek. Save it on this device before you leave." /></Reveal>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>{treks.map(t => <Chip key={t.id} label={t.name} selected={t.id === trekId} onPress={() => { if (!busy && t.id !== trekId) { void save().then(ok => { if (ok) { setLoaded(false); setSaved(false); setError(''); setTrekId(t.id); } }); } }} />)}</ScrollView>
+    <Reveal delay={60}><Card><Text style={styles.title}>{trek.name}</Text><Text style={styles.copy}>{trek.days} suggested · up to {trek.maxElevation.toLocaleString()} m · {trek.difficulty}</Text><Text style={styles.copy}>Timing is approximate. Build in acclimatisation and contingency days with your guide.</Text><View style={styles.progress}><View style={[styles.fill, { width: `${plan.checked.length / essentials.length * 100}%` }]} /></View><Text accessibilityLiveRegion="polite" style={styles.count}>{plan.checked.length} of {essentials.length} essentials checked</Text></Card></Reveal>
+    <Notice message={error} />
+    {loaded && <>
+      <Field label="Departure date (optional)" placeholder="YYYY-MM-DD" value={plan.date} maxLength={10} editable={!busy} onChangeText={date => change({ date })} />
+      {[...new Set(essentials.map(item => item.section))].map(section => <View key={section} style={styles.section}><SectionTitle title={section.toUpperCase()} />{essentials.filter(item => item.section === section).map(item => {
+        const checked = plan.checked.includes(item.id);
+        return <Pressable key={item.id} accessibilityRole="checkbox" accessibilityState={{ checked, disabled: busy }} disabled={busy} onPress={() => change({ checked: checked ? plan.checked.filter(id => id !== item.id) : [...plan.checked, item.id] })} style={({ pressed }) => [styles.check, checked && styles.checked, pressed && { opacity: .7 }]}><Text style={styles.tick}>{checked ? '✓' : '○'}</Text><View style={styles.checkCopy}><Text style={styles.label}>{item.label}</Text><Text style={styles.copy}>{item.detail}</Text></View></Pressable>;
+      })}</View>)}
+      <Field label="Your route, check-in plan & notes" multiline maxLength={2000} value={plan.notes} editable={!busy} onChangeText={notes => change({ notes })} placeholder="Guide contact, overnight stops, check-in times…" />
+      <Button label={saved ? 'Saved on this device ✓' : 'Save preparation'} busy={busy} disabled={busy} onPress={() => void save()} />
+      <Button label="Share my plan" variant="outline" onPress={() => void share()} style={styles.section} />
+    </>}
+    <View style={styles.section}><SectionTitle title="CHECK BEFORE DEPARTURE" />{trekkingResources.map(resource => <Button key={resource.url} label={resource.label} variant="quiet" onPress={() => void Linking.openURL(resource.url).catch(() => setError('Could not open the source. Check your connection.'))} />)}</View>
+    <Text style={styles.copy}>Checklist completion is not a safety certification. Saved preparation is local to this device; map tiles and current advisories need internet.</Text>
+  </ScrollView></Backdrop>;
 }
-
-const styles = StyleSheet.create({
-  intro: { gap: 14, paddingTop: 8 },
-  disclaimer: { color: colors.warning, fontSize: 12, lineHeight: 18, marginTop: -10 },
-  summary: { alignItems: 'center', backgroundColor: colors.forest, borderRadius: radius.lg, flexDirection: 'row', justifyContent: 'space-around', marginBottom: 28, marginTop: 22, paddingVertical: 20 },
-  summaryLabel: { color: '#AFC7B7', fontSize: 9, fontWeight: '900', letterSpacing: 1.3, marginBottom: 5 },
-  summaryValue: { color: colors.white, fontSize: 17, fontWeight: '800' },
-  divider: { backgroundColor: '#3D5B50', height: 35, width: 1 },
-  sectionLabel: { color: colors.ember, fontSize: 11, fontWeight: '900', letterSpacing: 1.5, marginBottom: 14 },
-  timeline: { gap: 0 },
-  dayRow: { flexDirection: 'row', minHeight: 118 },
-  timelineRail: { alignItems: 'center', marginRight: 12, width: 36 },
-  dayDot: { alignItems: 'center', backgroundColor: colors.moss, borderRadius: 18, height: 36, justifyContent: 'center', width: 36 },
-  dayDotWatch: { backgroundColor: colors.ember },
-  dayNumber: { color: colors.white, fontSize: 13, fontWeight: '900' },
-  rail: { backgroundColor: colors.line, flex: 1, width: 2 },
-  dayCard: { backgroundColor: colors.white, borderColor: colors.line, borderRadius: radius.md, borderWidth: 1, flex: 1, marginBottom: 13, padding: 15 },
-  dayTopline: { alignItems: 'flex-start', flexDirection: 'row', gap: 8, justifyContent: 'space-between' },
-  dayRoute: { color: colors.ink, flex: 1, fontSize: 15, fontWeight: '800', lineHeight: 20 },
-  dayMeta: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 12 },
-  auditCard: { backgroundColor: '#EFE8DB', borderRadius: radius.lg, marginTop: 14, padding: 20 },
-  auditKicker: { color: colors.ember, fontSize: 10, fontWeight: '900', letterSpacing: 1.5 },
-  auditTitle: { color: colors.ink, fontSize: 23, fontWeight: '900', lineHeight: 28, marginTop: 8 },
-  auditCopy: { color: colors.muted, fontSize: 13, lineHeight: 20, marginTop: 8 },
-  checks: { borderTopColor: '#D5C9B4', borderTopWidth: 1, marginTop: 18, paddingTop: 5 },
-  checkRow: { borderBottomColor: '#D5C9B4', borderBottomWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 11 },
-  checkLabel: { color: colors.ink, fontSize: 12, fontWeight: '700' },
-  checkValue: { color: colors.moss, fontSize: 12, fontWeight: '800' },
-  checkWarning: { color: colors.warning },
-});
+const styles = StyleSheet.create({ scroll: { padding: 20, paddingBottom: 48, gap: 16 }, chips: { gap: 8 }, section: { marginTop: 12 }, title: { color: colors.ink, fontSize: 23, fontWeight: '800' }, copy: { color: colors.muted, fontSize: 13, lineHeight: 20, marginTop: 6 }, count: { color: colors.lime, fontSize: 13, fontWeight: '700' }, progress: { height: 6, borderRadius: 3, backgroundColor: colors.slate, marginVertical: 16, overflow: 'hidden' }, fill: { height: 6, backgroundColor: colors.lime }, check: { flexDirection: 'row', gap: 14, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, padding: 16, marginBottom: 10, backgroundColor: colors.navy }, checked: { borderColor: 'rgba(228,255,137,.4)' }, checkCopy: { flex: 1 }, tick: { color: colors.lime, fontSize: 24 }, label: { color: colors.ink, fontSize: 15, fontWeight: '700' } });

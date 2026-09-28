@@ -1,21 +1,95 @@
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ClerkProvider } from '@clerk/expo';
+import * as WebBrowser from 'expo-web-browser';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-
+import { Backdrop, useReducedMotion } from '@/components/ui';
+import { NavoProvider, useNavo } from '@/context/NavoContext';
+import { clerkConfigured, clerkPublishableKey, tokenCache } from '@/lib/clerk';
 import { colors } from '@/theme/tokens';
 
-export default function RootLayout() {
-  return (
-    <SafeAreaProvider>
-      <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShadowVisible: false, headerStyle: { backgroundColor: colors.paper }, headerTintColor: colors.ink, headerTitleStyle: { fontWeight: '700' }, contentStyle: { backgroundColor: colors.paper } }}>
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="login" options={{ headerShown: false }} />
-        <Stack.Screen name="signup" options={{ headerShown: false }} />
-        <Stack.Screen name="discover" options={{ headerShown: false }} />
-        <Stack.Screen name="plan" options={{ title: 'Trek plan' }} />
-        <Stack.Screen name="safety" options={{ title: 'Offline & safety' }} />
-      </Stack>
-    </SafeAreaProvider>
-  );
+WebBrowser.maybeCompleteAuthSession();
+
+export const unstable_settings = { initialRouteName: 'index' };
+
+function BootScreen({ title, detail }: { title: string; detail?: string }) {
+  return <Backdrop>
+    <View style={styles.boot}>
+      <ActivityIndicator color={colors.lime} size="large" />
+      <Text style={styles.bootTitle}>{title}</Text>
+      {detail ? <Text style={styles.bootDetail}>{detail}</Text> : null}
+    </View>
+  </Backdrop>;
 }
+
+function NotConfigured() {
+  return <View style={styles.missing}>
+    <Text style={styles.missingTitle}>Navo needs a Clerk key</Text>
+    <Text style={styles.missingDetail}>
+      Add EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY to .env.local, then restart the dev server.
+      Only the publishable key belongs in the app — never the secret key.
+    </Text>
+  </View>;
+}
+
+function Routes() {
+  const { authLoaded, isSignedIn, hydrated, needsOnboarding } = useNavo();
+  const reduced = useReducedMotion();
+  const animation = reduced ? 'none' : 'slide_from_right';
+
+  if (!authLoaded || (isSignedIn && !hydrated)) {
+    return <BootScreen title="Waking Navo up" detail={isSignedIn ? 'Restoring your treks and groups…' : 'Securing your session…'} />;
+  }
+
+  return <Stack screenOptions={{
+    headerShadowVisible: false,
+    headerStyle: { backgroundColor: colors.night },
+    headerTintColor: colors.ink,
+    headerTitleStyle: { fontWeight: '700' },
+    contentStyle: { backgroundColor: colors.night },
+    animation,
+  }}>
+    <Stack.Protected guard={!isSignedIn}>
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen name="signup" options={{ headerShown: false }} />
+      <Stack.Screen name="verify" options={{ headerShown: false }} />
+    </Stack.Protected>
+
+    <Stack.Protected guard={isSignedIn && needsOnboarding}>
+      <Stack.Screen name="welcome" options={{ headerShown: false }} />
+    </Stack.Protected>
+
+    <Stack.Protected guard={isSignedIn && !needsOnboarding}>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: reduced ? 'none' : 'fade' }} />
+      <Stack.Screen name="trek/[id]" options={{ title: 'Trek', headerBackTitle: 'Back' }} />
+      <Stack.Screen name="group/[id]" options={{ title: 'Group', headerBackTitle: 'Back' }} />
+      <Stack.Screen name="group/new" options={{ title: 'New group', presentation: 'modal' }} />
+      <Stack.Screen name="alert" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+      <Stack.Screen name="plan" options={{ title: 'Trek preparation', headerBackTitle: 'Back' }} />
+      <Stack.Screen name="safety" options={{ title: 'Offline essentials', headerBackTitle: 'Back' }} />
+    </Stack.Protected>
+  </Stack>;
+}
+
+export default function RootLayout() {
+  if (!clerkConfigured) return <NotConfigured />;
+  return <ClerkProvider publishableKey={clerkPublishableKey} tokenCache={tokenCache}>
+    <SafeAreaProvider>
+      <NavoProvider>
+        <StatusBar style="light" />
+        <Routes />
+      </NavoProvider>
+    </SafeAreaProvider>
+  </ClerkProvider>;
+}
+
+const styles = StyleSheet.create({
+  boot: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 18, padding: 32 },
+  bootTitle: { color: colors.ink, fontSize: 20, fontWeight: '700' },
+  bootDetail: { color: colors.muted, fontSize: 14, textAlign: 'center', lineHeight: 21 },
+  missing: { flex: 1, backgroundColor: colors.night, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 14 },
+  missingTitle: { color: colors.ink, fontSize: 22, fontWeight: '700' },
+  missingDetail: { color: colors.muted, fontSize: 14, lineHeight: 22, textAlign: 'center' },
+});

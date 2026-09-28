@@ -1,88 +1,157 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Linking, Share, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Screen } from '@/components/Screen';
-import { SectionHeading } from '@/components/SectionHeading';
-import { StatusPill } from '@/components/StatusPill';
+import { Backdrop, Badge, Button, Card, Eyebrow, Heading, Notice, Reveal, SectionTitle } from '@/components/ui';
+import { TabIcon } from '@/components/TabIcon';
+import { useMyLocation } from '@/hooks/useMyLocation';
+import { useNavo } from '@/context/NavoContext';
+import { trekkingResources } from '@/services/preparation';
 import { colors, radius } from '@/theme/tokens';
 
 const packItems = [
-  ['Route line', 'Stored on device'],
-  ['Day plan', 'Stored on device'],
-  ['Waypoints', 'Demo only'],
-  ['Emergency details', 'Needs verification'],
-];
+  ['Trek overviews', 'Bundled with app'],
+  ['Saved preparation', 'On this device'],
+  ['Map tiles', 'Internet required'],
+  ['Weather & advisories', 'Internet required'],
+  ['Group alerts', 'This device only'],
+] as const;
 
 export default function SafetyScreen() {
+  const { coords, state, locate } = useMyLocation();
+  const { profile } = useNavo();
+  const [error, setError] = useState('');
+  async function sharePosition() {
+    if (!coords) return;
+    try { await Share.share({ message: `My Navo location: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}\nAccuracy: ${coords.accuracy === null ? 'unknown' : `±${Math.round(coords.accuracy)} m`}\nRecorded: ${new Date(coords.timestamp ?? Date.now()).toISOString()}\nhttps://www.openstreetmap.org/?mlat=${coords.latitude}&mlon=${coords.longitude}#map=15/${coords.latitude}/${coords.longitude}\nPlease contact me to confirm my situation.` }); }
+    catch { setError('Could not open sharing. You can read your coordinates above.'); }
+  }
+  async function open(url: string) { try { await Linking.openURL(url); } catch { setError('Could not open this action on your device.'); } }
+
+
   return (
-    <Screen>
-      <View style={styles.intro}>
-        <StatusPill label="Offline concept" />
-        <SectionHeading eyebrow="Beyond coverage" title="Know what still works when the signal does not" />
-        <Text style={styles.copy}>
-          Navo separates offline information from actions that still require a network, carrier, or supported system feature.
-        </Text>
-      </View>
+    <Backdrop>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <Reveal>
+          <View style={styles.badgeRow}><Badge label="TRAIL ESSENTIALS" tone="info" /></View>
+          <Heading
+            subtitle="Navo separates the information that stays readable offline from the actions that still need a network, a carrier, or a supported system feature."
+            title="Know what still works when the signal does not"
+          />
+        </Reveal>
 
-      <View style={styles.signalCard}>
-        <View style={styles.signalHeader}>
-          <View><Text style={styles.signalKicker}>LAST POSITION</Text><Text style={styles.signalTitle}>GPS fix available</Text></View>
-          <View style={styles.signalIcon}><Text style={styles.signalIconText}>⌁</Text></View>
-        </View>
-        <Text style={styles.signalMeta}>Accuracy and timestamp will appear here when location integration is enabled.</Text>
-      </View>
+        <Reveal delay={50}>
+          <Card>
+            <View style={styles.fixHeader}>
+              <View style={styles.fixCopy}>
+                <Eyebrow>LAST POSITION</Eyebrow>
+                <Text style={styles.fixTitle}>{coords ? 'GPS fix available' : state === 'locating' ? 'Looking for satellites…' : 'No fix yet'}</Text>
+              </View>
+              <View style={styles.fixIcon}><TabIcon color={colors.lime} name="pin" size={24} /></View>
+            </View>
 
-      <Text style={styles.sectionLabel}>TRIP PACK</Text>
-      <View style={styles.packCard}>
-        {packItems.map(([label, status], index) => (
-          <View key={label} style={[styles.packRow, index === packItems.length - 1 && styles.lastRow]}>
-            <View style={styles.checkCircle}><Text style={styles.check}>✓</Text></View>
-            <Text style={styles.packLabel}>{label}</Text>
-            <Text style={styles.packStatus}>{status}</Text>
+            {coords ? (
+              <View style={styles.fixGrid}>
+                <FixCell label="LATITUDE" value={coords.latitude.toFixed(5)} />
+                <FixCell label="LONGITUDE" value={coords.longitude.toFixed(5)} />
+                <FixCell label="ACCURACY" value={coords.accuracy ? `±${Math.round(coords.accuracy)} m` : 'Unknown'} />
+              </View>
+            ) : (
+              <Text style={styles.fixHint}>
+                A fix comes from the phone’s GPS, so it works without mobile data. Take one before you lose signal and
+                check the timestamp and accuracy before sharing it.
+              </Text>
+            )}
+
+            <Button
+              busy={state === 'locating'}
+              disabled={state === 'locating'}
+              label={coords ? 'Refresh my position' : 'Get my position'}
+              onPress={() => void locate()}
+              style={styles.fixButton}
+              variant="outline"
+            />
+            {coords && <><Text style={styles.fixHint}>Recorded {coords.timestamp ? new Date(coords.timestamp).toLocaleTimeString() : 'time unknown'} · refresh before sharing.</Text><Button label="Share my coordinates" onPress={() => void sharePosition()} style={styles.fixButton} /></>}
+            {profile?.emergencyContact?.phone && <Button label={`Call ${profile.emergencyContact.name || 'emergency contact'}`} variant="outline" onPress={() => void open(`tel:${profile.emergencyContact!.phone.replace(/[^+0-9]/g, '')}`)} style={styles.fixButton} />}
+            <Notice message={error} />
+            {state === 'denied' ? <Notice message="Location permission is off. Enable it in Settings to get your coordinates." tone="warning" /> : null}
+            {state === 'unavailable' ? <Notice message="No new GPS fix. Try again outdoors. Any displayed coordinates are the previous fix." tone="info" /> : null}
+          </Card>
+        </Reveal>
+
+        <Reveal delay={80}>
+          <View style={styles.section}>
+            <SectionTitle title="TRIP PACK" />
+            <Card padded={false} style={styles.pack}>
+              {packItems.map(([label, status], index) => (
+                <View key={label} style={[styles.packRow, index === packItems.length - 1 && styles.lastRow]}>
+                  <View style={styles.check}><Text style={styles.checkMark}>·</Text></View>
+                  <Text style={styles.packLabel}>{label}</Text>
+                  <Text style={styles.packStatus}>{status}</Text>
+                </View>
+              ))}
+            </Card>
           </View>
-        ))}
-      </View>
+        </Reveal>
 
-      <View style={styles.boundaryCard}>
-        <Text style={styles.boundaryKicker}>IMPORTANT BOUNDARY</Text>
-        <Text style={styles.boundaryTitle}>Offline does not mean connected.</Text>
-        <Text style={styles.boundaryCopy}>
-          GPS may determine a position without mobile data. Calls, SMS, live weather, and rescue communication still depend on an available channel. Satellite capability varies by device, carrier, operating system, and region.
-        </Text>
-      </View>
+        <Reveal delay={110}>
+          <View style={[styles.section, styles.boundary]}>
+            <Eyebrow>IMPORTANT BOUNDARY</Eyebrow>
+            <Text style={styles.boundaryTitle}>Offline does not mean connected.</Text>
+            <Text style={styles.boundaryCopy}>
+              GPS can place you without mobile data. Calls, SMS, live weather, and rescue communication still depend on
+              an available channel, and satellite capability varies by device, carrier, operating system, and region.
+            </Text>
+          </View>
+        </Reveal>
 
-      <View style={styles.actionCard}>
-        <Text style={styles.actionLabel}>Emergency preparation</Text>
-        <Text style={styles.actionTitle}>Coordinates + route + timestamp</Text>
-        <Text style={styles.actionCopy}>The final flow will prepare these details for the phone's supported call or messaging experience. It will not claim to dispatch rescue automatically.</Text>
-      </View>
-    </Screen>
+        <View style={styles.section}><SectionTitle title="RELIABLE LOCAL SOURCES" />{trekkingResources.map(resource => <Button key={resource.url} label={resource.label} variant="quiet" onPress={() => void open(resource.url)} />)}</View>
+        <Reveal delay={140}>
+          <View style={[styles.section, styles.pending]}>
+            <Eyebrow>EMERGENCY PREPARATION</Eyebrow>
+            <Text style={styles.pendingTitle}>Coordinates + route + timestamp</Text>
+            <Text style={styles.boundaryCopy}>
+              Use “Share my coordinates” to choose a contact in your phone’s share sheet. Sending needs a working communication channel. Navo does not dispatch rescue or notify other group members.
+            </Text>
+          </View>
+        </Reveal>
+      </ScrollView>
+    </Backdrop>
+  );
+}
+
+function FixCell({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.fixCell}>
+      <Text style={styles.fixCellLabel}>{label}</Text>
+      <Text style={styles.fixCellValue}>{value}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  intro: { gap: 14, paddingTop: 8 },
-  copy: { color: colors.muted, fontSize: 15, lineHeight: 23, marginTop: -7 },
-  signalCard: { backgroundColor: colors.forest, borderRadius: radius.lg, marginBottom: 28, marginTop: 24, padding: 20 },
-  signalHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  signalKicker: { color: '#AFC7B7', fontSize: 9, fontWeight: '900', letterSpacing: 1.4 },
-  signalTitle: { color: colors.white, fontSize: 23, fontWeight: '900', marginTop: 5 },
-  signalIcon: { alignItems: 'center', backgroundColor: '#294E40', borderRadius: 25, height: 50, justifyContent: 'center', width: 50 },
-  signalIconText: { color: colors.white, fontSize: 26 },
-  signalMeta: { color: '#C8D8CE', fontSize: 12, lineHeight: 18, marginTop: 16, maxWidth: 300 },
-  sectionLabel: { color: colors.ember, fontSize: 11, fontWeight: '900', letterSpacing: 1.5, marginBottom: 12 },
-  packCard: { backgroundColor: colors.white, borderColor: colors.line, borderRadius: radius.md, borderWidth: 1, marginBottom: 20, paddingHorizontal: 15 },
-  packRow: { alignItems: 'center', borderBottomColor: colors.line, borderBottomWidth: 1, flexDirection: 'row', paddingVertical: 14 },
+  scroll: { flexGrow: 1, paddingBottom: 40, paddingHorizontal: 20, paddingTop: 20 },
+  badgeRow: { marginBottom: 16 },
+  fixHeader: { alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'space-between' },
+  fixCopy: { flex: 1 },
+  fixTitle: { color: colors.ink, fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
+  fixIcon: { alignItems: 'center', backgroundColor: colors.slate, borderRadius: 25, height: 50, justifyContent: 'center', width: 50 },
+  fixGrid: { flexDirection: 'row', gap: 10, marginTop: 18 },
+  fixCell: { backgroundColor: colors.slate, borderRadius: radius.md, flex: 1, padding: 12 },
+  fixCellLabel: { color: colors.faint, fontSize: 10, fontWeight: '800', letterSpacing: 1.2 },
+  fixCellValue: { color: colors.lime, fontSize: 15, fontWeight: '800', marginTop: 6 },
+  fixHint: { color: colors.muted, fontSize: 13.5, lineHeight: 20, marginTop: 12 },
+  fixButton: { marginTop: 18 },
+  section: { marginTop: 28 },
+  pack: { paddingHorizontal: 16 },
+  packRow: { alignItems: 'center', borderBottomColor: colors.lineSoft, borderBottomWidth: 1, flexDirection: 'row', paddingVertical: 14 },
   lastRow: { borderBottomWidth: 0 },
-  checkCircle: { alignItems: 'center', backgroundColor: colors.mist, borderRadius: 11, height: 22, justifyContent: 'center', marginRight: 10, width: 22 },
-  check: { color: colors.moss, fontSize: 12, fontWeight: '900' },
-  packLabel: { color: colors.ink, flex: 1, fontSize: 13, fontWeight: '800' },
-  packStatus: { color: colors.muted, fontSize: 11 },
-  boundaryCard: { backgroundColor: '#FBEADF', borderRadius: radius.lg, marginBottom: 20, padding: 20 },
-  boundaryKicker: { color: colors.warning, fontSize: 10, fontWeight: '900', letterSpacing: 1.4 },
-  boundaryTitle: { color: colors.ink, fontSize: 22, fontWeight: '900', marginTop: 8 },
-  boundaryCopy: { color: '#74543C', fontSize: 13, lineHeight: 20, marginTop: 9 },
-  actionCard: { borderColor: colors.sand, borderRadius: radius.lg, borderStyle: 'dashed', borderWidth: 1.5, padding: 20 },
-  actionLabel: { color: colors.ember, fontSize: 11, fontWeight: '900', letterSpacing: 0.8 },
-  actionTitle: { color: colors.ink, fontSize: 18, fontWeight: '900', marginTop: 8 },
-  actionCopy: { color: colors.muted, fontSize: 13, lineHeight: 20, marginTop: 8 },
+  check: { alignItems: 'center', backgroundColor: colors.slate, borderRadius: 11, height: 22, justifyContent: 'center', marginRight: 11, width: 22 },
+  checkMark: { color: colors.lime, fontSize: 12, fontWeight: '900' },
+  packLabel: { color: colors.ink, flex: 1, fontSize: 14, fontWeight: '600' },
+  packStatus: { color: colors.muted, fontSize: 11.5 },
+  boundary: { backgroundColor: 'rgba(255,184,107,0.12)', borderColor: 'rgba(255,184,107,0.35)', borderRadius: radius.lg, borderWidth: 1, padding: 20 },
+  boundaryTitle: { color: colors.ink, fontSize: 21, fontWeight: '700', letterSpacing: -0.4, lineHeight: 27 },
+  boundaryCopy: { color: colors.muted, fontSize: 13.5, lineHeight: 21, marginTop: 9 },
+  pending: { borderColor: colors.line, borderRadius: radius.lg, borderStyle: 'dashed', borderWidth: 1.5, padding: 20 },
+  pendingTitle: { color: colors.ink, fontSize: 18, fontWeight: '700' },
 });
