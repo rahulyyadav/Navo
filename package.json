@@ -1,6 +1,9 @@
 {
   "name": "navo",
   "version": "1.0.0",
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "main": "expo-router/entry",
   "dependencies": {
     "@clerk/expo": "^4.7.1",
