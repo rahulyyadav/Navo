@@ -9,7 +9,7 @@ async function loadModule(path) {
   return import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`);
 }
 
-const { normalizeEmail, validEmail, friendlyAuthError, clerkErrorCode } = await loadModule('../src/services/auth-errors.ts');
+const { normalizeEmail, validEmail, friendlyAuthError, firebaseErrorCode } = await loadModule('../src/services/auth-errors.ts');
 
 test('email normalizes before validation and rejects malformed addresses', () => {
   assert.equal(normalizeEmail('  Hiker@EXAMPLE.COM  '), 'hiker@example.com');
@@ -18,28 +18,25 @@ test('email normalizes before validation and rejects malformed addresses', () =>
 });
 
 test('errors never disclose arbitrary backend details', () => {
-  for (const error of [null, undefined, {}, { message: 'private clerk detail' }, { errors: [{ longMessage: 'internal trace' }] }]) {
+  for (const error of [null, undefined, {}, { message: 'private firebase detail' }]) {
     assert.equal(friendlyAuthError(error), 'Something went wrong. Please try again.');
   }
 });
 
-test('Clerk codes map to actionable copy', () => {
-  assert.match(friendlyAuthError({ errors: [{ code: 'form_identifier_not_found' }] }), /couldn’t find that email/);
-  assert.match(friendlyAuthError({ errors: [{ code: 'form_code_incorrect' }] }), /doesn’t look right/);
-  assert.match(friendlyAuthError({ errors: [{ code: 'verification_expired' }] }), /expired/);
-  assert.match(friendlyAuthError({ errors: [{ code: 'identifier_already_exists' }] }), /Log in instead/);
-  assert.match(friendlyAuthError({ errors: [{ code: 'captcha_invalid' }] }), /human/);
+test('Firebase codes map to actionable copy', () => {
+  assert.match(friendlyAuthError({ code: 'auth/invalid-credential' }), /email or password/);
+  assert.match(friendlyAuthError({ code: 'auth/email-already-in-use' }), /Log in instead/);
+  assert.match(friendlyAuthError({ code: 'auth/weak-password' }), /stronger password/);
+  assert.match(friendlyAuthError({ code: 'auth/popup-blocked' }), /popups/);
+  assert.match(friendlyAuthError({ code: 'auth/unauthorized-domain' }), /not authorized/);
   assert.match(friendlyAuthError({ status: 429 }), /Too many attempts/);
-  assert.match(friendlyAuthError({ errors: [{ code: 'form_param_nonsense' }] }), /valid email address/);
   assert.match(friendlyAuthError(new Error('offline')), /offline/);
-  assert.match(friendlyAuthError(new Error('expo_go_oauth')), /development app/);
   assert.match(friendlyAuthError({ message: '', name: 'AbortError' }), /connection/);
 });
 
-test('the first Clerk error code wins', () => {
-  assert.equal(clerkErrorCode({ errors: [{ code: 'form_code_incorrect' }, { code: 'verification_expired' }] }), 'form_code_incorrect');
-  assert.equal(clerkErrorCode({ code: 'rate_limit_exceeded' }), 'rate_limit_exceeded');
-  assert.equal(clerkErrorCode(null), '');
+test('Firebase error codes are extracted without exposing backend messages', () => {
+  assert.equal(firebaseErrorCode({ code: 'auth/too-many-requests' }), 'auth/too-many-requests');
+  assert.equal(firebaseErrorCode(null), '');
 });
 
 const { shouldCompleteSlide } = await loadModule('../src/services/onboarding-slide.ts');

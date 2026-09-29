@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
-import { useAuth, useUser } from '@clerk/expo';
+import { useFirebaseAuth } from '@/context/AuthContext';
 import type { OnboardingAnswers, Profile, TrekGroup } from '@/types/navo';
 import {
   buildProfile,
@@ -45,8 +45,9 @@ type SessionData = {
 const NavoContext = createContext<NavoState | null>(null);
 
 export function NavoProvider({ children }: PropsWithChildren) {
-  const { isLoaded, isSignedIn, userId, signOut } = useAuth();
-  const { user } = useUser();
+  const { loaded: isLoaded, user, signOut } = useFirebaseAuth();
+  const isSignedIn = Boolean(user);
+  const userId = user?.uid ?? '';
   const [session, setSession] = useState<SessionData | null>(null);
   const [error, setError] = useState('');
   const [signingOut, setSigningOut] = useState(false);
@@ -80,8 +81,8 @@ export function NavoProvider({ children }: PropsWithChildren) {
     if (!userId || !user) return;
     const built = buildProfile({
       userId,
-      email: user.primaryEmailAddress?.emailAddress ?? '',
-      imageUrl: user.hasImage ? user.imageUrl : null,
+      email: user.email ?? '',
+      imageUrl: user.photoURL,
       answers: next,
       createdAt: data?.profile?.createdAt,
     });
@@ -122,8 +123,8 @@ export function NavoProvider({ children }: PropsWithChildren) {
       authLoaded: isLoaded,
       isSignedIn: Boolean(isSignedIn),
       userId: userId ?? '',
-      email: user?.primaryEmailAddress?.emailAddress ?? data?.profile?.email ?? '',
-      imageUrl: user?.hasImage ? user.imageUrl : data?.profile?.imageUrl ?? null,
+      email: user?.email ?? data?.profile?.email ?? '',
+      imageUrl: user?.photoURL ?? data?.profile?.imageUrl ?? null,
       profile: data?.profile ?? null,
       answers,
       hydrated: data !== null,

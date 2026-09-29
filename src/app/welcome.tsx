@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Keyboard, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import Animated, { FadeInRight, FadeOutLeft, LinearTransition } from 'react-native-reanimated';
 import { router } from 'expo-router';
-import { useUser } from '@clerk/expo';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Backdrop, Button, Card, Chip, Eyebrow, Field, Heading, LinkAction, Notice, OptionCard, Row } from '@/components/ui';
+import { useFirebaseAuth } from '@/context/AuthContext';
 import { useNavo } from '@/context/NavoContext';
 import { GOALS, LEVELS, MAX_GOALS, goalLabels, levelLabel } from '@/data/onboarding';
 import { emptyOnboarding } from '@/services/profile';
@@ -27,13 +27,13 @@ const STEP_COPY: Record<Step, { eyebrow: string; title: string; subtitle: string
 };
 
 export default function WelcomeScreen() {
-  const { user } = useUser();
+  const { user } = useFirebaseAuth();
   const { completeOnboarding, email, answers } = useNavo();
   const [step, setStep] = useState<Step>('name');
   const [draft, setDraft] = useState<OnboardingAnswers>(() => {
     // Re-entering from Profile keeps the saved answers instead of starting blank.
     if (answers.completed) return { ...answers, completed: false };
-    const known = user?.fullName?.trim() ?? user?.firstName?.trim() ?? '';
+    const known = user?.displayName?.trim() ?? '';
     return known ? { ...emptyOnboarding, fullName: known } : emptyOnboarding;
   });
   const [error, setError] = useState('');

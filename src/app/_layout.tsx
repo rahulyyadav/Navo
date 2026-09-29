@@ -1,12 +1,12 @@
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { ClerkProvider } from '@clerk/expo';
 import * as WebBrowser from 'expo-web-browser';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Backdrop, useReducedMotion } from '@/components/ui';
+import { AuthProvider } from '@/context/AuthContext';
 import { NavoProvider, useNavo } from '@/context/NavoContext';
-import { clerkConfigured, clerkPublishableKey, tokenCache } from '@/lib/clerk';
+import { firebaseConfigured } from '@/lib/firebase';
 import { colors } from '@/theme/tokens';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -25,10 +25,10 @@ function BootScreen({ title, detail }: { title: string; detail?: string }) {
 
 function NotConfigured() {
   return <View style={styles.missing}>
-    <Text style={styles.missingTitle}>Navo needs a Clerk key</Text>
+    <Text style={styles.missingTitle}>Navo needs Firebase configuration</Text>
     <Text style={styles.missingDetail}>
-      Add EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY to .env.local, then restart the dev server.
-      Only the publishable key belongs in the app — never the secret key.
+      Add the EXPO_PUBLIC_FIREBASE_* values from .env.example to .env, then restart Expo.
+      These client configuration values are safe to bundle; never add an Admin SDK private key.
     </Text>
   </View>;
 }
@@ -54,7 +54,6 @@ function Routes() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen name="signup" options={{ headerShown: false }} />
-      <Stack.Screen name="verify" options={{ headerShown: false }} />
     </Stack.Protected>
 
     <Stack.Protected guard={isSignedIn && needsOnboarding}>
@@ -74,15 +73,15 @@ function Routes() {
 }
 
 export default function RootLayout() {
-  if (!clerkConfigured) return <NotConfigured />;
-  return <ClerkProvider publishableKey={clerkPublishableKey} tokenCache={tokenCache}>
+  if (!firebaseConfigured) return <NotConfigured />;
+  return <AuthProvider>
     <SafeAreaProvider>
       <NavoProvider>
         <StatusBar style="light" />
         <Routes />
       </NavoProvider>
     </SafeAreaProvider>
-  </ClerkProvider>;
+  </AuthProvider>;
 }
 
 const styles = StyleSheet.create({

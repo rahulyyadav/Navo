@@ -2,17 +2,17 @@
 
 ## Credentials
 
-Put `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_…` in `.env.local` in the repository root (next to `package.json`). Use the key from the Clerk application you are configuring. Restart with `npx expo start --clear` after environment changes. `.env.example` has the current template; this app now uses Clerk, not the older Supabase setup.
+Copy `.env.example` to `.env` in the repository root and fill in the Firebase web-app configuration plus the three Google OAuth client IDs. Restart with `npx expo start --clear` after environment changes.
 
-Only the publishable key is read by app code. A `CLERK_SECRET_KEY` is a server/admin credential and is not needed by the mobile app. Never give a secret key an `EXPO_PUBLIC_` prefix or put it in app.json, source code, or git.
+The `EXPO_PUBLIC_FIREBASE_*` values identify the Firebase client app and are designed to be bundled. Security comes from Firebase Authentication and Firebase Security Rules, not from hiding this config. Never place a Firebase Admin SDK service-account JSON, private key, OAuth client secret, or other server credential in `.env`, app.json, source code, or Git.
 
-## Clerk settings
+## Firebase Authentication settings
 
-In Configure → User & authentication, enable email + email verification code. Phone number, username and password must not be required for this passwordless flow. First/last names are optional. The screenshot's “verified but needs details” problem came from all three additional fields being required. The public application configuration was rechecked on 2026-09-28 and now requires email only.
+In Firebase Console → Authentication → Sign-in method, enable **Email/Password** and **Google**. Add `localhost` plus every deployed web hostname under Authentication → Settings → Authorized domains. The app uses Firebase's auth-state observer and persists native sessions with AsyncStorage.
 
-Google must be enabled as a Clerk social connection. Native OAuth must be tested in a Navo development build with its own application identifiers and `navo` URL scheme, including the redirect URL required by Clerk. Expo Go is not a substitute for a standalone OAuth callback configuration. The installed experimental Clerk Expo SSO helper activates completed sessions itself. Production requires production Clerk/Google configuration; do not ship test keys.
+Create OAuth clients in Google Cloud for web, iOS, and Android, then place their IDs in the matching `EXPO_PUBLIC_GOOGLE_*_CLIENT_ID` variables. The native application identifiers are `com.rahulyadav.navo`; the Android OAuth client also needs the signing certificate SHA-1. Keep the `navo` URL scheme and configure the redirect shown by the development build. Google sign-in on native must be tested in a Navo development build; Expo Go is not a production OAuth callback environment.
 
-“My Application” and “[Development]” in the screenshot are Clerk application/email branding. Change the application name/email templates in the Clerk dashboard; the mobile UI cannot rename an email that Clerk sends.
+Email/password signup signs the user in immediately. Password reset uses Firebase's email template, which can be branded under Authentication → Templates. Enable email-enumeration protection and set a password policy before production.
 
 ## Maps
 
@@ -30,8 +30,10 @@ Group rosters/alerts remain local; they do not synchronize between phones, deliv
 
 ## References
 
-- https://clerk.com/docs/guides/development/custom-flows/authentication/email-sms-otp
-- https://clerk.com/docs/guides/development/testing/test-emails-and-phones
+- https://firebase.google.com/docs/auth/web/password-auth
+- https://firebase.google.com/docs/auth/web/google-signin
+- https://firebase.google.com/docs/auth/web/auth-state-persistence
+- https://docs.expo.dev/guides/authentication/
 - https://docs.expo.dev/versions/v57.0.0/sdk/webview/
 - https://leafletjs.com/download.html
 - https://operations.osmfoundation.org/policies/tiles/

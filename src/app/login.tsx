@@ -1,63 +1,83 @@
 import { useRef, useState } from 'react';
 import { Keyboard, StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useSignIn } from '@clerk/expo';
+import { sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth';
 
 import { AuthDivider, AuthShell } from '@/components/auth/AuthShell';
 import { GoogleButton } from '@/components/auth/GoogleButton';
 import { Button, Field, LinkAction, Notice, Reveal } from '@/components/ui';
 import { useGoogleSignIn } from '@/hooks/useGoogleSignIn';
-import { clerkErrorCode, friendlyAuthError, normalizeEmail, validEmail } from '@/services/auth-errors';
+import { firebaseAuth } from '@/lib/firebase';
+import { friendlyAuthError, normalizeEmail, validEmail } from '@/services/auth-errors';
 
 export default function LoginScreen() {
-  const { signIn, fetchStatus } = useSignIn();
   const params = useLocalSearchParams<{ email?: string | string[] }>();
   const initialEmail = Array.isArray(params.email) ? params.email[0] ?? '' : params.email ?? '';
   const [email, setEmail] = useState(initialEmail);
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [sending, setSending] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const requestLock = useRef(false);
   const google = useGoogleSignIn();
-  const busy = sending || google.busy || fetchStatus === 'fetching';
+  const busy = submitting || google.busy;
   const trimmed = normalizeEmail(email);
   const emailInvalid = trimmed.length > 0 && !validEmail(trimmed);
 
-  async function sendCode() {
+  async function logIn() {
     if (requestLock.current || busy) return;
     if (!validEmail(trimmed)) {
       setError('Enter a valid email address, like you@example.com.');
       return;
     }
-    if (!signIn) {
-      setError('Navo is still connecting. Try again in a moment.');
+    if (!password) {
+      setError('Enter your password to continue.');
+      return;
+    }
+    if (!firebaseAuth) {
+      setError(friendlyAuthError(new Error('auth_not_configured')));
       return;
     }
     requestLock.current = true;
-    setSending(true);
-    try {
+    setSubmitting(true);
     setError('');
+    setNotice('');
     Keyboard.dismiss();
-    const { error: failure } = await signIn.emailCode.sendCode({ emailAddress: trimmed });
-    setSending(false);
-    if (failure) {
-      if (clerkErrorCode(failure) === 'form_identifier_not_found') {
-        router.push({ pathname: '/signup', params: { email: trimmed } });
-        return;
-      }
-      setError(friendlyAuthError(failure));
-      return;
-    }
-    router.push({ pathname: '/verify', params: { email: trimmed, mode: 'signin' } });
+    try {
+      await signInWithEmailAndPassword(firebaseAuth, trimmed, password);
     } catch (failure) {
-      setError(friendlyAuthError(failure));
+      setError(friendlyAuthError(failure, 'We couldn’t log you in. Check your details and try again.'));
     } finally {
       requestLock.current = false;
-      setSending(false);
+      setSubmitting(false);
+    }
+  }
+
+  async function resetPassword() {
+    if (busy) return;
+    if (!validEmail(trimmed)) {
+      setError('Enter your email first, then tap “Forgot password?”.');
+      return;
+    }
+    if (!firebaseAuth) {
+      setError(friendlyAuthError(new Error('auth_not_configured')));
+      return;
+    }
+    setSubmitting(true);
+    setError('');
+    setNotice('');
+    try {
+      await sendPasswordResetEmail(firebaseAuth, trimmed);
+      setNotice('Password reset email sent. Check your inbox.');
+    } catch (failure) {
+      setError(friendlyAuthError(failure, 'We couldn’t send the reset email. Try again shortly.'));
+    } finally {
+      setSubmitting(false);
     }
   }
 
   return (
-    <AuthShell eyebrow="WELCOME BACK" title="Pick up where you left the trail." subtitle="We’ll email you a one-time code. No passwords to remember, even above the cloud line.">
+    <AuthShell eyebrow="WELCOME BACK" title="Pick up where you left the trail." subtitle="Log in securely, then get back to your routes, groups, and offline plans.">
       <Reveal>
         <Field
           autoCapitalize="none"
@@ -65,31 +85,50 @@ export default function LoginScreen() {
           autoCorrect={false}
           editable={!busy}
           error={emailInvalid ? 'That doesn’t look like an email address yet.' : undefined}
-          hint="Use the newest code from your inbox."
           inputMode="email"
           keyboardType="email-address"
           label="Email address"
           maxLength={254}
-          onChangeText={value => { setEmail(value); setError(''); }}
-          onSubmitEditing={() => void sendCode()}
+          onChangeText={value => { setEmail(value); setError(''); setNotice(''); }}
           placeholder="you@example.com"
-          returnKeyType="go"
+          returnKeyType="next"
           textContentType="emailAddress"
           value={email}
         />
       </Reveal>
 
-      <Notice message={error || google.message} />
+      <Reveal delay={50}>
+        <Field
+          autoCapitalize="none"
+          autoComplete="current-password"
+          editable={!busy}
+          label="Password"
+          maxLength={128}
+          onChangeText={value => { setPassword(value); setError(''); setNotice(''); }}
+          onSubmitEditing={() => void logIn()}
+          placeholder="Your password"
+          returnKeyType="go"
+          secureTextEntry
+          textContentType="password"
+          value={password}
+        />
+      </Reveal>
 
-      <Reveal delay={70}>
+      <View style={styles.forgotRow}>
+        <LinkAction align="right" disabled={busy} label="Forgot password?" onPress={() => void resetPassword()} />
+      </View>
+
+      <Notice message={error || google.message || notice} />
+
+      <Reveal delay={90}>
         <View style={styles.actions}>
-          <Button busy={sending} disabled={busy} label={sending ? 'Sending your code…' : 'Email me a code'} onPress={() => void sendCode()} />
+          <Button busy={submitting} disabled={busy} label={submitting ? 'Logging you in…' : 'Log in'} onPress={() => void logIn()} />
           <AuthDivider />
           <GoogleButton busy={google.busy} disabled={busy} label="Continue with Google" onPress={() => void google.start()} />
         </View>
       </Reveal>
 
-      <Reveal delay={130}>
+      <Reveal delay={140}>
         <View style={styles.footer}>
           <Text style={styles.footerText}>First trek with Navo?</Text>
           <LinkAction disabled={busy} label="Create an account" onPress={() => router.push({ pathname: '/signup', params: { email: trimmed } })} />
@@ -100,7 +139,8 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  actions: { marginTop: 20 },
+  actions: { marginTop: 18 },
+  forgotRow: { alignItems: 'flex-end', marginTop: -4 },
   footer: { alignItems: 'center', flexDirection: 'row', justifyContent: 'center', marginTop: 26 },
   footerText: { color: 'rgba(255,255,255,0.64)', fontSize: 15 },
 });
