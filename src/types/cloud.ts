@@ -1,0 +1,8 @@
+import type { OnboardingAnswers } from './navo';
+export type CloudNotification = { id: string; type: 'invitation' | 'alert'; groupId: string; groupName: string; inviterName?: string; status?: string; read: boolean; senderName?: string; message?: string; kind?: string; createdAt?: string };
+export type CloudProfile = { id: string; displayName: string; email: string; onboarding?: OnboardingAnswers };
+export type MemberPosition = { latitude: number; longitude: number; accuracy: number; capturedAt: string; createdAt?: string };
+export type CloudMember = { id: string; userId: string; name: string; displayName: string; role: string; status: string; lastLocation?: MemberPosition; lastLocationAt?: string; locationSharingEnabled?: boolean; checkInStatus?: string };
+export type CloudMessage = { id: string; senderId: string; senderName: string; text: string; type: 'text' | 'system'; createdAt?: string };
+export type CloudAlert = { id: string; groupId: string; kind: string; senderId: string; senderName: string; message: string; latitude: number | null; longitude: number | null; accuracy?: number; createdAt?: string; acknowledgedBy: string[]; resolvedAt: string | null };
+export type AIPlan = { id: string; status: 'rejected' | 'review_required'; model: string; routeVerified: boolean; limitations: string[]; audit: { step: string; issues: string[]; schemaValid: boolean }[]; itinerary: null | { title: string; explanation: string; emergencyNotes: string; days: { day: number; start: string; end: string; distanceKm: number; ascentM: number; sleepingElevationM: number; rest: boolean; notes: string }[] } };

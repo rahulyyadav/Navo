@@ -1,0 +1,232 @@
+[
+  {
+    "id": "mardi-himal",
+    "name": "Mardi Himal",
+    "region": "Annapurna",
+    "days": "5 days",
+    "maxElevation": 4500,
+    "difficulty": "Moderate",
+    "bestSeason": "Mar–May · Sep–Nov",
+    "summary": "A short ridge walk to the base of Mardi Himal with close views of Machhapuchhre.",
+    "permit": "ACAP + TIMS",
+    "route": [
+      {
+        "name": "Kande",
+        "latitude": 28.2233,
+        "longitude": 83.8406,
+        "elevation": 1770
+      },
+      {
+        "name": "Australian Camp",
+        "latitude": 28.247,
+        "longitude": 83.864,
+        "elevation": 1950
+      },
+      {
+        "name": "Deurali",
+        "latitude": 28.301,
+        "longitude": 83.892,
+        "elevation": 2700
+      },
+      {
+        "name": "Forest Camp",
+        "latitude": 28.352,
+        "longitude": 83.906,
+        "elevation": 2650
+      },
+      {
+        "name": "Low Camp",
+        "latitude": 28.418,
+        "longitude": 83.918,
+        "elevation": 3150
+      },
+      {
+        "name": "High Camp",
+        "latitude": 28.476,
+        "longitude": 83.926,
+        "elevation": 3600
+      },
+      {
+        "name": "Viewpoint",
+        "latitude": 28.512,
+        "longitude": 83.93,
+        "elevation": 4250
+      },
+      {
+        "name": "Base Camp",
+        "latitude": 28.539,
+        "longitude": 83.933,
+        "elevation": 4500
+      }
+    ],
+    "verified": false
+  },
+  {
+    "id": "annapurna-base-camp",
+    "name": "Annapurna Base Camp",
+    "region": "Annapurna",
+    "days": "9 days",
+    "maxElevation": 4130,
+    "difficulty": "Challenging",
+    "bestSeason": "Mar–May · Oct–Nov",
+    "summary": "Into the Annapurna Sanctuary, ringed by a wall of 7,000 m and 8,000 m peaks.",
+    "permit": "ACAP + TIMS",
+    "route": [
+      {
+        "name": "Nayapul",
+        "latitude": 28.296,
+        "longitude": 83.729,
+        "elevation": 1070
+      },
+      {
+        "name": "Tikhedhunga",
+        "latitude": 28.348,
+        "longitude": 83.756,
+        "elevation": 1480
+      },
+      {
+        "name": "Ghorepani",
+        "latitude": 28.398,
+        "longitude": 83.766,
+        "elevation": 2870
+      },
+      {
+        "name": "Tadapani",
+        "latitude": 28.438,
+        "longitude": 83.798,
+        "elevation": 2630
+      },
+      {
+        "name": "Chhomrong",
+        "latitude": 28.499,
+        "longitude": 83.824,
+        "elevation": 2170
+      },
+      {
+        "name": "Deurali",
+        "latitude": 28.576,
+        "longitude": 83.862,
+        "elevation": 3230
+      },
+      {
+        "name": "Machhapuchhre BC",
+        "latitude": 28.632,
+        "longitude": 83.876,
+        "elevation": 3700
+      },
+      {
+        "name": "Annapurna BC",
+        "latitude": 28.674,
+        "longitude": 83.877,
+        "elevation": 4130
+      }
+    ],
+    "verified": false
+  },
+  {
+    "id": "langtang-valley",
+    "name": "Langtang Valley",
+    "region": "Langtang",
+    "days": "7 days",
+    "maxElevation": 3870,
+    "difficulty": "Moderate",
+    "bestSeason": "Mar–May · Sep–Dec",
+    "summary": "A glacial valley north of Kathmandu, close to the Tibetan border and rich in Tamang culture.",
+    "permit": "Langtang National Park + TIMS",
+    "route": [
+      {
+        "name": "Syabrubesi",
+        "latitude": 28.083,
+        "longitude": 85.266,
+        "elevation": 1460
+      },
+      {
+        "name": "Bamboo",
+        "latitude": 28.158,
+        "longitude": 85.352,
+        "elevation": 1960
+      },
+      {
+        "name": "Langtang Village",
+        "latitude": 28.21,
+        "longitude": 85.524,
+        "elevation": 3430
+      },
+      {
+        "name": "Mundu",
+        "latitude": 28.227,
+        "longitude": 85.582,
+        "elevation": 3540
+      },
+      {
+        "name": "Kyanjin Gompa",
+        "latitude": 28.242,
+        "longitude": 85.623,
+        "elevation": 3870
+      }
+    ],
+    "verified": false
+  },
+  {
+    "id": "everest-base-camp",
+    "name": "Everest Base Camp",
+    "region": "Khumbu",
+    "days": "12 days",
+    "maxElevation": 5364,
+    "difficulty": "Strenuous",
+    "bestSeason": "Mar–May · Oct–Nov",
+    "summary": "The classic Khumbu walk to Everest Base Camp via Namche Bazaar and Tengboche.",
+    "permit": "Sagarmatha NP + Khumbu permit",
+    "route": [
+      {
+        "name": "Lukla",
+        "latitude": 27.6869,
+        "longitude": 86.7297,
+        "elevation": 2860
+      },
+      {
+        "name": "Phakding",
+        "latitude": 27.714,
+        "longitude": 86.716,
+        "elevation": 2610
+      },
+      {
+        "name": "Namche Bazaar",
+        "latitude": 27.804,
+        "longitude": 86.71,
+        "elevation": 3440
+      },
+      {
+        "name": "Tengboche",
+        "latitude": 27.834,
+        "longitude": 86.745,
+        "elevation": 3860
+      },
+      {
+        "name": "Dingboche",
+        "latitude": 27.876,
+        "longitude": 86.822,
+        "elevation": 4410
+      },
+      {
+        "name": "Lobuche",
+        "latitude": 27.962,
+        "longitude": 86.796,
+        "elevation": 4940
+      },
+      {
+        "name": "Gorakshep",
+        "latitude": 27.996,
+        "longitude": 86.83,
+        "elevation": 5164
+      },
+      {
+        "name": "Everest Base Camp",
+        "latitude": 28.0025,
+        "longitude": 86.8528,
+        "elevation": 5364
+      }
+    ],
+    "verified": false
+  }
+]

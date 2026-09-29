@@ -9,7 +9,7 @@ import {
   saveOnboarding,
   saveProfile,
 } from '@/services/profile';
-import { loadGroups, saveGroups } from '@/services/groups';
+import { useCloud } from '@/context/CloudContext';
 import { friendlyAuthError } from '@/services/auth-errors';
 
 type NavoState = {
@@ -45,9 +45,15 @@ type SessionData = {
 const NavoContext = createContext<NavoState | null>(null);
 
 export function NavoProvider({ children }: PropsWithChildren) {
+<<<<<<< HEAD
   const { loaded: isLoaded, user, signOut } = useFirebaseAuth();
   const isSignedIn = Boolean(user);
   const userId = user?.uid ?? '';
+=======
+  const { isLoaded, isSignedIn, userId, signOut } = useAuth();
+  const { user } = useUser();
+  const cloud = useCloud();
+>>>>>>> 643afe2 (Updated authentication and UI)
   const [session, setSession] = useState<SessionData | null>(null);
   const [error, setError] = useState('');
   const [signingOut, setSigningOut] = useState(false);
@@ -64,7 +70,7 @@ export function NavoProvider({ children }: PropsWithChildren) {
         const [storedProfile, storedAnswers, storedGroups] = await Promise.all([
           loadProfile(userId),
           loadOnboarding(userId),
-          loadGroups(userId),
+          Promise.resolve([] as TrekGroup[]),
         ]);
         if (!active) return;
         setSession({ userId, profile: storedProfile, answers: storedAnswers, groups: storedGroups });
@@ -86,9 +92,10 @@ export function NavoProvider({ children }: PropsWithChildren) {
       answers: next,
       createdAt: data?.profile?.createdAt,
     });
+    if (cloud.ready) await cloud.api('/profile', next, 'PUT');
     await Promise.all([saveOnboarding(userId, next), saveProfile(built)]);
     setSession(current => (current?.userId === userId ? { ...current, answers: next, profile: built } : current));
-  }, [userId, user, data?.profile?.createdAt]);
+  }, [userId, user, data?.profile?.createdAt, cloud]);
 
   const completeOnboarding = useCallback(async (next: OnboardingAnswers) => {
     await persist({ ...next, completed: true, completedAt: new Date().toISOString() });
@@ -96,15 +103,12 @@ export function NavoProvider({ children }: PropsWithChildren) {
 
   const updateAnswers = useCallback(async (patch: Partial<OnboardingAnswers>) => {
     if (!data) return;
-    await persist({ ...data.answers, ...patch });
-  }, [data, persist]);
+    await persist({ ...(cloud.remoteProfile?.onboarding ?? data.answers), ...patch });
+  }, [data, persist, cloud.remoteProfile]);
 
-  const updateGroups = useCallback(async (mutate: (current: TrekGroup[]) => TrekGroup[]) => {
-    if (!userId || !data) return;
-    const next = mutate(data.groups);
-    setSession(current => (current?.userId === userId ? { ...current, groups: next } : current));
-    await saveGroups(userId, next).catch(() => undefined);
-  }, [userId, data]);
+  const updateGroups = useCallback(async () => {
+    throw new Error('Use authenticated group actions. Local group editing is disabled.');
+  }, []);
 
   const handleSignOut = useCallback(async () => {
     setSigningOut(true);
@@ -118,18 +122,24 @@ export function NavoProvider({ children }: PropsWithChildren) {
   }, [signOut]);
 
   const value = useMemo<NavoState>(() => {
-    const answers = data?.answers ?? emptyOnboarding;
+    const answers = cloud.remoteProfile?.onboarding ?? data?.answers ?? emptyOnboarding;
     return {
       authLoaded: isLoaded,
       isSignedIn: Boolean(isSignedIn),
       userId: userId ?? '',
+<<<<<<< HEAD
       email: user?.email ?? data?.profile?.email ?? '',
       imageUrl: user?.photoURL ?? data?.profile?.imageUrl ?? null,
       profile: data?.profile ?? null,
+=======
+      email: user?.primaryEmailAddress?.emailAddress ?? data?.profile?.email ?? '',
+      imageUrl: user?.hasImage ? user.imageUrl : data?.profile?.imageUrl ?? null,
+      profile: user && cloud.remoteProfile?.onboarding ? buildProfile({ userId: userId ?? '', email: user.primaryEmailAddress?.emailAddress ?? '', imageUrl: user.hasImage ? user.imageUrl : null, answers: cloud.remoteProfile.onboarding, createdAt: data?.profile?.createdAt }) : data?.profile ?? null,
+>>>>>>> 643afe2 (Updated authentication and UI)
       answers,
       hydrated: data !== null,
       needsOnboarding: Boolean(isSignedIn) && data !== null && !answers.completed,
-      groups: data?.groups ?? [],
+      groups: cloud.groups,
       dataLoading: Boolean(isSignedIn) && data === null,
       error,
       signingOut,
@@ -139,7 +149,7 @@ export function NavoProvider({ children }: PropsWithChildren) {
       setError,
       signOut: handleSignOut,
     };
-  }, [isLoaded, isSignedIn, userId, user, data, error, signingOut, completeOnboarding, updateAnswers, updateGroups, handleSignOut]);
+  }, [cloud, isLoaded, isSignedIn, userId, user, data, error, signingOut, completeOnboarding, updateAnswers, updateGroups, handleSignOut]);
 
   return <NavoContext.Provider value={value}>{children}</NavoContext.Provider>;
 }

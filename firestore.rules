@@ -1,0 +1,27 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function own(uid) { return signedIn() && request.auth.uid == uid; }
+    function member(gid) {
+      return signedIn() && request.auth.uid in get(/databases/$(database)/documents/groups/$(gid)).data.memberIds;
+    }
+    match /users/{uid} {
+      allow read: if own(uid);
+      allow write: if false; // Authenticated backend validates all mutations.
+      match /{collection}/{id} {
+        allow read: if own(uid) && collection in ['notifications', 'plans', 'savedRoutes'];
+        allow write: if false;
+      }
+    }
+    match /groups/{gid} {
+      allow read: if signedIn() && request.auth.uid in resource.data.memberIds;
+      allow write: if false;
+      match /{collection}/{id} {
+        allow read: if member(gid) && collection in ['members', 'messages', 'alerts', 'checkins', 'invitations'];
+        allow write: if false;
+      }
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}

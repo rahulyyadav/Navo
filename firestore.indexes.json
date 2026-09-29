@@ -1,0 +1,6 @@
+{
+  "indexes": [
+    {"collectionGroup":"groups","queryScope":"COLLECTION","fields":[{"fieldPath":"memberIds","arrayConfig":"CONTAINS"},{"fieldPath":"updatedAt","order":"DESCENDING"}]}
+  ],
+  "fieldOverrides": []
+}

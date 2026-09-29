@@ -4,7 +4,11 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Backdrop, useReducedMotion } from '@/components/ui';
+<<<<<<< HEAD
 import { AuthProvider } from '@/context/AuthContext';
+=======
+import { CloudProvider } from '@/context/CloudContext';
+>>>>>>> 643afe2 (Updated authentication and UI)
 import { NavoProvider, useNavo } from '@/context/NavoContext';
 import { firebaseConfigured } from '@/lib/firebase';
 import { colors } from '@/theme/tokens';
@@ -66,6 +70,9 @@ function Routes() {
       <Stack.Screen name="group/[id]" options={{ title: 'Group', headerBackTitle: 'Back' }} />
       <Stack.Screen name="group/new" options={{ title: 'New group', presentation: 'modal' }} />
       <Stack.Screen name="alert" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+      <Stack.Screen name="notifications" options={{ title: 'Your updates' }} />
+      <Stack.Screen name="copilot" options={{ title: 'AI trek copilot' }} />
+      <Stack.Screen name="offline" options={{ title: 'Offline trip packs' }} />
       <Stack.Screen name="plan" options={{ title: 'Trek preparation', headerBackTitle: 'Back' }} />
       <Stack.Screen name="safety" options={{ title: 'Offline essentials', headerBackTitle: 'Back' }} />
     </Stack.Protected>
@@ -76,10 +83,10 @@ export default function RootLayout() {
   if (!firebaseConfigured) return <NotConfigured />;
   return <AuthProvider>
     <SafeAreaProvider>
-      <NavoProvider>
+      <CloudProvider><NavoProvider>
         <StatusBar style="light" />
         <Routes />
-      </NavoProvider>
+      </NavoProvider></CloudProvider>
     </SafeAreaProvider>
   </AuthProvider>;
 }

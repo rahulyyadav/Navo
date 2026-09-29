@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Keyboard, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,7 +7,10 @@ import { Button, Card, Chip, Eyebrow, Field, Notice, OptionCard, Reveal } from '
 import { useNavo } from '@/context/NavoContext';
 import { trekById, treks } from '@/data/treks';
 import { formatDate } from '@/services/format';
-import { createGroup, validateGroupName } from '@/services/group-model';
+import { validateGroupName } from '@/services/group-model';
+import { useCloud } from '@/context/CloudContext';
+import { CloudStatus } from '@/components/CloudStatus';
+import { actionError, requestId } from '@/lib/api';
 import { colors, space } from '@/theme/tokens';
 
 function isoDate(date: Date) {
@@ -38,7 +41,10 @@ const PRESETS = [
 
 export default function NewGroupScreen() {
   const insets = useSafeAreaInsets();
-  const { userId, email, profile, answers, updateGroups } = useNavo();
+  const { userId } = useNavo();
+  const cloud = useCloud();
+  const pendingId = useRef(requestId());
+  const lock = useRef(false);
   const params = useLocalSearchParams<{ trek?: string | string[] }>();
   const presetTrek = Array.isArray(params.trek) ? params.trek[0] : params.trek;
 
@@ -52,19 +58,14 @@ export default function NewGroupScreen() {
     const nameError = validateGroupName(name);
     if (nameError) { setError(nameError); return; }
     if (!userId) { setError('You need to be signed in to create a group.'); return; }
-    setSaving(true);
-    Keyboard.dismiss();
-    const group = createGroup({
-      name,
-      trekId,
-      startDate,
-      ownerId: userId,
-      ownerName: profile?.fullName ?? answers.fullName,
-      ownerEmail: email || null,
-    });
-    await updateGroups(current => [group, ...current]);
-    setSaving(false);
-    router.replace(`/group/${group.id}`);
+    if (lock.current || !cloud.ready) return;
+    lock.current = true;
+    setSaving(true); setError(''); Keyboard.dismiss();
+    try {
+      const group = await cloud.api<{ id: string }>('/groups', { name, trekId, startDate, requestId: pendingId.current });
+      router.replace(`/group/${group.id}`);
+    } catch (failure) { setError(actionError(failure)); }
+    finally { lock.current = false; setSaving(false); }
   }
 
   return (
@@ -73,7 +74,7 @@ export default function NewGroupScreen() {
         <View style={styles.intro}>
           <Eyebrow>NEW GROUP</Eyebrow>
           <Text style={styles.title}>A circle that hears you.</Text>
-          <Text style={styles.subtitle}>Give it a name, tie it to a route, and pick a start date. Everyone you add shares one loud alarm.</Text>
+          <Text style={styles.subtitle}>Give it a name, tie it to a route, and pick a start date. Invite teammates to share messages, check-ins and in-app alerts.</Text>
         </View>
       </Reveal>
 
@@ -125,11 +126,12 @@ export default function NewGroupScreen() {
         </Card>
       </Reveal>
 
+      <CloudStatus />
       <Notice message={error} />
 
       <Reveal delay={160}>
         <View style={styles.footer}>
-          <Button busy={saving} disabled={saving} label={saving ? 'Creating your group…' : 'Create group'} onPress={() => void submit()} />
+          <Button busy={saving} disabled={saving || !cloud.ready} label={saving ? 'Creating your group…' : 'Create group'} onPress={() => void submit()} />
           <Button label="Cancel" onPress={() => router.back()} style={styles.cancel} variant="quiet" />
         </View>
       </Reveal>

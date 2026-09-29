@@ -21,13 +21,14 @@ import {
 import { TabIcon } from '@/components/TabIcon';
 import { useNavo } from '@/context/NavoContext';
 import { goalLabels, levelLabel } from '@/data/onboarding';
-import { treks } from '@/data/treks';
+import { useCloud } from '@/context/CloudContext';
 import { releaseAlarm, startAlarm } from '@/services/alerts';
 import { friendlyAuthError } from '@/services/auth-errors';
 import { formatDate } from '@/services/format';
 import { colors, radius, space } from '@/theme/tokens';
 
 export default function ProfileScreen() {
+  const cloud = useCloud();
   const insets = useSafeAreaInsets();
   const { answers, groups, email, imageUrl, profile, signOut, signingOut, updateAnswers } = useNavo();
   const [loud, setLoud] = useState(answers.alertsEnabled);
@@ -130,7 +131,7 @@ export default function ProfileScreen() {
             <Row>
               <Stat label="GROUPS" value={String(groups.length)} />
               <View style={styles.statDivider} />
-              <Stat label="ROUTES MAPPED" value={String(treks.length)} />
+              <Stat label="UPDATES" value={String(cloud.notifications.filter(item => !item.read).length)} />
               <View style={styles.statDivider} />
               <Stat label="LOUD ALERTS" value={loud ? 'ON' : 'OFF'} />
             </Row>
@@ -145,9 +146,9 @@ export default function ProfileScreen() {
             <Card>
               <Row style={styles.switchRow}>
                 <View style={styles.switchCopy}>
-                  <Text style={styles.cardTitle}>Full-volume warnings</Text>
+                  <Text style={styles.cardTitle}>On-device alert sound</Text>
                   <Text style={styles.cardDetail}>
-                    Group alerts ignore the silent switch and interrupt other audio.
+                    Play a siren while viewing a group alert. Media volume and device settings apply.
                   </Text>
                 </View>
                 <Switch

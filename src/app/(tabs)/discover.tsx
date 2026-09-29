@@ -10,11 +10,14 @@ import { TabIcon } from '@/components/TabIcon';
 import { useNavo } from '@/context/NavoContext';
 import { treks } from '@/data/treks';
 import { goalLabels } from '@/data/onboarding';
+import { useCloud } from '@/context/CloudContext';
 import { colors, radius, space } from '@/theme/tokens';
 
 const ALL = 'All Nepal';
 
 export default function DiscoverScreen() {
+  const cloud = useCloud();
+  const unread = cloud.notifications.filter(item => !item.read).length;
   const insets = useSafeAreaInsets();
   const { profile, email, imageUrl, groups, answers } = useNavo();
   const [region, setRegion] = useState(ALL);
@@ -43,6 +46,7 @@ export default function DiscoverScreen() {
           </View>
         </Reveal>
 
+        <Pressable accessibilityRole="button" onPress={() => router.push('/notifications')} style={styles.footerCard}><Text style={styles.footerTitle}>{unread ? `${unread} new trail updates` : 'Your trail inbox'}</Text><Text style={styles.footerDetail}>Invitations, check-ins and group alerts →</Text></Pressable>
         <Reveal delay={60}>
           <View style={styles.actions}>
             <Pressable accessibilityRole="button" onPress={() => router.push('/(tabs)/map')} style={({ pressed }) => [styles.action, styles.actionLime, pressed && styles.pressed]}>
@@ -110,9 +114,9 @@ export default function DiscoverScreen() {
         )}
 
         <View style={styles.footerRow}>
-          <Pressable accessibilityRole="button" onPress={() => router.push('/plan')} style={({ pressed }) => [styles.footerCard, pressed && styles.pressed]}>
-            <Text style={styles.footerTitle}>My preparation</Text>
-            <Text style={styles.footerDetail}>Your saved packing and departure checklist.</Text>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/copilot')} style={({ pressed }) => [styles.footerCard, pressed && styles.pressed]}>
+            <Text style={styles.footerTitle}>AI trek copilot</Text>
+            <Text style={styles.footerDetail}>Nemotron drafts. Navo checks. You review.</Text>
           </Pressable>
           <Pressable accessibilityRole="button" onPress={() => router.push('/safety')} style={({ pressed }) => [styles.footerCard, pressed && styles.pressed]}>
             <Text style={styles.footerTitle}>Offline essentials</Text>

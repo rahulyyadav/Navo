@@ -2,6 +2,7 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { useReducedMotion } from './ui';
 import type { Trek } from '@/data/treks';
 import { colors, radius } from '@/theme/tokens';
 
@@ -12,9 +13,10 @@ const tone = {
 } as const;
 
 export function TrekCard({ trek, onPress, compact = false }: { trek: Trek; onPress: () => void; compact?: boolean }) {
+  const reduced = useReducedMotion();
   const scale = useSharedValue(1);
   const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-  const press = (value: number) => { scale.value = withSpring(value, { damping: 17, stiffness: 300, mass: 0.7 }); };
+  const press = (value: number) => { scale.value = reduced ? 1 : withSpring(value, { damping: 17, stiffness: 300, mass: 0.7 }); };
 
   return (
     <Pressable
@@ -42,6 +44,7 @@ export function TrekCard({ trek, onPress, compact = false }: { trek: Trek; onPre
             <View style={styles.statDot} />
             <Text style={styles.stat}>{trek.route.length} stops</Text>
           </View>
+          <Text style={{ color: colors.lime, fontWeight: '700', marginTop: 10 }}>View trek →</Text>
         </View>
       </Animated.View>
     </Pressable>

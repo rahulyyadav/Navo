@@ -54,3 +54,10 @@ tmp/
 .env.local
 .env.*
 !.env.example
+
+# Backend secrets and runtimes
+**/service-account*.json
+**/*firebase-adminsdk*.json
+backend/.venv/
+__pycache__/
+.pytest_cache/
