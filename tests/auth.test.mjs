@@ -26,6 +26,7 @@ test('errors never disclose arbitrary backend details', () => {
 test('Firebase codes map to actionable copy', () => {
   assert.match(friendlyAuthError({ code: 'auth/invalid-credential' }), /email or password/);
   assert.match(friendlyAuthError({ code: 'auth/email-already-in-use' }), /Log in instead/);
+  assert.match(friendlyAuthError({ code: 'auth/configuration-not-found' }), /Firebase Authentication has not been set up/);
   assert.match(friendlyAuthError({ code: 'auth/weak-password' }), /stronger password/);
   assert.match(friendlyAuthError({ code: 'auth/popup-blocked' }), /popups/);
   assert.match(friendlyAuthError({ code: 'auth/unauthorized-domain' }), /not authorized/);

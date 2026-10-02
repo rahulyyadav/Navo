@@ -33,6 +33,7 @@ npx expo start --clear
 ## Firebase Console
 
 - Enable Email/Password and Google in Authentication. Set authorized web domains, including localhost for local web testing.
+- The public Firebase Authentication project-config check returned `CONFIGURATION_NOT_FOUND` for the supplied `navo-57a5c` web app on 2026-10-02. Open Firebase Console → Build → Authentication → Get started, then enable and save Email/Password and Google under Sign-in method. The public web-app values alone do not initialize Authentication. Recheck sign-in after saving; the app now explains this exact error instead of showing a generic login failure.
 - Brand verification and password-reset templates as Navo. Enable email-enumeration protection and configure the password policy.
 - Create Cloud Firestore, choose an appropriate region, then deploy this repository's rules and indexes to **the intended project**. All client writes are denied. Authenticated backend endpoints perform validated mutations; clients subscribe to authorized reads.
 - Firebase email verification is required for collaboration. Email/password users can complete personal setup first, then verify through the Groups connection panel and tap Retry connection. Google users normally have a verified email claim.

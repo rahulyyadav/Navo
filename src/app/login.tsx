@@ -124,7 +124,8 @@ export default function LoginScreen() {
         <View style={styles.actions}>
           <Button busy={submitting} disabled={busy} label={submitting ? 'Logging you in…' : 'Log in'} onPress={() => void logIn()} />
           <AuthDivider />
-          <GoogleButton busy={google.busy} disabled={busy} label="Continue with Google" onPress={() => void google.start()} />
+          <GoogleButton busy={google.busy} disabled={busy || !google.ready} label="Continue with Google" onPress={() => void google.start()} />
+          {!!google.unavailableReason && <Text style={styles.googleHint}>{google.unavailableReason}</Text>}
         </View>
       </Reveal>
 
@@ -143,4 +144,5 @@ const styles = StyleSheet.create({
   forgotRow: { alignItems: 'flex-end', marginTop: -4 },
   footer: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginTop: 26 },
   footerText: { color: 'rgba(255,255,255,0.64)', fontSize: 15 },
+  googleHint: { color: 'rgba(255,255,255,0.74)', fontSize: 13, lineHeight: 19, marginTop: 8, textAlign: 'center' },
 });

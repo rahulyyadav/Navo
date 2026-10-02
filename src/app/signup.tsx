@@ -143,7 +143,8 @@ export default function SignupScreen() {
         <View style={styles.actions}>
           <Button busy={creating} disabled={busy} label={creating ? 'Creating your account…' : 'Create account'} onPress={() => void createAccount()} />
           <AuthDivider />
-          <GoogleButton busy={google.busy} disabled={busy} label="Sign up with Google" onPress={() => void google.start()} />
+          <GoogleButton busy={google.busy} disabled={busy || !google.ready} label="Sign up with Google" onPress={() => void google.start()} />
+          {!!google.unavailableReason && <Text style={styles.googleHint}>{google.unavailableReason}</Text>}
         </View>
       </Reveal>
 
@@ -161,4 +162,5 @@ const styles = StyleSheet.create({
   actions: { marginTop: 18 },
   footer: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginTop: 26 },
   footerText: { color: 'rgba(255,255,255,0.64)', fontSize: 15 },
+  googleHint: { color: 'rgba(255,255,255,0.74)', fontSize: 13, lineHeight: 19, marginTop: 8, textAlign: 'center' },
 });

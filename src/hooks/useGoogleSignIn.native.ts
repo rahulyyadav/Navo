@@ -14,6 +14,11 @@ export function useGoogleSignIn() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const ready = Boolean(firebaseAuth && developmentBuild && webClientId && (Platform.OS !== 'ios' || iosClientId));
+  const unavailableReason = !developmentBuild
+    ? 'Google sign-in needs a Navo development build. Use email in Expo Go.'
+    : !webClientId || (Platform.OS === 'ios' && !iosClientId)
+      ? 'Google sign-in needs the app’s OAuth client IDs before this build can use it.'
+      : '';
   const start = useCallback(async () => {
     if (lock.current) return;
     if (!developmentBuild) { setMessage('Google sign-in needs the Navo development app. You can continue with email in Expo Go.'); return; }
@@ -34,5 +39,5 @@ export function useGoogleSignIn() {
       setMessage(friendlyAuthError(failure, 'Google sign-in could not finish. Check this build’s OAuth configuration or continue with email.'));
     } finally { lock.current = false; setBusy(false); }
   }, []);
-  return { busy, message, ready, start };
+  return { busy, message, ready, unavailableReason, start };
 }
