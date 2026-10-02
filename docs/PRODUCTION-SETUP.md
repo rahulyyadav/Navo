@@ -52,7 +52,7 @@ This command has **not** been run by the agent.
 Native Google now uses `@react-native-google-signin/google-signin`, following Expo's native integration guidance. Web uses Firebase's popup flow. Email/password remains available in Expo Go.
 
 - Supply the Web OAuth client ID. For iOS, also supply the iOS client ID; `app.config.ts` derives its reversed URL scheme.
-- Register the Android package and build signing SHA-1/SHA-256 in Firebase/Google Cloud. Register the iOS bundle ID. Current identifiers are `com.rahulyadav.navo`; review ownership before shipping.
+- Register the Android package and build signing SHA-1/SHA-256 in Firebase/Google Cloud. Register the iOS bundle ID. Both now use the owner-selected identifier `com.thakurbibek.navo`; create or update OAuth clients and Firebase app registrations for that exact value. Changing an already installed app's identifier creates a separate native app, so install a new development build.
 - Changing native OAuth configuration requires a new development build. `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` remains documented for your console configuration but is not passed to the native Google SDK.
 - Configure an EAS project and Android FCM/iOS APNs credentials for remote notifications. No project IDs or signing identities were invented. Push registration is opt-in from Your updates.
 - Push acceptance and receipts are not proof that a person saw an alert. Device settings, connectivity and operating-system restrictions apply.

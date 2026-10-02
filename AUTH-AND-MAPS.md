@@ -10,7 +10,7 @@ The `EXPO_PUBLIC_FIREBASE_*` values identify the Firebase client app and are des
 
 In Firebase Console → Authentication → Sign-in method, enable **Email/Password** and **Google**. Add `localhost` plus every deployed web hostname under Authentication → Settings → Authorized domains. The app uses Firebase's auth-state observer and persists native sessions with AsyncStorage.
 
-Create OAuth clients in Google Cloud for web, iOS, and Android, then place the web/iOS IDs in the matching `EXPO_PUBLIC_GOOGLE_*_CLIENT_ID` variables. The native application identifiers are `com.rahulyadav.navo`; the Android OAuth client also needs the signing certificate SHA-1. The native Google SDK uses the reversed iOS client-ID scheme configured by `app.config.ts`; Android requires the matching signing certificate. Google sign-in on native must be tested in a Navo development build; Expo Go is not a production OAuth callback environment.
+Create OAuth clients in Google Cloud for web, iOS, and Android, then place the web/iOS IDs in the matching `EXPO_PUBLIC_GOOGLE_*_CLIENT_ID` variables. The native application identifiers are `com.thakurbibek.navo`; the Android OAuth client also needs the signing certificate SHA-1. The native Google SDK uses the reversed iOS client-ID scheme configured by `app.config.ts`; Android requires the matching signing certificate. Google sign-in on native must be tested in a Navo development build; Expo Go is not a production OAuth callback environment.
 
 Email/password signup signs the user in immediately. Password reset uses Firebase's email template, which can be branded under Authentication → Templates. Enable email-enumeration protection and set a password policy before production.
 
