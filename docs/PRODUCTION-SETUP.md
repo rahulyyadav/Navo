@@ -33,7 +33,7 @@ npx expo start --clear
 ## Firebase Console
 
 - Enable Email/Password and Google in Authentication. Set authorized web domains, including localhost for local web testing.
-- The public Firebase Authentication project-config check returned `CONFIGURATION_NOT_FOUND` for the supplied `navo-57a5c` web app on 2026-10-02. Open Firebase Console → Build → Authentication → Get started, then enable and save Email/Password and Google under Sign-in method. The public web-app values alone do not initialize Authentication. Recheck sign-in after saving; the app now explains this exact error instead of showing a generic login failure.
+- If sign-in reports `CONFIGURATION_NOT_FOUND`, open Firebase Console → Build → Authentication → Get started, then enable and save Email/Password and Google under Sign-in method. The public web-app values alone do not initialize Authentication. The public project-config check now responds for `navo-57a5c`, and a nonexistent email/password attempt reaches Firebase; real accounts and Google sign-in still need device testing.
 - Brand verification and password-reset templates as Navo. Enable email-enumeration protection and configure the password policy.
 - Create Cloud Firestore, choose an appropriate region, then deploy this repository's rules and indexes to **the intended project**. All client writes are denied. Authenticated backend endpoints perform validated mutations; clients subscribe to authorized reads.
 - Firebase email verification is required for collaboration. Email/password users can complete personal setup first, then verify through the Groups connection panel and tap Retry connection. Google users normally have a verified email claim.
@@ -52,7 +52,7 @@ This command has **not** been run by the agent.
 Native Google now uses `@react-native-google-signin/google-signin`, following Expo's native integration guidance. Web uses Firebase's popup flow. Email/password remains available in Expo Go.
 
 - Supply the Web OAuth client ID. For iOS, also supply the iOS client ID; `app.config.ts` derives its reversed URL scheme.
-- Register the Android package and build signing SHA-1/SHA-256 in Firebase/Google Cloud. Register the iOS bundle ID. Both now use the owner-selected identifier `com.thakurbibek.navo`; create or update OAuth clients and Firebase app registrations for that exact value. Changing an already installed app's identifier creates a separate native app, so install a new development build.
+- Register the Android package and build signing SHA-1/SHA-256 in Firebase/Google Cloud. Register the iOS bundle ID. Both now use the owner-selected identifier `com.thakurbibek.navo`; create or update OAuth clients and Firebase app registrations for that exact value. The public Firebase iOS-bundle check still returns `INVALID_APP_ID` for this identifier, so confirm its iOS app registration in Firebase Project settings → Your apps. Changing an already installed app's identifier creates a separate native app, so install a new development build.
 - Changing native OAuth configuration requires a new development build. `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` remains documented for your console configuration but is not passed to the native Google SDK.
 - Configure an EAS project and Android FCM/iOS APNs credentials for remote notifications. No project IDs or signing identities were invented. Push registration is opt-in from Your updates.
 - Push acceptance and receipts are not proof that a person saw an alert. Device settings, connectivity and operating-system restrictions apply.
