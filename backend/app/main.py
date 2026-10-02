@@ -1,18 +1,24 @@
 import hashlib
 from datetime import datetime, timezone, timedelta
-import httpx
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from firebase_admin import auth, firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 from .auth import current_user
+from .boundary import RequestBoundary
 from .config import settings
 from .database import database
 from .planner import ROUTES, generate, route_by_id
 from .schemas import GroupCreate, InvitationCreate, InvitationResponse, TextMessage, Position, AlertCreate, AlertAction, Onboarding, PlanRequest, DeviceToken
 
 app = FastAPI(title='Navo API', version='1.0.0')
+app.add_middleware(RequestBoundary)
 app.add_middleware(CORSMiddleware, allow_origins=[v.strip() for v in settings().cors_origins.split(',') if v.strip()], allow_credentials=False, allow_methods=['GET','POST','PUT','DELETE'], allow_headers=['Authorization','Content-Type'])
+@app.exception_handler(Exception)
+async def unexpected_error(request, error):
+    return JSONResponse(status_code=503, content={'detail': 'The service is temporarily unavailable. Check server setup and try again.'})
+
 STAMP = firestore.SERVER_TIMESTAMP
 
 def identifier(*values):
@@ -42,28 +48,19 @@ def member_record(uid, person):
 def health():
     return {'status': 'ok', 'firebaseConfigured': bool(settings().firebase_project_id), 'aiConfigured': bool(settings().nebius_api_key and settings().nebius_model), 'demoEnabled': settings().enable_demo}
 
-@app.post('/firebase/custom-token')
-def bridge(uid: str = Depends(current_user)):
+@app.post('/session')
+def connect_session(uid: str = Depends(current_user)):
     db = database()
-    if not settings().clerk_secret_key:
-        raise HTTPException(503, 'Configure Clerk credentials on the server.')
-    try:
-        response = httpx.get(f'https://api.clerk.com/v1/users/{uid}', headers={'Authorization': f'Bearer {settings().clerk_secret_key}'}, timeout=15)
-        response.raise_for_status()
-        person = response.json()
-        email = next((e['email_address'].lower() for e in person['email_addresses'] if e['id'] == person['primary_email_address_id'] and e.get('verification', {}).get('status') == 'verified'), None)
-        if not email:
-            raise HTTPException(403, 'A verified primary email is required.')
-        ref = db.collection('users').document(uid)
-        value = {'id': uid, 'clerkUserId': uid, 'email': email, 'displayName': ' '.join(filter(None, [person.get('first_name'), person.get('last_name')])) or 'Trekker', 'avatarUrl': person.get('image_url'), 'updatedAt': STAMP}
-        if not ref.get().exists:
-            value['createdAt'] = STAMP
-        ref.set(value, merge=True)
-        return {'token': auth.create_custom_token(uid).decode()}
-    except HTTPException:
-        raise
-    except Exception:
-        raise HTTPException(503, 'Could not connect your Firebase session. Check server credentials.') from None
+    person = auth.get_user(uid)
+    if not person.email or not person.email_verified:
+        raise HTTPException(403, 'Verify your primary email first.')
+    ref = db.collection('users').document(uid)
+    previous = ref.get()
+    saved_name = ((previous.to_dict() or {}).get('onboarding') or {}).get('fullName')
+    value = {'id': uid, 'email': person.email.lower(), 'displayName': saved_name or person.display_name or 'Trekker', 'avatarUrl': person.photo_url, 'updatedAt': STAMP}
+    if not previous.exists: value['createdAt'] = STAMP
+    ref.set(value, merge=True)
+    return {'connected': True}
 
 @app.put('/profile')
 def save_profile(value: Onboarding, uid: str = Depends(current_user)):
@@ -113,7 +110,7 @@ def invite(gid: str, value: InvitationCreate, uid: str = Depends(current_user)):
             raise HTTPException(409, 'This person is already a member.')
         if existing and existing['status'] == 'pending':
             raise HTTPException(409, 'An invitation is already pending.')
-        data = {'id': invitation.id, 'groupId': gid, 'groupName': group['name'], 'inviterId': uid, 'inviterName': sender['displayName'], 'inviteeUserId': invitee, 'status': 'pending', 'createdAt': STAMP}
+        data = {'id': invitation.id, 'groupId': gid, 'groupName': group['name'], 'inviterId': uid, 'inviterName': sender['displayName'], 'inviteeUserId': invitee, 'inviteeName': people[0].to_dict().get('displayName', 'Trekker'), 'status': 'pending', 'createdAt': STAMP}
         tx.set(invitation, data)
         tx.set(notification, {**data, 'type': 'invitation', 'read': False})
         return {'id': invitation.id}
@@ -207,13 +204,14 @@ def act_alert(gid: str, aid: str, value: AlertAction, uid: str = Depends(current
 
 @app.post('/groups/{gid}/checkins')
 def checkin(gid: str, value: Position, uid: str = Depends(current_user)):
-    ref = group_ref(gid); person = profile(uid); record = ref.collection('checkins').document()
+    ref = group_ref(gid); person = profile(uid); record = ref.collection('checkins').document(identifier(uid, value.capturedAt))
     @firestore.transactional
     def commit(tx):
         group = ref.get(transaction=tx).to_dict(); require_member(group, uid)
+        if record.get(transaction=tx).exists: return {'id': record.id}
         data = {**value.model_dump(), 'userId': uid, 'displayName': person['displayName'], 'createdAt': STAMP, 'status': 'safe'}
         tx.set(record, data)
-        tx.update(ref.collection('members').document(uid), {'lastLocation': data, 'lastLocationAt': STAMP, 'checkInStatus': 'safe', 'locationSharingEnabled': True})
+        tx.update(ref.collection('members').document(uid), {'lastLocation': data, 'lastLocationAt': STAMP, 'checkInStatus': 'safe', 'checkinDueAt': datetime.now(timezone.utc) + timedelta(hours=4), 'locationSharingEnabled': True})
         tx.set(ref.collection('messages').document(record.id), {'senderId': uid, 'senderName': person['displayName'], 'text': 'Checked in safely and shared a position.', 'type': 'system', 'createdAt': STAMP})
         return {'id': record.id}
     return commit(database().transaction())
@@ -222,7 +220,7 @@ def checkin(gid: str, value: Position, uid: str = Depends(current_user)):
 def stop_sharing(gid: str, uid: str = Depends(current_user)):
     ref = group_ref(gid)
     require_member(ref.get().to_dict(), uid)
-    ref.collection('members').document(uid).update({'lastLocation': firestore.DELETE_FIELD, 'lastLocationAt': firestore.DELETE_FIELD, 'locationSharingEnabled': False})
+    ref.collection('members').document(uid).update({'lastLocation': firestore.DELETE_FIELD, 'lastLocationAt': firestore.DELETE_FIELD, 'locationSharingEnabled': False, 'checkinDueAt': firestore.DELETE_FIELD, 'checkInStatus': 'paused'})
     return {'removed': True}
 
 @app.post('/notifications/{nid}/read')
@@ -233,8 +231,30 @@ def mark_read(nid: str, uid: str = Depends(current_user)):
 
 @app.post('/devices')
 def register_device(value: DeviceToken, uid: str = Depends(current_user)):
-    database().collection('users').document(uid).collection('deviceTokens').document(identifier(value.token)).set({**value.model_dump(), 'updatedAt': STAMP})
+    db = database(); key = identifier(value.token)
+    owner = db.collection('deviceOwners').document(key)
+    target = db.collection('users').document(uid).collection('deviceTokens').document(key)
+    @firestore.transactional
+    def commit(tx):
+        previous = owner.get(transaction=tx).to_dict() or {}
+        if previous.get('uid') and previous['uid'] != uid:
+            tx.delete(db.collection('users').document(previous['uid']).collection('deviceTokens').document(key))
+        tx.set(owner, {'uid': uid, 'updatedAt': STAMP})
+        tx.set(target, {**value.model_dump(), 'updatedAt': STAMP})
+    commit(db.transaction())
     return {'saved': True}
+
+@app.delete('/devices')
+def unregister_device(value: DeviceToken, uid: str = Depends(current_user)):
+    db = database(); key = identifier(value.token)
+    owner = db.collection('deviceOwners').document(key)
+    @firestore.transactional
+    def commit(tx):
+        previous = owner.get(transaction=tx).to_dict() or {}
+        tx.delete(db.collection('users').document(uid).collection('deviceTokens').document(key))
+        if previous.get('uid') == uid: tx.delete(owner)
+    commit(db.transaction())
+    return {'removed': True}
 
 @app.get('/routes')
 def routes(): return ROUTES
@@ -246,9 +266,28 @@ def route(rid: str): return route_by_id(rid)
 async def plan(value: PlanRequest, uid: str = Depends(current_user)):
     if value.demonstrateRepair and not settings().enable_demo: raise HTTPException(403, 'Demo mode is disabled on this server.')
     ref = database().collection('users').document(uid).collection('plans').document(identifier(uid, value.requestId))
-    existing = ref.get().to_dict()
+    quota = database().collection('quotas').document(uid)
+    @firestore.transactional
+    def reserve(tx):
+        existing = ref.get(transaction=tx).to_dict()
+        usage = quota.get(transaction=tx).to_dict() or {}
+        now = datetime.now(timezone.utc)
+        if existing and existing.get('status') in ['rejected', 'review_required']: return existing
+        if existing and existing.get('leaseUntil') and existing['leaseUntil'] > now:
+            raise HTTPException(409, 'This plan is still generating. Please wait before retrying.')
+        window = now.strftime('%Y-%m-%d-%H')
+        count = usage.get('count', 0) if usage.get('window') == window else 0
+        if count >= 5: raise HTTPException(429, 'Five plan attempts per hour are allowed. Please try again later.')
+        tx.set(quota, {'window': window, 'count': count + 1})
+        tx.set(ref, {'status': 'generating', 'leaseUntil': now + timedelta(minutes=4)})
+        return None
+    existing = reserve(database().transaction())
     if existing: return existing
-    result = await generate(value)
+    try:
+        result = await generate(value)
+    except Exception:
+        ref.set({'status': 'failed'})
+        raise
     output = {'id': ref.id, 'input': value.model_dump(), **result, 'createdAt': datetime.now(timezone.utc).isoformat()}
     ref.set(output)
     return output

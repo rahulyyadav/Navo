@@ -21,5 +21,5 @@ export function NepalMap(props: NepalMapProps) {
   useEffect(() => {
     frame.current?.contentWindow?.postMessage(JSON.stringify({ type: 'navo-update', payload: mapPayload(props) }), '*');
   }, [props]);
-  return <iframe ref={frame} title="Nepal trails and terrain map" srcDoc={html} sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox" referrerPolicy="strict-origin-when-cross-origin" style={{ border: 0, width: '100%', height: '100%', flex: 1 }} />;
+  return <iframe onLoad={() => frame.current?.contentWindow?.postMessage(JSON.stringify({ type: 'navo-update', payload: mapPayload(props) }), '*')} ref={frame} title="Nepal trails and terrain map" srcDoc={html} sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox" referrerPolicy="strict-origin-when-cross-origin" style={{ border: 0, width: '100%', height: '100%', flex: 1 }} />;
 }

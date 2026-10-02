@@ -118,7 +118,7 @@ export default function LoginScreen() {
         <LinkAction align="right" disabled={busy} label="Forgot password?" onPress={() => void resetPassword()} />
       </View>
 
-      <Notice message={error || google.message || notice} />
+      <Notice message={error || google.message} /><Notice tone="success" message={notice} />
 
       <Reveal delay={90}>
         <View style={styles.actions}>
@@ -141,6 +141,6 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   actions: { marginTop: 18 },
   forgotRow: { alignItems: 'flex-end', marginTop: -4 },
-  footer: { alignItems: 'center', flexDirection: 'row', justifyContent: 'center', marginTop: 26 },
+  footer: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginTop: 26 },
   footerText: { color: 'rgba(255,255,255,0.64)', fontSize: 15 },
 });

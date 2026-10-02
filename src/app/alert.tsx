@@ -25,11 +25,14 @@ export default function AlertScreen() {
   const lock = useRef(false); const eventRequest = useRef(requestId());
   const preview = gid === 'demo';
   const canResolve = event && (event.senderId === userId || group?.ownerId === userId);
+  const eventId = event?.id;
+  const resolvedAt = event?.resolvedAt;
   useEffect(() => {
-    if (!event || event.resolvedAt || !answers.alertsEnabled) return;
-    void startAlarm().catch(() => setError('Sound could not play. Check your media volume.'));
-    return () => { void releaseAlarm(); };
-  }, [event?.id, event?.resolvedAt, answers.alertsEnabled]);
+    if (!eventId || resolvedAt || !answers.alertsEnabled) return;
+    let active = true;
+    void startAlarm().then(() => { if (active) setSound(true); }).catch(() => setError('Sound could not play. Check your media volume.'));
+    return () => { active = false; void releaseAlarm(); };
+  }, [eventId, resolvedAt, answers.alertsEnabled]);
   useEffect(() => () => { void releaseAlarm(); }, []);
   async function sendSOS() {
     if (lock.current || !group) return; lock.current = true; setBusy(true); setError('');
@@ -42,7 +45,7 @@ export default function AlertScreen() {
   }
   async function act(action: string) {
     if (!event || lock.current) return; lock.current = true; setBusy(true);
-    try { await cloud.api(`/groups/${gid}/alerts/${event.id}`, { action }); if (action === 'resolve') await releaseAlarm(); }
+    try { await cloud.api(`/groups/${gid}/alerts/${event.id}`, { action }); if (action === 'resolve') { await releaseAlarm(); setSound(false); } }
     catch (failure) { setError(actionError(failure)); }
     finally { lock.current = false; setBusy(false); }
   }

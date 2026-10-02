@@ -38,7 +38,14 @@
           "locationAlwaysAndWhenInUsePermission": "Navo uses your location while you view the map or request coordinates."
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-notifications",
+        {
+          "color": "#E4FF89",
+          "defaultChannel": "trek-alerts"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

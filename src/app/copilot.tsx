@@ -16,10 +16,10 @@ export default function CopilotScreen() {
   const [days, setDays] = useState('7'); const [goals, setGoals] = useState('Photography and a gradual pace');
   const [plan, setPlan] = useState<AIPlan | null>(null); const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const lock = useRef(false);
   const pending = useRef({ input: '', id: requestId() });
-  async function generate() {
+  async function generate(demonstrateRepair = false) {
     if (lock.current) return;
     if (!/^\d+$/.test(days) || Number(days) < 2 || Number(days) > 30) { setError('Choose 2–30 days.'); return; }
-    const input = { trekId: trek, days: Number(days), experience: answers.level ?? 'first-timer', goals, maxDailyAscent: 800, maxDailyDistance: 15 };
+    const input = { trekId: trek, days: Number(days), experience: answers.level ?? 'first-timer', goals, maxDailyAscent: 800, maxDailyDistance: 15, demonstrateRepair };
     const signature = JSON.stringify(input); if (signature !== pending.current.input) pending.current = { input: signature, id: requestId() };
     lock.current = true; setBusy(true); setError(''); setPlan(null);
     try {
@@ -32,9 +32,10 @@ export default function CopilotScreen() {
     <ScrollView horizontal contentContainerStyle={styles.chips}>{treks.map(t => <Chip key={t.id} label={t.name} selected={trek === t.id} onPress={() => { if (!busy) setTrek(t.id); }} />)}</ScrollView>
     <Field label="Days available" value={days} onChangeText={setDays} inputMode="numeric" editable={!busy} maxLength={2} /><Field label="Goals and constraints" value={goals} onChangeText={setGoals} multiline maxLength={500} editable={!busy} />
     <Notice message={error} /><Button label={busy ? 'Drafting and checking your plan…' : 'Generate with Nemotron'} busy={busy} disabled={!cloud.ready || busy} onPress={() => void generate()} />
+    {process.env.EXPO_PUBLIC_ENABLE_DEMO === 'true' && <Button label="Demo · inject an ascent issue and repair" variant="outline" disabled={busy || !cloud.ready} onPress={() => void generate(true)} />}
     {!cloud.ready && <Text style={styles.copy}>Connect the Navo backend in Groups first. AI needs server-side Nebius configuration.</Text>}
     {busy && <Text accessibilityLiveRegion="polite" style={styles.copy}>This can take up to three minutes. Navo makes at most one draft and two repair requests.</Text>}
-    {plan && <><SectionTitle title="AI PLAN AUDIT" /><Card><Badge label={plan.status === 'rejected' ? 'PLAN NEEDS REVISION' : 'GUIDE REVIEW REQUIRED'} tone="warning" />{plan.audit.map((entry, index) => <View key={index} style={styles.step}><Text style={styles.title}>{index + 1}. {entry.step === 'draft' ? 'Nemotron draft' : 'Nemotron repair'}</Text><Text style={styles.copy}>{entry.issues.length ? entry.issues.join(' · ') : 'No configured threshold violations found.'}</Text></View>)}<Text style={styles.copy}>Model: {plan.model}</Text>{plan.limitations.map(text => <Text key={text} style={styles.copy}>{text}</Text>)}</Card>
+    {plan && <><SectionTitle title="AI PLAN AUDIT" /><Card><Badge label={plan.status === 'rejected' ? 'PLAN NEEDS REVISION' : 'GUIDE REVIEW REQUIRED'} tone="warning" />{plan.audit.map((entry, index) => <View key={index} style={styles.step}><Text style={styles.title}>{index + 1}. {entry.step === 'draft' ? 'Nemotron draft' : 'Nemotron repair'}</Text>{entry.simulatedFault && <Badge label="DEMO · INJECTED ASCENT ERROR" tone="warning" />}<Text style={styles.copy}>{entry.issues.length ? entry.issues.join(' · ') : 'No configured threshold violations found.'}</Text></View>)}<Text style={styles.copy}>Model: {plan.model}</Text>{plan.limitations.map(text => <Text key={text} style={styles.copy}>{text}</Text>)}</Card>
       {plan.itinerary && <><Heading title={plan.itinerary.title} subtitle={plan.itinerary.explanation} />{plan.itinerary.days.map(day => <Card key={day.day}><Badge label={`DAY ${day.day}${day.rest ? ' · REST' : ''}`} tone="lime" /><Text style={styles.title}>{day.start} → {day.end}</Text><Text style={styles.copy}>Model estimate: {day.distanceKm} km · +{day.ascentM} m · sleep {day.sleepingElevationM} m</Text><Text style={styles.copy}>{day.notes}</Text></Card>)}<Notice message={plan.itinerary.emergencyNotes} tone="info" /></>}
       <Button label="Review offline trip pack" onPress={() => router.push({ pathname: '/offline', params: { trek } })} />
     </>}

@@ -12,7 +12,7 @@ export function NepalMap(props: NepalMapProps) {
     webview.current?.injectJavaScript(`window.updateNavoMap && window.updateNavoMap(${scriptJSON(mapPayload(props))});true;`);
   }, [props]);
   return <View style={styles.root}>
-    <WebView ref={webview} source={{ html }} originWhitelist={['*']} applicationNameForUserAgent="Navo/1.0 (Nepal trek map)" javaScriptEnabled domStorageEnabled scrollEnabled={false} onError={() => setFailed(true)} onMessage={event => {
+    <WebView ref={webview} source={{ html }} originWhitelist={['*']} applicationNameForUserAgent="Navo/1.0 (Nepal trek map)" javaScriptEnabled domStorageEnabled scrollEnabled={false} onLoadEnd={() => webview.current?.injectJavaScript(`window.updateNavoMap && window.updateNavoMap(${scriptJSON(mapPayload(props))});true;`)} onError={() => setFailed(true)} onMessage={event => {
       try {
         const message = JSON.parse(event.nativeEvent.data);
         if (message.type === 'select-trek' && typeof message.id === 'string' && trekById(message.id)) props.onSelectTrek(message.id);

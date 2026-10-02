@@ -1,10 +1,12 @@
+import { useFirebaseAuth } from '@/context/AuthContext';
 import { useEffect, useState } from 'react';
 import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase/client';
 import { decodeCloud, useCloud } from '@/context/CloudContext';
 export function useGroupFeed<T>(groupId: string, name: 'members' | 'messages' | 'alerts' | 'checkins' | 'invitations') {
   const { ready } = useCloud();
-  const key = `${groupId}/${name}`;
+  const { user } = useFirebaseAuth();
+  const key = `${user?.uid ?? ""}/${groupId}/${name}`;
   const [state, setState] = useState<{ key: string; items: T[]; loading: boolean; cached: boolean; error: string }>({ key: '', items: [], loading: true, cached: false, error: '' });
   const [retry, setRetry] = useState(0);
   useEffect(() => {

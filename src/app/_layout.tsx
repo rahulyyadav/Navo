@@ -1,21 +1,23 @@
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
-import { Stack } from 'expo-router';
+import { Stack, type ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Backdrop, useReducedMotion } from '@/components/ui';
-<<<<<<< HEAD
+import { Backdrop, Button, Heading, useReducedMotion } from '@/components/ui';
+import { IncomingUpdates } from '@/components/IncomingUpdates';
 import { AuthProvider } from '@/context/AuthContext';
-=======
 import { CloudProvider } from '@/context/CloudContext';
->>>>>>> 643afe2 (Updated authentication and UI)
 import { NavoProvider, useNavo } from '@/context/NavoContext';
 import { firebaseConfigured } from '@/lib/firebase';
 import { colors } from '@/theme/tokens';
 
 WebBrowser.maybeCompleteAuthSession();
 
-export const unstable_settings = { initialRouteName: 'index' };
+export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
+  return <Backdrop><View style={styles.boot}><Heading title="Let’s try that again." subtitle="Navo could not display this screen. Your saved data has not been cleared." /><Button label="Reload this screen" onPress={() => void retry()} /></View></Backdrop>;
+}
+
+export const unstable_settings = { initialRouteName: 'index', screenErrorBoundary: ErrorBoundary };
 
 function BootScreen({ title, detail }: { title: string; detail?: string }) {
   return <Backdrop>
@@ -46,7 +48,7 @@ function Routes() {
     return <BootScreen title="Waking Navo up" detail={isSignedIn ? 'Restoring your treks and groups…' : 'Securing your session…'} />;
   }
 
-  return <Stack screenOptions={{
+  return <><Stack screenOptions={{
     headerShadowVisible: false,
     headerStyle: { backgroundColor: colors.night },
     headerTintColor: colors.ink,
@@ -76,7 +78,8 @@ function Routes() {
       <Stack.Screen name="plan" options={{ title: 'Trek preparation', headerBackTitle: 'Back' }} />
       <Stack.Screen name="safety" options={{ title: 'Offline essentials', headerBackTitle: 'Back' }} />
     </Stack.Protected>
-  </Stack>;
+    <Stack.Screen name="privacy" options={{ title: "Privacy & data" }} />
+  </Stack>{isSignedIn && !needsOnboarding && <IncomingUpdates />}</>;
 }
 
 export default function RootLayout() {

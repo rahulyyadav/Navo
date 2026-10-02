@@ -19,6 +19,10 @@ def audit(plan: Itinerary, request: PlanRequest, route: dict) -> list[str]:
     if len(plan.days) != request.days:
         issues.append('Trip duration does not match the requested number of days.')
     places = {point['name']: point['elevation'] for point in route['route']}
+    if plan.days[0].start != route['route'][0]['name']:
+        issues.append('The itinerary must start at the route trailhead.')
+    if plan.days[-1].end != route['route'][0]['name']:
+        issues.append('The itinerary must include return travel to the trailhead.')
     previous = None
     since_rest = 0
     for index, day in enumerate(plan.days):
@@ -72,12 +76,15 @@ async def generate(request: PlanRequest, call=None):
         try:
             raw = await call(messages)
             final = Itinerary.model_validate_json(raw)
+            if attempt == 0 and request.demonstrateRepair:
+                final.days[0].ascentM = request.maxDailyAscent + 500
+                raw = final.model_dump_json()
             issues = audit(final, request, route)
         except (ValidationError, ValueError, KeyError):
             issues = ['Model output did not match the itinerary schema.']
             raw = ''
             final = None
-        history.append({'step': 'draft' if attempt == 0 else 'repair', 'issues': issues, 'schemaValid': final is not None})
+        history.append({'step': 'draft' if attempt == 0 else 'repair', 'issues': issues, 'schemaValid': final is not None, 'simulatedFault': bool(attempt == 0 and request.demonstrateRepair)})
         if not issues:
             break
         messages.extend([{'role': 'assistant', 'content': raw[:30000]}, {'role': 'user', 'content': json.dumps({'repair': issues, 'instruction': 'Correct these issues. Preserve the requested route and duration. Return the complete itinerary JSON.'})}])

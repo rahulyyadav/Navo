@@ -1,3 +1,5 @@
+import * as Clipboard from 'expo-clipboard';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Linking, Share, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -13,12 +15,12 @@ const packItems = [
   ['Saved preparation', 'On this device'],
   ['Map tiles', 'Internet required'],
   ['Weather & advisories', 'Internet required'],
-  ['Group alerts', 'This device only'],
+  ['Group alerts', 'Connection required'],
 ] as const;
 
 export default function SafetyScreen() {
   const { coords, state, locate } = useMyLocation();
-  const { profile } = useNavo();
+  const { profile, groups } = useNavo();
   const [error, setError] = useState('');
   async function sharePosition() {
     if (!coords) return;
@@ -39,6 +41,7 @@ export default function SafetyScreen() {
           />
         </Reveal>
 
+        <View style={styles.section}><SectionTitle title="YOUR GROUP SAFETY" />{groups.map(group => <Button key={group.id} label={`${group.name} · check in / SOS`} variant="outline" onPress={() => router.push(`/group/${group.id}`)} />)}{!groups.length && <Button label="Find or create your trail group" variant="outline" onPress={() => router.push('/(tabs)/groups')} />}</View>
         <Reveal delay={50}>
           <Card>
             <View style={styles.fixHeader}>
@@ -73,6 +76,7 @@ export default function SafetyScreen() {
             {coords && <><Text style={styles.fixHint}>Recorded {coords.timestamp ? new Date(coords.timestamp).toLocaleTimeString() : 'time unknown'} · refresh before sharing.</Text><Button label="Share my coordinates" onPress={() => void sharePosition()} style={styles.fixButton} /></>}
             {profile?.emergencyContact?.phone && <Button label={`Call ${profile.emergencyContact.name || 'emergency contact'}`} variant="outline" onPress={() => void open(`tel:${profile.emergencyContact!.phone.replace(/[^+0-9]/g, '')}`)} style={styles.fixButton} />}
             <Notice message={error} />
+            {coords && <Button label="Copy coordinates" variant="quiet" onPress={() => void Clipboard.setStringAsync(`${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`).catch(() => setError('Could not copy coordinates.'))} />}
             {state === 'denied' ? <Notice message="Location permission is off. Enable it in Settings to get your coordinates." tone="warning" /> : null}
             {state === 'unavailable' ? <Notice message="No new GPS fix. Try again outdoors. Any displayed coordinates are the previous fix." tone="info" /> : null}
           </Card>

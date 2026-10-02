@@ -17,16 +17,17 @@ export default function OfflineScreen() {
   const params = useLocalSearchParams<{ trek?: string; group?: string }>();
   const trek = trekById(typeof params.trek === 'string' ? params.trek : '') ?? treks[0];
   const { userId, answers } = useNavo(); const cloud = useCloud(); const members = useGroupFeed<CloudMember>(params.group ?? '', 'members');
-  const [pack, setPack] = useState<Pack | null>(null); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
+  const [stored, setStored] = useState<{ key: string; value: Pack | null }>({ key: '', value: null }); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
   const key = `offline-pack:${userId}:${trek.id}`;
-  useEffect(() => { let active = true; readJSON<Pack>(key).then(value => { if (active) setPack(value); }).catch(() => { if (active) setError('Could not read your saved trip pack.'); }); return () => { active = false; }; }, [key]);
+  const pack = stored.key === key ? stored.value : null;
+  useEffect(() => { let active = true; readJSON<Pack>(key).then(value => { if (value && (value.version !== 1 || value.trekId !== trek.id || !Array.isArray(value.waypoints) || !Array.isArray(value.members))) throw new Error('Invalid pack'); if (active) setStored({ key, value }); }).catch(() => { if (active) setError('Could not read your saved trip pack.'); }); return () => { active = false; }; }, [key, trek.id]);
   async function save() {
     if (busy) return; setBusy(true); setError('');
     try {
       if (params.group && (!cloud.ready || members.loading || members.cached || members.error)) throw new Error('Wait for a fresh group roster before saving. Your existing pack is unchanged.');
       const [plan, preparation] = await Promise.all([readJSON<AIPlan>(`ai-plan:${userId}:${trek.id}`), readJSON<Preparation>(`preparation:${userId}:${trek.id}`)]);
-      const next: Pack = { version: 1, savedAt: new Date().toISOString(), trekId: trek.id, trekName: trek.name, waypoints: trek.route, members: members.items, contact: answers.emergencyContact, plan, preparation };
-      await writeJSON(key, next); setPack(next);
+      const next: Pack = { version: 1, savedAt: new Date().toISOString(), trekId: trek.id, trekName: trek.name, waypoints: trek.route, members: params.group ? members.items : pack?.members ?? [], contact: answers.emergencyContact, plan, preparation };
+      await writeJSON(key, next); setStored({ key, value: next });
     } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not save trip pack.'); }
     finally { setBusy(false); }
   }
