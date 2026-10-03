@@ -55,6 +55,11 @@ def test_repair_loop_is_bounded_and_auditable(monkeypatch):
     assert result['audit'][1]['issues'] == []
     assert result['status'] == 'review_required'
     assert result['routeVerified'] is False
+    assert result['evidence']['liveInference'] is False
+    assert result['evidence']['calls'] == []
+    assert result['evidence']['initialIssueCount'] > result['evidence']['finalIssueCount']
+    assert result['audit'][1]['changedDays'] == [1]
+    assert len(result['evidence']['promptSha256']) == 64
 
 def test_malformed_model_output_never_becomes_a_plan(monkeypatch):
     import app.planner as planner
@@ -65,3 +70,9 @@ def test_malformed_model_output_never_becomes_a_plan(monkeypatch):
     assert len(calls) == 3
     assert result['status'] == 'rejected'
     assert result['itinerary'] is None
+
+def test_impossibly_short_distance_is_caught_without_claiming_trail_geometry():
+    route = {**ROUTE, 'route': [
+        {'name':'A','elevation':2000,'latitude':27,'longitude':85},
+        {'name':'B','elevation':2400,'latitude':28,'longitude':85}]}
+    assert any('straight-line' in item for item in audit(draft(), request(), route))

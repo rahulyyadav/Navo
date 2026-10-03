@@ -11,6 +11,7 @@ from .boundary import RequestBoundary
 from .config import settings
 from .database import database
 from .proximity import nearby
+from .token_factory import configured as ai_configured
 from .planner import ROUTES, generate, route_by_id
 from .schemas import GroupCreate, InvitationCreate, InvitationResponse, TextMessage, Position, AlertCreate, AlertAction, Onboarding, PlanRequest, DeviceToken, JoinLink, JoinDecision
 
@@ -48,7 +49,7 @@ def member_record(uid, person):
 
 @app.get('/health')
 def health():
-    return {'status': 'ok', 'firebaseConfigured': bool(settings().firebase_project_id), 'aiConfigured': bool(settings().nebius_api_key and settings().nebius_model), 'demoEnabled': settings().enable_demo}
+    return {'status': 'ok', 'firebaseConfigured': bool(settings().firebase_project_id), 'aiConfigured': ai_configured(), 'demoEnabled': settings().enable_demo}
 
 @app.post('/session')
 def connect_session(uid: str = Depends(current_user)):

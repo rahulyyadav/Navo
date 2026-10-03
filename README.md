@@ -64,6 +64,36 @@ output/pdf/              Shareable PDF version of the plan
 
 Use root `.env.local` for public client configuration and `backend/.env` for server secrets. Never commit credentials. The mobile app must call our backend; it must not contain a Nebius API key.
 
+## Hackathon judging quick start
+
+Track: **Best Apps and Agents**. The differentiator is a visible Nemotron draft → independent audit → bounded repair → human-review loop.
+
+- [Submission description and evidence checklist](docs/hackathon/SUBMISSION.md)
+- [2:45 demonstration script](docs/hackathon/DEMO-SCRIPT.md)
+- [Exact API/credential integration checklist](docs/hackathon/INTEGRATION-CHECKLIST.md)
+- [Product audit and next-build prompt](docs/PRODUCT-AUDIT-AND-BUILD-PLAN.md)
+
+The MIT license applies to source code; trek photograph attribution/licensing is listed in assets/TREK-PHOTO-CREDITS.md.
+
+### Backend and reproducible AI evaluation
+
+Use Python 3.13. From the repository root:
+
+```sh
+cd backend
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.lock
+cp .env.example .env
+# Configure secrets locally; never commit .env.
+.venv/bin/python -m pytest -q
+.venv/bin/python -m app.evaluate
+.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+The evaluation preflight checks configuration only. After configuring the exact NVIDIA Nemotron model and Nebius key, run ` .venv/bin/python -m app.evaluate --live --case gradual-mardi ` from backend/. This makes up to three paid Token Factory calls and saves a report under output/evaluation. `--case all` runs three scenarios with at most nine calls. Firebase is not needed for the CLI evaluation; the mobile API requires Firebase identity.
+
+Reports include per-attempt violations, actual response model, latency, provider-reported usage and prompt/route hashes. Test adapters are explicitly labelled and do not count as live inference. No live results have yet been recorded; configure and run the evaluation before claiming model performance. The separate day-hike wizard currently uses deterministic planning and weather, not the multi-day Nemotron adapter.
+
 ## Near-term milestones
 
 1. Confirm one Nemotron call through Nebius Token Factory.
