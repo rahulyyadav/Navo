@@ -1,14 +1,22 @@
-from datetime import date
+from datetime import date, datetime, timezone, timedelta
 from typing import Literal
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 class Model(BaseModel):
     model_config = ConfigDict(extra='forbid', str_strip_whitespace=True, allow_inf_nan=False)
+
+class Outing(Model):
+    destination: str = Field(min_length=2, max_length=60)
+    meetingPoint: str = Field(min_length=2, max_length=200)
+    startTime: str = Field(pattern=r'^([01]\d|2[0-3]):[0-5]\d$')
+    expectedPeople: int = Field(ge=1, le=50)
+    walkingHours: float = Field(gt=0, le=16)
 
 class GroupCreate(Model):
     name: str = Field(min_length=2, max_length=60)
     trekId: str = Field(min_length=1, max_length=80, pattern=r'^[a-z0-9-]+$')
     startDate: date
+    outing: Outing | None = None
     requestId: str = Field(pattern=r'^[a-zA-Z0-9_-]{8,80}$')
 
 class InvitationCreate(Model):
@@ -27,8 +35,19 @@ class Position(Model):
     accuracy: float = Field(ge=0, le=100000)
     capturedAt: str = Field(max_length=40)
 
+    @field_validator('capturedAt')
+    @classmethod
+    def recent_capture(cls, value):
+        captured = datetime.fromisoformat(value.replace('Z', '+00:00'))
+        if captured.tzinfo is None:
+            raise ValueError('Location timestamp must include a timezone.')
+        age = datetime.now(timezone.utc) - captured
+        if age < timedelta(minutes=-1) or age > timedelta(minutes=5):
+            raise ValueError('Refresh your position before sharing it.')
+        return captured.isoformat()
+
 class AlertCreate(Model):
-    kind: Literal['test', 'sos', 'check-in', 'off-route', 'weather']
+    kind: Literal['test', 'sos', 'check-in', 'off-route', 'weather', 'nearby']
     message: str = Field(default='', max_length=500)
     position: Position | None = None
     requestId: str = Field(pattern=r'^[a-zA-Z0-9_-]{8,80}$')
@@ -80,3 +99,9 @@ class Itinerary(Model):
     days: list[PlanDay] = Field(min_length=2, max_length=30)
     explanation: str = Field(max_length=2000)
     emergencyNotes: str = Field(min_length=10, max_length=1000)
+
+class JoinLink(Model):
+    token: str = Field(pattern=r'^[A-Za-z0-9_-]{43}$')
+
+class JoinDecision(Model):
+    decision: Literal['approved', 'declined']

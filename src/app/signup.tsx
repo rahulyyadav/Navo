@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Keyboard, StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth';
 
 import { AuthDivider, AuthShell } from '@/components/auth/AuthShell';
 import { GoogleButton } from '@/components/auth/GoogleButton';
@@ -36,8 +36,8 @@ export default function SignupScreen() {
       setError('Enter a valid email address, like you@example.com.');
       return;
     }
-    if (password.length < 6) {
-      setError('Use at least 6 characters for your password.');
+    if (password.length < 8) {
+      setError('Use at least 8 characters for your password.');
       return;
     }
     if (password !== confirmation) {
@@ -56,6 +56,8 @@ export default function SignupScreen() {
       const credential = await createUserWithEmailAndPassword(firebaseAuth, trimmed, password);
       await updateProfile(credential.user, { displayName: fullName });
       await credential.user.reload();
+      // Account creation has succeeded; Groups provides a resend control if delivery fails.
+      await sendEmailVerification(credential.user).catch(() => undefined);
     } catch (failure) {
       setError(friendlyAuthError(failure, 'We couldn’t create your account. Please try again.'));
     } finally {
@@ -65,7 +67,7 @@ export default function SignupScreen() {
   }
 
   return (
-    <AuthShell eyebrow="JOIN NAVO" title="Your first route starts here." subtitle="Create one secure account for every route, group, and safe return.">
+    <AuthShell eyebrow="JOIN NAVO" title="Your first route starts here." subtitle="Create one secure account for your routes, crew, and trip essentials.">
       <Reveal>
         <Field
           autoCapitalize="words"
@@ -106,7 +108,7 @@ export default function SignupScreen() {
           autoCapitalize="none"
           autoComplete="new-password"
           editable={!busy}
-          hint="Use at least 6 characters."
+          hint="Use at least 8 characters."
           label="Password"
           maxLength={128}
           onChangeText={value => { setPassword(value); setError(''); }}
@@ -141,7 +143,8 @@ export default function SignupScreen() {
         <View style={styles.actions}>
           <Button busy={creating} disabled={busy} label={creating ? 'Creating your account…' : 'Create account'} onPress={() => void createAccount()} />
           <AuthDivider />
-          <GoogleButton busy={google.busy} disabled={busy} label="Sign up with Google" onPress={() => void google.start()} />
+          <GoogleButton busy={google.busy} disabled={busy || !google.ready} label="Sign up with Google" onPress={() => void google.start()} />
+          {!!google.unavailableReason && <Text style={styles.googleHint}>{google.unavailableReason}</Text>}
         </View>
       </Reveal>
 
@@ -157,6 +160,7 @@ export default function SignupScreen() {
 
 const styles = StyleSheet.create({
   actions: { marginTop: 18 },
-  footer: { alignItems: 'center', flexDirection: 'row', justifyContent: 'center', marginTop: 26 },
+  footer: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginTop: 26 },
   footerText: { color: 'rgba(255,255,255,0.64)', fontSize: 15 },
+  googleHint: { color: 'rgba(255,255,255,0.74)', fontSize: 13, lineHeight: 19, marginTop: 8, textAlign: 'center' },
 });

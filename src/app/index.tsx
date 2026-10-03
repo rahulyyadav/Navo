@@ -6,6 +6,7 @@ import {
   ImageBackground,
   LayoutChangeEvent,
   PanResponder,
+  Platform,
   StyleSheet,
   Text,
   View,
@@ -154,6 +155,9 @@ export default function OnboardingScreen() {
             accessibilityRole="button"
             accessible
             onAccessibilityTap={() => animateTo(travelRef.current, openLogin)}
+            {...(Platform.OS === 'web' ? { tabIndex: 0, onKeyDown: (event: { key: string; preventDefault: () => void }) => {
+              if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); animateTo(travelRef.current, openLogin); }
+            } } : {})}
             onLayout={onTrackLayout}
             style={styles.startTrack}
             {...panResponder.panHandlers}

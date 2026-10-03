@@ -1,21 +1,26 @@
+import { useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
-import { Stack } from 'expo-router';
+import { Stack, type ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Backdrop, useReducedMotion } from '@/components/ui';
-<<<<<<< HEAD
+import { Backdrop, Button, Heading, useReducedMotion } from '@/components/ui';
+import { IncomingUpdates } from '@/components/IncomingUpdates';
 import { AuthProvider } from '@/context/AuthContext';
-=======
 import { CloudProvider } from '@/context/CloudContext';
->>>>>>> 643afe2 (Updated authentication and UI)
 import { NavoProvider, useNavo } from '@/context/NavoContext';
 import { firebaseConfigured } from '@/lib/firebase';
 import { colors } from '@/theme/tokens';
 
 WebBrowser.maybeCompleteAuthSession();
 
-export const unstable_settings = { initialRouteName: 'index' };
+export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
+  return <Backdrop><View style={styles.boot}><Heading title="Let’s try that again." subtitle="Navo could not display this screen. Your saved data has not been cleared." /><Button label="Reload this screen" onPress={() => void retry()} /></View></Backdrop>;
+}
+
+export const unstable_settings = { initialRouteName: 'index', screenErrorBoundary: ErrorBoundary };
 
 function BootScreen({ title, detail }: { title: string; detail?: string }) {
   return <Backdrop>
@@ -41,12 +46,23 @@ function Routes() {
   const { authLoaded, isSignedIn, hydrated, needsOnboarding } = useNavo();
   const reduced = useReducedMotion();
   const animation = reduced ? 'none' : 'slide_from_right';
+  useEffect(() => {
+    if (!isSignedIn || !hydrated || needsOnboarding) return;
+    let active = true;
+    void AsyncStorage.getItem('navo:pending-invite').then(value => {
+      if (!active || !value) return;
+      const saved = JSON.parse(value);
+      if (/^[a-zA-Z0-9]{1,80}$/.test(saved.group) && /^[a-zA-Z0-9_-]{43}$/.test(saved.token)) router.push({ pathname: '/join', params: saved });
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [isSignedIn, hydrated, needsOnboarding]);
+
 
   if (!authLoaded || (isSignedIn && !hydrated)) {
     return <BootScreen title="Waking Navo up" detail={isSignedIn ? 'Restoring your treks and groups…' : 'Securing your session…'} />;
   }
 
-  return <Stack screenOptions={{
+  return <><Stack screenOptions={{
     headerShadowVisible: false,
     headerStyle: { backgroundColor: colors.night },
     headerTintColor: colors.ink,
@@ -73,10 +89,13 @@ function Routes() {
       <Stack.Screen name="notifications" options={{ title: 'Your updates' }} />
       <Stack.Screen name="copilot" options={{ title: 'AI trek copilot' }} />
       <Stack.Screen name="offline" options={{ title: 'Offline trip packs' }} />
+      <Stack.Screen name="day-hike" options={{ title: "Plan a day hike" }} />
       <Stack.Screen name="plan" options={{ title: 'Trek preparation', headerBackTitle: 'Back' }} />
       <Stack.Screen name="safety" options={{ title: 'Offline essentials', headerBackTitle: 'Back' }} />
     </Stack.Protected>
-  </Stack>;
+    <Stack.Screen name="join" options={{ title: "Join a trek group" }} />
+    <Stack.Screen name="privacy" options={{ title: "Privacy & data" }} />
+  </Stack>{isSignedIn && !needsOnboarding && <IncomingUpdates />}</>;
 }
 
 export default function RootLayout() {

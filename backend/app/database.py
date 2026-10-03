@@ -14,6 +14,8 @@ def database():
             credential = None
             if config.firebase_private_key and config.firebase_client_email:
                 credential = credentials.Certificate({'type': 'service_account', 'project_id': config.firebase_project_id, 'client_email': config.firebase_client_email, 'private_key': config.firebase_private_key.replace('\\n', '\n'), 'token_uri': 'https://oauth2.googleapis.com/token'})
+            elif config.google_application_credentials:
+                credential = credentials.Certificate(config.google_application_credentials)
             firebase_admin.initialize_app(credential, {'projectId': config.firebase_project_id})
         return firestore.client()
     except Exception:

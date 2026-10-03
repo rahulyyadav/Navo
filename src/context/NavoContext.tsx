@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
 import { useFirebaseAuth } from '@/context/AuthContext';
 import type { OnboardingAnswers, Profile, TrekGroup } from '@/types/navo';
 import {
@@ -9,6 +9,7 @@ import {
   saveOnboarding,
   saveProfile,
 } from '@/services/profile';
+import { unregisterPush } from '@/services/push';
 import { useCloud } from '@/context/CloudContext';
 import { friendlyAuthError } from '@/services/auth-errors';
 
@@ -45,15 +46,10 @@ type SessionData = {
 const NavoContext = createContext<NavoState | null>(null);
 
 export function NavoProvider({ children }: PropsWithChildren) {
-<<<<<<< HEAD
   const { loaded: isLoaded, user, signOut } = useFirebaseAuth();
   const isSignedIn = Boolean(user);
   const userId = user?.uid ?? '';
-=======
-  const { isLoaded, isSignedIn, userId, signOut } = useAuth();
-  const { user } = useUser();
   const cloud = useCloud();
->>>>>>> 643afe2 (Updated authentication and UI)
   const [session, setSession] = useState<SessionData | null>(null);
   const [error, setError] = useState('');
   const [signingOut, setSigningOut] = useState(false);
@@ -82,6 +78,18 @@ export function NavoProvider({ children }: PropsWithChildren) {
     })();
     return () => { active = false; };
   }, [isLoaded, isSignedIn, userId]);
+
+  const syncingProfile = useRef('');
+  useEffect(() => {
+    if (!cloud.ready || !cloud.remoteProfile || cloud.remoteProfile.onboarding || !data?.answers.completed) return;
+    const syncKey = `${userId}/${data.answers.completedAt ?? 'local'}`;
+    if (syncingProfile.current === syncKey) return;
+    syncingProfile.current = syncKey;
+    void cloud.api('/profile', data.answers, 'PUT').catch(() => {
+      syncingProfile.current = '';
+      setError('Your preparation is saved on this device. Reconnect to sync your profile.');
+    });
+  }, [cloud, data?.answers, userId]);
 
   const persist = useCallback(async (next: OnboardingAnswers) => {
     if (!userId || !user) return;
@@ -113,13 +121,14 @@ export function NavoProvider({ children }: PropsWithChildren) {
   const handleSignOut = useCallback(async () => {
     setSigningOut(true);
     try {
+      if (cloud.ready) await unregisterPush(cloud.api).catch(() => undefined);
       await signOut();
       setSession(null);
       setError('');
     } finally {
       setSigningOut(false);
     }
-  }, [signOut]);
+  }, [signOut, cloud]);
 
   const value = useMemo<NavoState>(() => {
     const answers = cloud.remoteProfile?.onboarding ?? data?.answers ?? emptyOnboarding;
@@ -127,15 +136,9 @@ export function NavoProvider({ children }: PropsWithChildren) {
       authLoaded: isLoaded,
       isSignedIn: Boolean(isSignedIn),
       userId: userId ?? '',
-<<<<<<< HEAD
       email: user?.email ?? data?.profile?.email ?? '',
       imageUrl: user?.photoURL ?? data?.profile?.imageUrl ?? null,
-      profile: data?.profile ?? null,
-=======
-      email: user?.primaryEmailAddress?.emailAddress ?? data?.profile?.email ?? '',
-      imageUrl: user?.hasImage ? user.imageUrl : data?.profile?.imageUrl ?? null,
-      profile: user && cloud.remoteProfile?.onboarding ? buildProfile({ userId: userId ?? '', email: user.primaryEmailAddress?.emailAddress ?? '', imageUrl: user.hasImage ? user.imageUrl : null, answers: cloud.remoteProfile.onboarding, createdAt: data?.profile?.createdAt }) : data?.profile ?? null,
->>>>>>> 643afe2 (Updated authentication and UI)
+      profile: user && cloud.remoteProfile?.onboarding ? buildProfile({ userId, email: user.email ?? '', imageUrl: user.photoURL, answers: cloud.remoteProfile.onboarding, createdAt: data?.profile?.createdAt }) : data?.profile ?? null,
       answers,
       hydrated: data !== null,
       needsOnboarding: Boolean(isSignedIn) && data !== null && !answers.completed,

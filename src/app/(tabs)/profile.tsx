@@ -18,6 +18,7 @@ import {
   SectionTitle,
   Stat,
 } from '@/components/ui';
+import { CloudStatus } from '@/components/CloudStatus';
 import { TabIcon } from '@/components/TabIcon';
 import { useNavo } from '@/context/NavoContext';
 import { goalLabels, levelLabel } from '@/data/onboarding';
@@ -63,7 +64,7 @@ export default function ProfileScreen() {
     const trimmedName = contact.name.trim();
     const trimmedPhone = contact.phone.trim();
     if (!trimmedName && trimmedPhone) { setError('Add a name so your group knows who to call.'); return; }
-    if (trimmedName && trimmedPhone && trimmedPhone.replace(/\D/g, '').length < 7) {
+    if (trimmedName && (!/^\+?[0-9 ()-]{7,25}$/.test(trimmedPhone) || trimmedPhone.replace(/\D/g, '').length < 7)) {
       setError('That phone number looks too short. Include the country code.');
       return;
     }
@@ -138,7 +139,7 @@ export default function ProfileScreen() {
           </Card>
         </Reveal>
 
-        <Notice message={error} />
+        <Notice message={error} /><CloudStatus />
 
         <Reveal delay={90}>
           <View style={styles.section}>
@@ -242,18 +243,18 @@ export default function ProfileScreen() {
             <SectionTitle title="EXPLORE" />
             <View style={styles.links}>
               <LinkRow detail="See all four mapped routes across Nepal." icon="map" label="Nepal map" onPress={() => router.push('/(tabs)/map')} />
-              <LinkRow detail="How Navo structures a day-by-day trek." icon="route" label="Sample plan" onPress={() => router.push('/plan')} />
+              <LinkRow detail="Your checklist, departure date and trip essentials." icon="route" label="Trek preparation" onPress={() => router.push('/plan')} />
               <LinkRow detail="What to carry past the last signal." icon="compass" label="Offline essentials" onPress={() => router.push('/safety')} />
-              <LinkRow detail="Create one and share a single loud alarm." icon="group" label="Start a group" onPress={() => router.push('/group/new')} />
+              <LinkRow detail="Invite your crew, chat and share check-ins." icon="group" label="Start a group" onPress={() => router.push('/group/new')} />
             </View>
           </View>
         </Reveal>
 
         <View style={styles.section}>
+          <Button label="Privacy & downloaded data" variant="outline" onPress={() => router.push('/privacy')} />
           <Button busy={signingOut} label={signingOut ? 'Signing out…' : 'Sign out'} onPress={() => void leave()} variant="danger" />
           <Text style={styles.footnote}>
-            Navo keeps your profile, groups, and alerts on this device. Signing out leaves them here, so the next
-            sign-in with this account picks up where you stopped.
+            Groups and alerts sync through your account. Downloaded trip packs remain on this device for your next sign-in.
           </Text>
         </View>
       </ScrollView>
