@@ -99,3 +99,86 @@ def test_revoked_invitation_cannot_be_accepted(crew):
     main.respond(gid,iid,InvitationResponse(decision='revoked'),'owner')
     with pytest.raises(HTTPException): main.respond(gid,iid,InvitationResponse(decision='accepted'),'guest')
     assert db.data['groups/'+gid]['memberIds'] == ['owner']
+
+def test_link_requires_approval_and_only_owner_can_decide(crew):
+    from app.schemas import JoinLink, JoinDecision
+    db, gid, _ = crew
+    with pytest.raises(HTTPException): main.create_join_link(gid, 'guest')
+    link = main.create_join_link(gid, 'owner')
+    stored = db.data[f'groups/{gid}/private/joinLink']
+    assert link['token'] not in str(stored)
+    for _ in range(2): assert main.request_join(gid, JoinLink(token=link['token']), 'guest')['status'] == 'pending'
+    assert db.data[f'groups/{gid}']['memberIds'] == ['owner']
+    with pytest.raises(HTTPException): main.decide_join(gid, 'guest', JoinDecision(decision='approved'), 'outsider')
+    for _ in range(2): main.decide_join(gid, 'guest', JoinDecision(decision='approved'), 'owner')
+    assert db.data[f'groups/{gid}']['memberIds'] == ['owner', 'guest']
+
+def test_rotated_revoked_and_expired_links_are_rejected(crew):
+    from app.schemas import JoinLink
+    from datetime import datetime, timezone, timedelta
+    db, gid, _ = crew
+    first = main.create_join_link(gid, 'owner')['token']
+    second = main.create_join_link(gid, 'owner')['token']
+    with pytest.raises(HTTPException): main.request_join(gid, JoinLink(token=first), 'guest')
+    db.data[f'groups/{gid}/private/joinLink']['expiresAt'] = datetime.now(timezone.utc)-timedelta(seconds=1)
+    with pytest.raises(HTTPException): main.request_join(gid, JoinLink(token=second), 'guest')
+    third = main.create_join_link(gid, 'owner')['token']
+    main.revoke_join_link(gid, 'owner')
+    with pytest.raises(HTTPException): main.request_join(gid, JoinLink(token=third), 'guest')
+
+def test_declined_link_request_cannot_spam_same_link(crew):
+    from app.schemas import JoinLink, JoinDecision
+    db, gid, _ = crew
+    token = main.create_join_link(gid, 'owner')['token']
+    main.request_join(gid, JoinLink(token=token), 'guest')
+    main.decide_join(gid, 'guest', JoinDecision(decision='declined'), 'owner')
+    with pytest.raises(HTTPException): main.request_join(gid, JoinLink(token=token), 'guest')
+    assert db.data[f'groups/{gid}']['memberIds'] == ['owner']
+
+def test_nearby_only_notifies_fresh_opted_in_members(crew):
+    from app.schemas import Position, AlertCreate
+    from datetime import datetime, timezone
+    db, gid, _ = crew
+    iid = main.invite(gid, InvitationCreate(email='guest@example.com'), 'owner')['id']
+    main.respond(gid, iid, InvitationResponse(decision='accepted'), 'guest')
+    position = Position(latitude=28, longitude=84, accuracy=15, capturedAt=datetime.now(timezone.utc).isoformat())
+    event = AlertCreate(kind='nearby', confirmed=True, position=position, requestId='nearby-test')
+    with pytest.raises(HTTPException): main.create_alert(gid, event, 'owner')
+    main.share_live_position(gid, position, 'guest')
+    result = main.create_alert(gid, event, 'owner')
+    assert result['recipientCount'] == 1
+    assert db.data['pushJobs/'+result['id']]['recipients'] == ['guest']
+    assert main.create_alert(gid, event, 'owner')['id'] == result['id']
+
+def test_custom_day_hike_keeps_meeting_plan(crew):
+    from app.schemas import Outing
+    from datetime import datetime, timezone, timedelta
+    db, _, _ = crew
+    day = (datetime.now(timezone.utc)+timedelta(days=1)).date()
+    value = GroupCreate(name='Phulchowki friends', trekId='custom-hike', startDate=day, requestId='custom-hike-test', outing=Outing(destination='Phulchowki', meetingPoint='Godawari entrance', startTime='06:00', expectedPeople=4, walkingHours=6))
+    gid = main.create_group(value, 'owner')['id']
+    assert db.data['groups/'+gid]['outing']['meetingPoint'] == 'Godawari entrance'
+    assert db.data['groups/'+gid]['memberIds'] == ['owner']
+    with pytest.raises(HTTPException): main.create_group(value.model_copy(update={'outing': None, 'requestId': 'missing-outing'}), 'owner')
+
+def test_join_approval_enforces_capacity(crew):
+    from app.schemas import JoinLink, JoinDecision
+    db, gid, _ = crew
+    token = main.create_join_link(gid, 'owner')['token']
+    main.request_join(gid, JoinLink(token=token), 'guest')
+    db.data[f'groups/{gid}']['memberIds'] = ['owner'] + [f'person{i}' for i in range(49)]
+    with pytest.raises(HTTPException) as error: main.decide_join(gid, 'guest', JoinDecision(decision='approved'), 'owner')
+    assert error.value.status_code == 409
+    assert db.data[f'groups/{gid}/joinRequests/guest']['status'] == 'pending'
+
+def test_live_position_requires_membership_and_never_moves_back_in_time(crew):
+    from app.schemas import Position
+    from datetime import datetime, timezone, timedelta
+    db, gid, _ = crew
+    now = datetime.now(timezone.utc)
+    latest = Position(latitude=28, longitude=84, accuracy=10, capturedAt=now.isoformat())
+    with pytest.raises(HTTPException): main.share_live_position(gid, latest, 'outsider')
+    main.share_live_position(gid, latest, 'owner')
+    previous = Position(latitude=27, longitude=83, accuracy=10, capturedAt=(now-timedelta(seconds=30)).isoformat())
+    main.share_live_position(gid, previous, 'owner')
+    assert db.data[f'groups/{gid}/members/owner']['lastLocation']['latitude'] == 28

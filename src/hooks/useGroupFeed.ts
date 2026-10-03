@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase/client';
 import { decodeCloud, useCloud } from '@/context/CloudContext';
-export function useGroupFeed<T>(groupId: string, name: 'members' | 'messages' | 'alerts' | 'checkins' | 'invitations') {
+export function useGroupFeed<T>(groupId: string, name: 'members' | 'messages' | 'alerts' | 'checkins' | 'invitations' | 'joinRequests') {
   const { ready } = useCloud();
   const { user } = useFirebaseAuth();
   const key = `${user?.uid ?? ""}/${groupId}/${name}`;

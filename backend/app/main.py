@@ -1,4 +1,5 @@
 import hashlib
+import secrets
 from datetime import datetime, timezone, timedelta
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,8 +10,9 @@ from .auth import current_user
 from .boundary import RequestBoundary
 from .config import settings
 from .database import database
+from .proximity import nearby
 from .planner import ROUTES, generate, route_by_id
-from .schemas import GroupCreate, InvitationCreate, InvitationResponse, TextMessage, Position, AlertCreate, AlertAction, Onboarding, PlanRequest, DeviceToken
+from .schemas import GroupCreate, InvitationCreate, InvitationResponse, TextMessage, Position, AlertCreate, AlertAction, Onboarding, PlanRequest, DeviceToken, JoinLink, JoinDecision
 
 app = FastAPI(title='Navo API', version='1.0.0')
 app.add_middleware(RequestBoundary)
@@ -70,7 +72,12 @@ def save_profile(value: Onboarding, uid: str = Depends(current_user)):
 
 @app.post('/groups')
 def create_group(value: GroupCreate, uid: str = Depends(current_user)):
-    trek = route_by_id(value.trekId)
+    if value.trekId == 'custom-hike':
+        if not value.outing: raise HTTPException(400, 'Add the meeting place, time and walking plan.')
+        if value.startDate < (datetime.now(timezone.utc) + timedelta(hours=5, minutes=45)).date(): raise HTTPException(400, 'Choose today or a future hike date.')
+        trek = {'name': value.outing.destination, 'region': 'Day hike'}
+    else:
+        trek = route_by_id(value.trekId)
     person = profile(uid)
     ref = group_ref(identifier(uid, value.requestId))
     member = {**member_record(uid, person), 'role': 'leader', 'joinedAt': datetime.now(timezone.utc).isoformat()}
@@ -79,7 +86,7 @@ def create_group(value: GroupCreate, uid: str = Depends(current_user)):
         existing = ref.get(transaction=tx)
         if existing.exists:
             return {'id': ref.id}
-        tx.set(ref, {'id': ref.id, 'name': value.name, 'trekId': value.trekId, 'trekName': trek['name'], 'region': trek['region'], 'startDate': value.startDate.isoformat(), 'ownerId': uid, 'memberIds': [uid], 'members': [member], 'status': 'active', 'createdAt': STAMP, 'updatedAt': STAMP})
+        tx.set(ref, {'id': ref.id, 'name': value.name, 'trekId': value.trekId, 'trekName': trek['name'], 'region': trek['region'], 'startDate': value.startDate.isoformat(), 'ownerId': uid, 'memberIds': [uid], 'members': [member], 'status': 'active', 'outing': value.outing.model_dump() if value.outing else None, 'createdAt': STAMP, 'updatedAt': STAMP})
         tx.set(ref.collection('members').document(uid), {**member, 'joinedAt': STAMP, 'locationSharingEnabled': False})
         return {'id': ref.id}
     return commit(database().transaction())
@@ -169,6 +176,7 @@ def send_message(gid: str, value: TextMessage, uid: str = Depends(current_user))
 @app.post('/groups/{gid}/alerts')
 def create_alert(gid: str, value: AlertCreate, uid: str = Depends(current_user)):
     if value.kind == 'sos' and not value.confirmed: raise HTTPException(400, 'Confirm SOS before sending.')
+    if value.kind == 'nearby' and (not value.confirmed or not value.position or value.position.accuracy > 100): raise HTTPException(400, 'Confirm the nearby alert and get a GPS fix accurate to 100 m or better.')
     if value.kind == 'off-route': raise HTTPException(409, 'Off-route alerts require an imported, verified route; current waypoints are illustrative.')
     db = database(); ref = group_ref(gid); person = profile(uid)
     alert = ref.collection('alerts').document(identifier(uid, value.requestId))
@@ -180,13 +188,17 @@ def create_alert(gid: str, value: AlertCreate, uid: str = Depends(current_user))
         if exists: return {'id': alert.id}
         if previous and datetime.now(timezone.utc) - previous['at'] < timedelta(seconds=15): raise HTTPException(429, 'Please wait a moment before sending another alert.')
         pos = value.position.model_dump() if value.position else {}
-        event = {'id': alert.id, 'groupId': gid, 'kind': value.kind, 'senderId': uid, 'senderName': person['displayName'], 'message': value.message or f"{person['displayName']}: {value.kind}", 'latitude': pos.get('latitude'), 'longitude': pos.get('longitude'), 'accuracy': pos.get('accuracy'), 'capturedAt': pos.get('capturedAt'), 'createdAt': STAMP, 'acknowledgedBy': [], 'resolvedAt': None}
+        recipients = [v for v in group['memberIds'] if v != uid]
+        if value.kind == 'nearby':
+            recipients = [v for v in recipients if nearby(pos, ref.collection('members').document(v).get(transaction=tx).to_dict() or {})]
+            if not recipients: raise HTTPException(409, 'No opted-in group members have a recent, accurate position within 500 m. Use a group alert or contact your crew directly.')
+        event = {'id': alert.id, 'groupId': gid, 'kind': value.kind, 'senderId': uid, 'senderName': person['displayName'], 'message': value.message or f"{person['displayName']}: {value.kind}", 'latitude': pos.get('latitude'), 'longitude': pos.get('longitude'), 'accuracy': pos.get('accuracy'), 'capturedAt': pos.get('capturedAt'), 'createdAt': STAMP, 'acknowledgedBy': [], 'resolvedAt': None, 'recipientCount': len(recipients)}
         tx.set(alert, event); tx.set(cooldown, {'at': STAMP})
-        for recipient in group['memberIds']:
+        for recipient in recipients:
             if recipient != uid:
                 tx.set(db.collection('users').document(recipient).collection('notifications').document(alert.id), {**event, 'type': 'alert', 'groupName': group['name'], 'read': False})
-        tx.set(db.collection('pushJobs').document(alert.id), {'groupId': gid, 'alertId': alert.id, 'recipients': [v for v in group['memberIds'] if v != uid], 'status': 'pending', 'createdAt': STAMP})
-        return {'id': alert.id}
+        tx.set(db.collection('pushJobs').document(alert.id), {'groupId': gid, 'alertId': alert.id, 'recipients': recipients, 'status': 'pending', 'createdAt': STAMP})
+        return {'id': alert.id, 'recipientCount': len(recipients)}
     return commit(db.transaction())
 
 @app.post('/groups/{gid}/alerts/{aid}')
@@ -211,7 +223,7 @@ def checkin(gid: str, value: Position, uid: str = Depends(current_user)):
         if record.get(transaction=tx).exists: return {'id': record.id}
         data = {**value.model_dump(), 'userId': uid, 'displayName': person['displayName'], 'createdAt': STAMP, 'status': 'safe'}
         tx.set(record, data)
-        tx.update(ref.collection('members').document(uid), {'lastLocation': data, 'lastLocationAt': STAMP, 'checkInStatus': 'safe', 'checkinDueAt': datetime.now(timezone.utc) + timedelta(hours=4), 'locationSharingEnabled': True})
+        tx.update(ref.collection('members').document(uid), {'lastLocation': data, 'lastLocationAt': STAMP, 'checkInStatus': 'safe', 'checkinDueAt': datetime.now(timezone.utc) + timedelta(hours=4), 'locationSharingEnabled': True, 'nearbyAlertsEnabled': False})
         tx.set(ref.collection('messages').document(record.id), {'senderId': uid, 'senderName': person['displayName'], 'text': 'Checked in safely and shared a position.', 'type': 'system', 'createdAt': STAMP})
         return {'id': record.id}
     return commit(database().transaction())
@@ -220,7 +232,7 @@ def checkin(gid: str, value: Position, uid: str = Depends(current_user)):
 def stop_sharing(gid: str, uid: str = Depends(current_user)):
     ref = group_ref(gid)
     require_member(ref.get().to_dict(), uid)
-    ref.collection('members').document(uid).update({'lastLocation': firestore.DELETE_FIELD, 'lastLocationAt': firestore.DELETE_FIELD, 'locationSharingEnabled': False, 'checkinDueAt': firestore.DELETE_FIELD, 'checkInStatus': 'paused'})
+    ref.collection('members').document(uid).update({'lastLocation': firestore.DELETE_FIELD, 'lastLocationAt': firestore.DELETE_FIELD, 'locationSharingEnabled': False, 'nearbyAlertsEnabled': False, 'checkinDueAt': firestore.DELETE_FIELD, 'checkInStatus': 'paused'})
     return {'removed': True}
 
 @app.post('/notifications/{nid}/read')
@@ -303,3 +315,84 @@ def get_plan(pid: str, uid: str = Depends(current_user)):
 async def revise(pid: str, value: PlanRequest, uid: str = Depends(current_user)):
     get_plan(pid, uid)
     return await plan(value, uid)
+
+
+@app.post('/groups/{gid}/join-link')
+def create_join_link(gid: str, uid: str = Depends(current_user)):
+    ref = group_ref(gid)
+    token = secrets.token_urlsafe(32)
+    expires = datetime.now(timezone.utc) + timedelta(days=7)
+    @firestore.transactional
+    def commit(tx):
+        require_member(ref.get(transaction=tx).to_dict(), uid, True)
+        # Only the digest is stored. Rotating invalidates the previous link.
+        tx.set(ref.collection('private').document('joinLink'), {'digest': hashlib.sha256(token.encode()).hexdigest(), 'expiresAt': expires})
+    commit(database().transaction())
+    return {'token': token, 'expiresAt': expires.isoformat()}
+
+@app.delete('/groups/{gid}/join-link')
+def revoke_join_link(gid: str, uid: str = Depends(current_user)):
+    ref = group_ref(gid)
+    @firestore.transactional
+    def commit(tx):
+        require_member(ref.get(transaction=tx).to_dict(), uid, True)
+        tx.delete(ref.collection('private').document('joinLink'))
+    commit(database().transaction())
+    return {'revoked': True}
+
+@app.post('/groups/{gid}/join-requests')
+def request_join(gid: str, value: JoinLink, uid: str = Depends(current_user)):
+    ref = group_ref(gid); person = profile(uid)
+    request = ref.collection('joinRequests').document(uid)
+    @firestore.transactional
+    def commit(tx):
+        group = ref.get(transaction=tx).to_dict()
+        link = ref.collection('private').document('joinLink').get(transaction=tx).to_dict()
+        previous = request.get(transaction=tx).to_dict()
+        if not group or not link or link['expiresAt'] <= datetime.now(timezone.utc) or not secrets.compare_digest(link['digest'], hashlib.sha256(value.token.encode()).hexdigest()):
+            raise HTTPException(404, 'This invitation link has expired or was replaced. Ask the leader for a new one.')
+        if uid in group['memberIds']: return {'status': 'member'}
+        if previous and previous['status'] == 'pending': return {'status': 'pending'}
+        if previous and previous['status'] == 'declined' and previous.get('linkDigest') == link['digest']:
+            raise HTTPException(409, 'The leader declined this request. Ask them for a new invitation.')
+        tx.set(request, {'id': uid, 'displayName': person['displayName'], 'status': 'pending', 'linkDigest': link['digest'], 'createdAt': STAMP})
+        return {'status': 'pending'}
+    return commit(database().transaction())
+
+@app.post('/groups/{gid}/join-requests/{requester}/respond')
+def decide_join(gid: str, requester: str, value: JoinDecision, uid: str = Depends(current_user)):
+    if not requester or len(requester) > 128 or '/' in requester: raise HTTPException(400, 'Invalid member.')
+    ref = group_ref(gid); request = ref.collection('joinRequests').document(requester)
+    require_member(ref.get().to_dict(), uid, True)
+    person = profile(requester)
+    @firestore.transactional
+    def commit(tx):
+        group = ref.get(transaction=tx).to_dict(); data = request.get(transaction=tx).to_dict()
+        require_member(group, uid, True)
+        if not data: raise HTTPException(404, 'Request not found.')
+        if data['status'] == value.decision: return {'status': value.decision}
+        if data['status'] != 'pending': raise HTTPException(409, 'This request has already been reviewed.')
+        if value.decision == 'approved' and requester not in group['memberIds']:
+            if len(group['memberIds']) >= 50: raise HTTPException(409, 'This group has reached its 50 member limit.')
+            member = member_record(requester, person)
+            tx.update(ref, {'memberIds': firestore.ArrayUnion([requester]), 'members': firestore.ArrayUnion([member]), 'updatedAt': STAMP})
+            tx.set(ref.collection('members').document(requester), {**member, 'joinedAt': STAMP, 'locationSharingEnabled': False})
+        tx.update(request, {'status': value.decision, 'respondedAt': STAMP})
+        return {'status': value.decision}
+    return commit(database().transaction())
+
+
+@app.put('/groups/{gid}/location')
+def share_live_position(gid: str, value: Position, uid: str = Depends(current_user)):
+    ref = group_ref(gid)
+    if value.accuracy > 100: raise HTTPException(400, 'GPS accuracy is too low. Try outdoors before sharing.')
+    @firestore.transactional
+    def commit(tx):
+        require_member(ref.get(transaction=tx).to_dict(), uid)
+        member = ref.collection('members').document(uid)
+        previous = member.get(transaction=tx).to_dict() or {}
+        old = (previous.get('lastLocation') or {}).get('capturedAt')
+        if old and datetime.fromisoformat(old.replace('Z', '+00:00')) >= datetime.fromisoformat(value.capturedAt): return
+        tx.update(member, {'lastLocation': value.model_dump(), 'lastLocationAt': STAMP, 'locationSharingEnabled': True, 'nearbyAlertsEnabled': True})
+    commit(database().transaction())
+    return {'shared': True}

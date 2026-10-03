@@ -19,7 +19,7 @@ export default function DiscoverScreen() {
   const cloud = useCloud();
   const unread = cloud.notifications.filter(item => !item.read).length;
   const insets = useSafeAreaInsets();
-  const { profile, email, imageUrl, groups, answers } = useNavo();
+  const { profile, imageUrl, groups, answers } = useNavo();
   const [region, setRegion] = useState(ALL);
   const [search, setSearch] = useState('');
 
@@ -40,24 +40,24 @@ export default function DiscoverScreen() {
             <View style={styles.headerCopy}>
               <Eyebrow>NAVO · NEPAL</Eyebrow>
               <Text style={styles.greeting} numberOfLines={2}>Namaste, {firstName}.</Text>
-              <Text style={styles.email} numberOfLines={1}>{email}</Text>
+              <Text style={styles.email}>A little preparation. A better day outside.</Text>
             </View>
             <Avatar name={profile?.fullName ?? answers.fullName} size={54} uri={imageUrl} />
           </View>
         </Reveal>
 
-        <Pressable accessibilityRole="button" onPress={() => router.push('/notifications')} style={styles.footerCard}><Text style={styles.footerTitle}>{unread ? `${unread} new trail updates` : 'Your trail inbox'}</Text><Text style={styles.footerDetail}>Invitations, check-ins and group alerts →</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={() => router.push('/notifications')} style={styles.inbox}><View style={{ flex: 1 }}><Text style={styles.footerTitle}>{unread ? `${unread} new trail updates` : 'Your trail inbox'}</Text><Text style={styles.footerDetail}>Invitations, check-ins and group alerts</Text></View><Text style={styles.seeAll}>Open →</Text></Pressable>
         <Reveal delay={60}>
           <View style={styles.actions}>
             <Pressable accessibilityRole="button" onPress={() => router.push('/(tabs)/map')} style={({ pressed }) => [styles.action, styles.actionLime, pressed && styles.pressed]}>
               <TabIcon color={colors.onAccent} name="compass" size={22} />
-              <Text style={styles.actionTitle}>Explore the map</Text>
-              <Text style={styles.actionDetail}>Find mountain regions and trek waypoints.</Text>
+              <Text style={styles.actionTitle}>Trail map</Text>
+              <Text style={styles.actionDetail}>Regions & waypoints →</Text>
             </Pressable>
-            <Pressable accessibilityRole="button" onPress={() => router.push('/plan')} style={({ pressed }) => [styles.action, styles.actionDark, pressed && styles.pressed]}>
+            <Pressable accessibilityRole="button" onPress={() => router.push('/day-hike')} style={({ pressed }) => [styles.action, styles.actionDark, pressed && styles.pressed]}>
               <TabIcon color={colors.danger} name="route" size={22} />
-              <Text style={styles.actionTitleLight}>Prepare your trek</Text>
-              <Text style={styles.actionDetailLight}>Pack well. Check conditions. Save your plan.</Text>
+              <Text style={styles.actionTitleLight}>Plan a day hike</Text>
+              <Text style={styles.actionDetailLight}>Kathmandu & anywhere →</Text>
             </Pressable>
           </View>
         </Reveal>
@@ -85,7 +85,7 @@ export default function DiscoverScreen() {
         )}
 
         <Reveal delay={110}>
-          <SectionTitle title="TREKS" />
+          <SectionTitle title="FIND YOUR NEXT TREK" />
         </Reveal>
         <ScrollView contentContainerStyle={styles.chips} horizontal showsHorizontalScrollIndicator={false}>
           {regions.map(name => (
@@ -116,7 +116,7 @@ export default function DiscoverScreen() {
         <View style={styles.footerRow}>
           <Pressable accessibilityRole="button" onPress={() => router.push('/copilot')} style={({ pressed }) => [styles.footerCard, pressed && styles.pressed]}>
             <Text style={styles.footerTitle}>AI trek copilot</Text>
-            <Text style={styles.footerDetail}>Nemotron drafts. Navo checks. You review.</Text>
+            <Text style={styles.footerDetail}>Draft a plan, then review it with your guide.</Text>
           </Pressable>
           <Pressable accessibilityRole="button" onPress={() => router.push('/safety')} style={({ pressed }) => [styles.footerCard, pressed && styles.pressed]}>
             <Text style={styles.footerTitle}>Offline essentials</Text>
@@ -134,8 +134,9 @@ const styles = StyleSheet.create({
   headerCopy: { flex: 1 },
   greeting: { color: colors.ink, fontSize: 27, fontWeight: '700', letterSpacing: -0.8, lineHeight: 33, marginTop: 2 },
   email: { color: colors.faint, fontSize: 13, marginTop: 5 },
-  actions: { flexDirection: 'row', gap: 12, marginTop: 22 },
-  action: { borderRadius: radius.lg, flex: 1, gap: 6, minHeight: 132, padding: 16 },
+  inbox: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, marginTop: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.line },
+  actions: { flexDirection: 'row', gap: 12, marginTop: 16, marginBottom: 24 },
+  action: { borderRadius: radius.lg, flex: 1, gap: 6, minHeight: 108, padding: 16 },
   actionLime: { backgroundColor: colors.lime },
   actionDark: { backgroundColor: colors.navy, borderWidth: 1, borderColor: colors.line },
   actionTitle: { color: colors.onAccent, fontSize: 17, fontWeight: '800', lineHeight: 21, marginTop: 6 },

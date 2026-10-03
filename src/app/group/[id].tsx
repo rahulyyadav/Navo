@@ -2,6 +2,8 @@ import { useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Avatar, Backdrop, Badge, Button, Card, Chip, Field, Heading, Notice, Reveal, SectionTitle } from '@/components/ui';
+import { TrekLocationSession } from '@/components/TrekLocationSession';
+import { GroupInviteTools } from '@/components/GroupInviteTools';
 import { CloudStatus } from '@/components/CloudStatus';
 import { useCloud } from '@/context/CloudContext';
 import { useNavo } from '@/context/NavoContext';
@@ -46,10 +48,12 @@ export default function GroupScreen() {
   if (!group) return <Backdrop><View style={styles.scroll}><Heading title={cloud.status === 'Connected' ? 'This group is unavailable.' : 'Connecting to your crew.'} subtitle={cloud.status === 'Connected' ? 'The group may have been removed, or your membership has changed.' : 'Your group appears after your membership is confirmed.'} /><CloudStatus /><Button label="Back to groups" onPress={() => router.replace('/(tabs)/groups')} /></View></Backdrop>;
   return <Backdrop><KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={96}><ScrollView ref={list} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
     <Reveal><Badge label={`${group.members.length} MEMBERS · ${group.startDate}`} tone="lime" /><Heading title={group.name} subtitle="Stay close, even when the trail opens up." /></Reveal>
+    {group.outing && <Card><SectionTitle title="MEETUP PLAN" /><Text style={styles.name}>{group.outing.meetingPoint}</Text><Text style={styles.copy}>{group.startDate} · depart {group.outing.startTime} Nepal time</Text><Text style={styles.copy}>{group.outing.walkingHours} walking hours planned · {group.members.length} joined / {group.outing.expectedPeople} expected</Text><Text style={styles.copy}>Confirm transport, the trail and a turnaround time together in Chat.</Text></Card>}
     <CloudStatus /><View style={styles.row}>{['Crew', 'Chat', 'Safety'].map(name => <Chip key={name} label={name} selected={tab === name} onPress={() => setTab(name)} />)}</View>
     <Notice message={error || members.error || messages.error || alerts.error} />{success && <Notice message={success} tone="info" />}
     {(members.error || messages.error || alerts.error) && <Button label="Retry group feeds" variant="outline" onPress={() => { members.retry(); messages.retry(); alerts.retry(); }} />}
     {tab === 'Crew' && <>
+      {group.ownerId === userId && <GroupInviteTools groupId={gid} />}
       {group.ownerId === userId && invitations.items.some(item => item.status === 'pending') && <Card><SectionTitle title="PENDING INVITATIONS" />{invitations.items.filter(item => item.status === 'pending').map(item => <View key={item.id}><Text style={styles.name}>{item.inviteeName ?? 'Invited trekker'}</Text><Button label="Cancel invitation" variant="quiet" disabled={Boolean(busy)} onPress={() => void action('revoke', async () => { await cloud.api(`/groups/${gid}/invites/${item.id}/respond`, { decision: 'revoked' }); setSuccess('Invitation cancelled.'); })} /></View>)}</Card>}
       <Notice message={invitations.error} />
       <SectionTitle title="YOUR PEOPLE" />
@@ -64,8 +68,8 @@ export default function GroupScreen() {
       <Field label="Message your crew" multiline value={message} editable={!busy} onChangeText={setMessage} placeholder="What’s the plan for tomorrow?" maxLength={2000} /><Button label={busy === 'message' ? 'Sending…' : 'Send message'} disabled={!message.trim() || Boolean(busy)} busy={busy === 'message'} onPress={() => void send()} /><Text style={styles.copy}>If sending fails, your draft stays here. Retry uses the same message ID to avoid duplicates.</Text>
     </>}
     {tab === 'Safety' && <>
+      <TrekLocationSession groupId={gid} />
       <Button label="Check in safe & share position" disabled={Boolean(busy)} busy={busy === 'checkin' || gpsState === 'locating'} onPress={() => void checkin()} /><Button label="View group positions" variant="outline" onPress={() => router.push({ pathname: '/(tabs)/map', params: { group: gid, trek: group.trekId } })} />
-      <Button label="Stop sharing & pause check-ins" variant="quiet" onPress={() => void action('stop', async () => { await cloud.api(`/groups/${gid}/location`, undefined, 'DELETE'); setSuccess('Your current member position is hidden and check-in reminders are paused. Previous check-in events remain in group history.'); })} />
       {group.ownerId === userId && <Button label="Send test group alert" variant="outline" disabled={Boolean(busy)} busy={busy === 'test'} onPress={() => void testAlert()} />}
       <Button label="SOS · open confirmation" variant="danger" onPress={() => router.push({ pathname: '/alert', params: { groupId: gid, kind: 'sos' } })} />
       <Text style={styles.copy}>Checking in starts a 4-hour check-in interval; overdue notices require the server worker. SOS notifies connected group members. It does not call emergency services. Off-route detection is unavailable until a verified trail track is supplied.</Text>

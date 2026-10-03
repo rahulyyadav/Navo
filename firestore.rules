@@ -18,7 +18,7 @@ service cloud.firestore {
       allow read: if signedIn() && request.auth.uid in resource.data.memberIds;
       allow write: if false;
       match /{collection}/{id} {
-        allow read: if member(gid) && collection in ['members', 'messages', 'alerts', 'checkins', 'invitations'];
+        allow read: if member(gid) && (collection in ['members', 'messages', 'alerts', 'checkins'] || (collection in ['invitations', 'joinRequests'] && request.auth.uid == get(/databases/$(database)/documents/groups/$(gid)).data.ownerId));
         allow write: if false;
       }
     }

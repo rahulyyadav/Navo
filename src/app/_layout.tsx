@@ -1,3 +1,6 @@
+import { useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { Stack, type ErrorBoundaryProps } from 'expo-router';
@@ -43,6 +46,17 @@ function Routes() {
   const { authLoaded, isSignedIn, hydrated, needsOnboarding } = useNavo();
   const reduced = useReducedMotion();
   const animation = reduced ? 'none' : 'slide_from_right';
+  useEffect(() => {
+    if (!isSignedIn || !hydrated || needsOnboarding) return;
+    let active = true;
+    void AsyncStorage.getItem('navo:pending-invite').then(value => {
+      if (!active || !value) return;
+      const saved = JSON.parse(value);
+      if (/^[a-zA-Z0-9]{1,80}$/.test(saved.group) && /^[a-zA-Z0-9_-]{43}$/.test(saved.token)) router.push({ pathname: '/join', params: saved });
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [isSignedIn, hydrated, needsOnboarding]);
+
 
   if (!authLoaded || (isSignedIn && !hydrated)) {
     return <BootScreen title="Waking Navo up" detail={isSignedIn ? 'Restoring your treks and groups…' : 'Securing your session…'} />;
@@ -75,9 +89,11 @@ function Routes() {
       <Stack.Screen name="notifications" options={{ title: 'Your updates' }} />
       <Stack.Screen name="copilot" options={{ title: 'AI trek copilot' }} />
       <Stack.Screen name="offline" options={{ title: 'Offline trip packs' }} />
+      <Stack.Screen name="day-hike" options={{ title: "Plan a day hike" }} />
       <Stack.Screen name="plan" options={{ title: 'Trek preparation', headerBackTitle: 'Back' }} />
       <Stack.Screen name="safety" options={{ title: 'Offline essentials', headerBackTitle: 'Back' }} />
     </Stack.Protected>
+    <Stack.Screen name="join" options={{ title: "Join a trek group" }} />
     <Stack.Screen name="privacy" options={{ title: "Privacy & data" }} />
   </Stack>{isSignedIn && !needsOnboarding && <IncomingUpdates />}</>;
 }

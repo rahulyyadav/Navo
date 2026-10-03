@@ -43,6 +43,17 @@ test('push tokens and server jobs are never readable from clients',async()=>{
   await assertFails(getDoc(doc(user('alice'),'users/alice/deviceTokens/phone')));
   await assertFails(getDoc(doc(user('alice'),'pushJobs/job')));
 });
+test('join requests are leader-only and invitation digests are server-only', async () => {
+  await env.withSecurityRulesDisabled(async ctx => {
+    await setDoc(doc(ctx.firestore(), 'groups/invites'), { memberIds: ['alice', 'bob'], ownerId: 'alice' });
+    await setDoc(doc(ctx.firestore(), 'groups/invites/joinRequests/guest'), { status: 'pending' });
+    await setDoc(doc(ctx.firestore(), 'groups/invites/private/joinLink'), { digest: 'test-digest' });
+  });
+  await assertSucceeds(getDoc(doc(user('alice'), 'groups/invites/joinRequests/guest')));
+  await assertFails(getDoc(doc(user('bob'), 'groups/invites/joinRequests/guest')));
+  await assertFails(getDoc(doc(user('guest'), 'groups/invites/joinRequests/guest')));
+  await assertFails(getDoc(doc(user('alice'), 'groups/invites/private/joinLink')));
+});
 test('removal revokes subsequent access',async()=>{
   await env.withSecurityRulesDisabled(ctx=>deleteDoc(doc(ctx.firestore(),'groups/crew')));
   await assertFails(getDoc(doc(user('alice'),'groups/crew/messages/hello')));

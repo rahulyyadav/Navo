@@ -30,7 +30,7 @@ export default function TabsLayout() {
         tabBarActiveTintColor: TAB_ACTIVE,
         tabBarInactiveTintColor: TAB_INACTIVE,
         tabBarLabelStyle: styles.label,
-        tabBarStyle: [styles.bar, { paddingBottom: Math.max(insets.bottom, 10) }],
+        tabBarStyle: [styles.bar, { height: 62 + Math.max(insets.bottom, 10), paddingBottom: Math.max(insets.bottom, 10) }],
       }}
     >
       <Tabs.Screen name="discover" options={{ tabBarIcon: icon('compass'), title: 'Discover' }} />
@@ -46,10 +46,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(8,13,18,0.96)',
     borderTopColor: 'rgba(255,255,255,0.08)',
     borderTopWidth: 1,
-    height: undefined,
     paddingTop: 8,
   },
-  label: { fontSize: 10.5, fontWeight: '700', letterSpacing: 0.4 },
+  label: { fontSize: 12, fontWeight: '700', letterSpacing: 0.4 },
   iconWrap: { alignItems: 'center', gap: 4, height: 30, justifyContent: 'center' },
   dot: { backgroundColor: colors.lime, borderRadius: 2, height: 3, width: 3 },
 });

@@ -1,4 +1,5 @@
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { photoCredits } from '@/data/photo-credits';
+import { Linking, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle as SvgCircle, Defs, LinearGradient as SvgGradient, Path, Stop } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -177,6 +178,12 @@ export default function TrekScreen() {
           </View>
         </Reveal>
 
+        <View style={styles.section}>
+          <SectionTitle title="PHOTO & SOURCE" />
+          <Text style={styles.caveat}>Photo by {photoCredits[trek.id]?.author} · CC BY-SA {photoCredits[trek.id]?.license}. Resized and cropped for display. This is destination photography, not a live conditions report.</Text>
+          <Button label="Photographer & original photo" variant="quiet" onPress={() => { void Linking.openURL(photoCredits[trek.id].source).catch(() => undefined); }} />
+          <Button label="Photo license" variant="quiet" onPress={() => { void Linking.openURL(`https://creativecommons.org/licenses/by-sa/${photoCredits[trek.id].license}/`).catch(() => undefined); }} />
+        </View>
         <Reveal delay={150}>
           <View style={styles.section}>
             <SectionTitle title="BEFORE YOU GO" />
@@ -194,7 +201,7 @@ export default function TrekScreen() {
           <Eyebrow>WALK IT WITH YOUR PEOPLE</Eyebrow>
           <Text style={styles.ctaTitle}>Start a group for {trek.name}</Text>
           <Text style={styles.ctaDetail}>
-            Keep a local team roster and prepare together. Group records and alarms stay on this device.
+            Invite your people, agree on check-ins, and share updates when connected. Group alerts need internet and a configured Navo service.
           </Text>
           <Button label="Create a group" onPress={() => router.push({ pathname: '/group/new', params: { trek: trek.id } })} />
           <Button label="Prepare for this trek" onPress={() => router.push({ pathname: '/plan', params: { trek: trek.id } })} style={styles.ctaSecondary} variant="outline" />
@@ -243,8 +250,8 @@ const styles = StyleSheet.create({
   mapFrame: { borderColor: colors.line, borderRadius: radius.lg, borderWidth: 1, height: 250, overflow: 'hidden' },
   factCard: { gap: 2 },
   fact: { alignItems: 'center', borderBottomColor: colors.lineSoft, borderBottomWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 11 },
-  factLabel: { color: colors.faint, fontSize: 11, fontWeight: '800', letterSpacing: 1.2 },
-  factValue: { color: colors.ink, fontSize: 15, fontWeight: '600', textAlign: 'right' },
+  factLabel: { flex: 1, color: colors.faint, fontSize: 11, fontWeight: '800', letterSpacing: 1.2 },
+  factValue: { flex: 1, color: colors.ink, fontSize: 15, fontWeight: '600', textAlign: 'right' },
   linkText: { color: colors.lime, fontSize: 12, fontWeight: '800', letterSpacing: 0.8 },
   cta: {
     backgroundColor: colors.navy,

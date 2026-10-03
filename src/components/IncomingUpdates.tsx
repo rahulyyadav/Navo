@@ -4,6 +4,8 @@ import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCloud } from '@/context/CloudContext';
+import { useNavo } from '@/context/NavoContext';
+import { startAlarm, releaseAlarm } from '@/services/alerts';
 import { useFirebaseAuth } from '@/context/AuthContext';
 import { Reveal } from './ui';
 import type { CloudNotification } from '@/types/cloud';
@@ -12,6 +14,7 @@ import { colors } from '@/theme/tokens';
 /** Foreground updates work in Expo Go; remote taps require a development build. */
 export function IncomingUpdates() {
   const { user } = useFirebaseAuth();
+  const { answers } = useNavo();
   const { notifications, ready } = useCloud();
   const insets = useSafeAreaInsets();
   const known = useRef<{ uid: string; ids: Set<string> } | null>(null);
@@ -28,6 +31,12 @@ export function IncomingUpdates() {
     const show = setTimeout(() => setIncoming({ uid: user.uid, item }), 0);
     return () => clearTimeout(show);
   }, [notifications, ready, user]);
+
+  useEffect(() => {
+    if (!incoming || incoming.uid !== user?.uid || incoming.item.kind !== 'nearby' || !answers.alertsEnabled) return;
+    void startAlarm().catch(() => undefined);
+    return () => { void releaseAlarm(); };
+  }, [incoming, user?.uid, answers.alertsEnabled]);
 
   useEffect(() => {
     if (!incoming) return;
