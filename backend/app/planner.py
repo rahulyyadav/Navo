@@ -6,6 +6,8 @@ from pydantic import ValidationError
 from .config import settings
 from .schemas import Itinerary, PlanRequest
 
+SYSTEM_PROMPT = (Path(__file__).parent / 'planner-system-prompt.txt').read_text().strip()
+
 ROUTES = json.loads((Path(__file__).parent / 'routes.json').read_text())
 
 def route_by_id(identifier):
@@ -69,7 +71,7 @@ async def generate(request: PlanRequest, call=None):
                 if response.status_code != 200:
                     raise HTTPException(502, 'Nemotron could not generate a plan. Check the server model configuration and retry.')
                 return response.json()['choices'][0]['message']['content']
-    messages = [{'role': 'system', 'content': 'You are Navo, a Nepal trek planning assistant. Return only JSON matching the provided schema. Use only supplied route stops. Do not invent verified distances, permits, weather, accommodation or safety guarantees. Include return travel, rest and acclimatisation. A request may be impossible; never hide a conflict. Do not reveal private chain-of-thought. Explain decisions concisely.'}, {'role': 'user', 'content': json.dumps({'preferences': request.model_dump(), 'route': route, 'schema': Itinerary.model_json_schema()})}]
+    messages = [{'role': 'system', 'content': SYSTEM_PROMPT}, {'role': 'user', 'content': json.dumps({'preferences': request.model_dump(), 'route': route, 'schema': Itinerary.model_json_schema()})}]
     history = []
     final = None
     for attempt in range(3):

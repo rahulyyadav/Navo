@@ -34,9 +34,23 @@ export async function fetchDayWeather(latitude: number, longitude: number, date:
     const result = await response.json(); const d = result.daily;
     const values = [d?.temperature_2m_min?.[0], d?.temperature_2m_max?.[0], d?.precipitation_probability_max?.[0], d?.precipitation_sum?.[0], d?.wind_speed_10m_max?.[0]];
     if (!values.every(v => typeof v === 'number' && Number.isFinite(v)) || typeof d?.sunset?.[0] !== 'string') throw new Error('The forecast is incomplete. Check official warnings before leaving.');
+    if (d?.time?.[0] !== date || result.timezone !== 'Asia/Kathmandu' || !new RegExp('^' + date + 'T([01]\\d|2[0-3]):[0-5]\\d$').test(d.sunset[0]) || values[0] > values[1] || values[2] < 0 || values[2] > 100 || values[3] < 0 || values[4] < 0) throw new Error('The forecast date or values could not be verified. Please retry or check DHM.');
     return { min: values[0], max: values[1], rainChance: values[2], rainMm: values[3], wind: values[4], sunset: d.sunset[0], fetchedAt: new Date().toISOString() };
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') throw new Error('Forecast request timed out. Please retry when connected.');
     throw error;
   } finally { clearTimeout(timer); }
+}
+
+export function validateHikeDetails(name: string, place: string, date: string, time: string, people: string): string | null {
+  if (name.trim().length < 2 || name.trim().length > 60) return 'Use a hike name between 2 and 60 characters.';
+  if (place.trim().length < 2 || place.trim().length > 200) return 'Add a confirmed meeting place between 2 and 200 characters.';
+  if (!validHikeDate(date)) return 'Choose today or a future date in YYYY-MM-DD format.';
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return 'Enter departure time as HH:MM in Nepal time.';
+  if (!/^\d+$/.test(people) || Number(people) < 1 || Number(people) > 50) return 'Choose between 1 and 50 people, including yourself.';
+  return null;
+}
+export function validateWalkHours(hours: string): string | null {
+  return !hours.trim() || !Number.isFinite(Number(hours)) || Number(hours) <= 0 || Number(hours) > 16
+    ? 'Allow more than 0 and up to 16 hours for walking, breaks and return to the trailhead.' : null;
 }
