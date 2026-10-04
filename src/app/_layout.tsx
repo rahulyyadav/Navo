@@ -89,6 +89,9 @@ function Routes() {
       <Stack.Screen name="notifications" options={{ title: 'Your updates' }} />
       <Stack.Screen name="copilot" options={{ title: 'AI trek copilot' }} />
       <Stack.Screen name="offline" options={{ title: 'Offline trip packs' }} />
+      <Stack.Screen name="trips" options={{ title: 'Your trips' }} />
+      <Stack.Screen name="trip/[id]" options={{ title: 'Trip details' }} />
+      <Stack.Screen name="record-hike" options={{ title: 'Record a hike' }} />
       <Stack.Screen name="day-hike" options={{ title: "Plan a day hike" }} />
       <Stack.Screen name="plan" options={{ title: 'Trek preparation', headerBackTitle: 'Back' }} />
       <Stack.Screen name="safety" options={{ title: 'Offline essentials', headerBackTitle: 'Back' }} />

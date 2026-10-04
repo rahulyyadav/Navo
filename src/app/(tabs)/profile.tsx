@@ -251,6 +251,7 @@ export default function ProfileScreen() {
         </Reveal>
 
         <View style={styles.section}>
+          <Button label="Your trips, saved treks & activity" variant="outline" onPress={() => router.push('/trips')} />
           <Button label="Privacy & downloaded data" variant="outline" onPress={() => router.push('/privacy')} />
           <Button busy={signingOut} label={signingOut ? 'Signing out…' : 'Sign out'} onPress={() => void leave()} variant="danger" />
           <Text style={styles.footnote}>
