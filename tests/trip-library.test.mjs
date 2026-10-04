@@ -57,3 +57,27 @@ test('GPS recording rejects jitter, stale fixes, vehicle jumps and paused gaps',
   assert.equal(gap.distanceM,progress.distanceM);
   assert.equal(recording.activeTime(3661),'01:01:01');
 });
+
+test('saved plan search groups Nepal dates without mutating stored order', async () => {
+  const {findTrips} = await load('../src/services/trip-search.ts');
+  const trips = [{id:'b',name:'Shivapuri',meeting:'Budhanilkantha',origin:'Kathmandu',date:'2026-10-05',time:'07:00'}, {id:'a',name:'Phulchowki',meeting:'Godawari',origin:'Patan',date:'2026-10-01',time:'06:00'}];
+  assert.deepEqual(findTrips(trips,'godawari','Past','2026-10-04').map(t=>t.id),['a']);
+  assert.deepEqual(findTrips(trips,'','Upcoming','2026-10-04').map(t=>t.id),['b']);
+  assert.deepEqual(trips.map(t=>t.id),['b','a']);
+});
+test('inbox cache bounds age, validates data and isolates accounts', async () => {
+  const values = new Map();
+  const storage = {getItem:async key=>values.get(key)??null,setItem:async(key,value)=>values.set(key,value),removeItem:async key=>values.delete(key)};
+  const inbox = await load('../src/lib/inbox-cache.ts',{'@react-native-async-storage/async-storage':storage});
+  const item = {id:'notice-1',groupId:'group1',type:'alert',read:false,groupName:'Weekend hike',message:'Meet at the gate'};
+  await inbox.saveInbox('alice',[item]);
+  assert.equal((await inbox.readInbox('alice')).items[0].id,'notice-1');
+  assert.equal(await inbox.readInbox('bob'),null);
+  assert.throws(()=>inbox.decodeInbox(JSON.stringify({version:1,savedAt:'2020-01-01',items:[item]})));
+  assert.throws(()=>inbox.decodeInbox(JSON.stringify({version:1,savedAt:new Date().toISOString(),items:[{...item,read:'no'}]})));
+  values.set('navo:inbox:expired', JSON.stringify({version:1,savedAt:'2020-01-01',items:[item]}));
+  assert.equal(await inbox.readInbox('expired'),null);
+  assert.equal(values.has('navo:inbox:expired'),false);
+  await inbox.clearInbox('alice');
+  assert.equal(await inbox.readInbox('alice'),null);
+});

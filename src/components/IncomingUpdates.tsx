@@ -15,12 +15,12 @@ import { colors } from '@/theme/tokens';
 export function IncomingUpdates() {
   const { user } = useFirebaseAuth();
   const { answers } = useNavo();
-  const { notifications, ready } = useCloud();
+  const { notifications, ready, notificationsLoaded, notificationsCached } = useCloud();
   const insets = useSafeAreaInsets();
   const known = useRef<{ uid: string; ids: Set<string> } | null>(null);
   const [incoming, setIncoming] = useState<{ uid: string; item: CloudNotification } | null>(null);
   useEffect(() => {
-    if (!ready || !user) return;
+    if (!ready || !notificationsLoaded || notificationsCached || !user) return;
     const ids = new Set(notifications.map(item => item.id));
     const previous = known.current;
     known.current = { uid: user.uid, ids };
@@ -30,7 +30,7 @@ export function IncomingUpdates() {
     // Schedule after the snapshot so rendering never mutates listener state.
     const show = setTimeout(() => setIncoming({ uid: user.uid, item }), 0);
     return () => clearTimeout(show);
-  }, [notifications, ready, user]);
+  }, [notifications, ready, notificationsLoaded, notificationsCached, user]);
 
   useEffect(() => {
     if (!incoming || incoming.uid !== user?.uid || incoming.item.kind !== 'nearby' || !answers.alertsEnabled) return;

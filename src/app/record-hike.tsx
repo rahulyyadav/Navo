@@ -1,3 +1,4 @@
+import { usePageLayout } from '@/hooks/usePageLayout';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as Location from 'expo-location';
@@ -15,6 +16,7 @@ export default function RecordHikeScreen() {
 }
 
 function RecordHikeSession() {
+  const layout = usePageLayout();
   const params = useLocalSearchParams<{ name?: string }>();
   const library = useTripLibrary();
   const [name, setName] = useState(typeof params.name === 'string' ? params.name.slice(0, 60) : 'My hike');
@@ -82,7 +84,7 @@ function RecordHikeSession() {
     } catch (error) { if (mounted.current && generation.current === run) setMessage(error instanceof Error ? error.message : 'Could not start recording. Try again.'); }
     finally { pending.current = false; if (mounted.current) setBusy(false); }
   }
-  return <Backdrop><ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
+  return <Backdrop><ScrollView contentContainerStyle={[styles.page, layout.page]} keyboardShouldPersistTaps="handled">
     <Badge label={running ? 'RECORDING · SCREEN OPEN' : 'READY WHEN YOU ARE'} tone="lime" /><Heading title="Every step, your story." subtitle="Record a walk, then keep the distance and active time in your trip library." />
     <Field label="Name this walk" value={name} onChangeText={setName} maxLength={60} editable={!running} />
     <Card style={styles.summary}><SectionTitle title="HIKE SUMMARY" /><Text style={styles.distance}>{(distance / 1000).toFixed(2)}</Text><Text style={styles.unit}>kilometres · GPS estimate</Text><View style={styles.stats}><View><Text style={styles.value}>{activeTime(seconds)}</Text><Text style={styles.copy}>Active time</Text></View><View><Text style={styles.value}>{samples}</Text><Text style={styles.copy}>Accepted fixes</Text></View></View></Card>
