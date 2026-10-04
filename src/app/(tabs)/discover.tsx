@@ -4,29 +4,34 @@ import Animated from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Avatar, Backdrop, Badge, Card, Chip, Eyebrow, Field, Reveal, SectionTitle, relayout } from '@/components/ui';
+import { Avatar, Backdrop, Badge, Button, Card, Chip, Eyebrow, Field, Reveal, SectionTitle, relayout } from '@/components/ui';
 import { TrekCard } from '@/components/TrekCard';
 import { TabIcon } from '@/components/TabIcon';
 import { useNavo } from '@/context/NavoContext';
 import { treks } from '@/data/treks';
 import { goalLabels } from '@/data/onboarding';
+import { useTripLibrary } from '@/hooks/useTripLibrary';
 import { useCloud } from '@/context/CloudContext';
 import { colors, radius, space } from '@/theme/tokens';
 
 const ALL = 'All Nepal';
 
 export default function DiscoverScreen() {
+  const library = useTripLibrary();
   const cloud = useCloud();
   const unread = cloud.notifications.filter(item => !item.read).length;
   const insets = useSafeAreaInsets();
   const { profile, imageUrl, groups, answers } = useNavo();
   const [region, setRegion] = useState(ALL);
+  const [showFilters, setShowFilters] = useState(false);
+  const [difficulty, setDifficulty] = useState('Any pace');
+  const [savedOnly, setSavedOnly] = useState(false);
   const [search, setSearch] = useState('');
 
   const regions = useMemo(() => [ALL, ...Array.from(new Set(treks.map(trek => trek.region)))], []);
   const visible = useMemo(
-    () => treks.filter(trek => (region === ALL || trek.region === region) && `${trek.name} ${trek.region} ${trek.difficulty}`.toLowerCase().includes(search.trim().toLowerCase())),
-    [region, search],
+    () => treks.filter(trek => (region === ALL || trek.region === region) && (difficulty === 'Any pace' || trek.difficulty === difficulty) && (!savedOnly || library.data.savedTrekIds.includes(trek.id)) && `${trek.name} ${trek.region} ${trek.difficulty}`.toLowerCase().includes(search.trim().toLowerCase())),
+    [region, search, difficulty, savedOnly, library.data.savedTrekIds],
   );
 
   const firstName = (profile?.fullName ?? answers.fullName).split(/\s+/).filter(Boolean)[0] ?? 'trekker';
@@ -47,6 +52,7 @@ export default function DiscoverScreen() {
         </Reveal>
 
         <Pressable accessibilityRole="button" onPress={() => router.push('/notifications')} style={styles.inbox}><View style={{ flex: 1 }}><Text style={styles.footerTitle}>{unread ? `${unread} new trail updates` : 'Your trail inbox'}</Text><Text style={styles.footerDetail}>Invitations, check-ins and group alerts</Text></View><Text style={styles.seeAll}>Open →</Text></Pressable>
+
         <Reveal delay={60}>
           <View style={styles.actions}>
             <Pressable accessibilityRole="button" onPress={() => router.push('/(tabs)/map')} style={({ pressed }) => [styles.action, styles.actionLime, pressed && styles.pressed]}>
@@ -85,7 +91,7 @@ export default function DiscoverScreen() {
         )}
 
         <Reveal delay={110}>
-          <SectionTitle title="FIND YOUR NEXT TREK" />
+          <SectionTitle title="FIND YOUR NEXT TREK" action={<Button label={showFilters ? 'Hide filters' : 'Filters'} variant="quiet" onPress={() => setShowFilters(value => !value)} />} />
         </Reveal>
         <ScrollView contentContainerStyle={styles.chips} horizontal showsHorizontalScrollIndicator={false}>
           {regions.map(name => (
@@ -93,8 +99,9 @@ export default function DiscoverScreen() {
           ))}
         </ScrollView>
 
+        {showFilters && <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>{['Any pace', 'Moderate', 'Challenging', 'Strenuous'].map(value => <Chip key={value} label={value} selected={difficulty === value} onPress={() => setDifficulty(value)} />)}<Chip label="Saved only" selected={savedOnly} onPress={() => setSavedOnly(value => !value)} /></ScrollView>}
         <Field label="Find your next trek" placeholder="Try Langtang or moderate" value={search} onChangeText={setSearch} />
-        {visible.length === 0 && <Text style={styles.footerDetail}>No treks match. Try another region or search.</Text>}
+        {visible.length === 0 && <Card><Text style={styles.footerDetail}>{savedOnly ? 'No saved treks match these filters. Save a trek from its detail page.' : 'No treks match these filters.'}</Text><Button label="Reset filters" variant="quiet" onPress={() => { setRegion(ALL); setDifficulty('Any pace'); setSearch(''); setSavedOnly(false); }} /></Card>}
         <Animated.View layout={relayout} style={styles.list}>
           {visible.map(trek => (
             <Animated.View key={trek.id} layout={relayout}>
@@ -113,6 +120,7 @@ export default function DiscoverScreen() {
           </Card>
         )}
 
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}><Button label="Your trips" variant="outline" style={{ flex: 1 }} onPress={() => router.push('/trips')} /><Button label="Record a hike" variant="quiet" style={{ flex: 1 }} onPress={() => router.push('/record-hike')} /></View>
         <View style={styles.footerRow}>
           <Pressable accessibilityRole="button" onPress={() => router.push('/copilot')} style={({ pressed }) => [styles.footerCard, pressed && styles.pressed]}>
             <Text style={styles.footerTitle}>AI trek copilot</Text>

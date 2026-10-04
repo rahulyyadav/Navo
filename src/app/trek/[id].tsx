@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { useTripLibrary } from '@/hooks/useTripLibrary';
 import { photoCredits } from '@/data/photo-credits';
 import { Linking, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle as SvgCircle, Defs, LinearGradient as SvgGradient, Path, Stop } from 'react-native-svg';
@@ -5,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { Backdrop, Badge, Button, Card, Eyebrow, Reveal, Row, SectionTitle, Stat, useReducedMotion } from '@/components/ui';
+import { Backdrop, Badge, Button, Card, Eyebrow, Reveal, Row, Notice, SectionTitle, Stat, useReducedMotion } from '@/components/ui';
 import { NepalMap } from '@/components/NepalMap';
 import { TabIcon } from '@/components/TabIcon';
 import { colorForTrek } from '@/data/map-style';
@@ -36,6 +38,7 @@ function elevationProfile(route: TrekPoint[]) {
 }
 
 export default function TrekScreen() {
+  const library = useTripLibrary(); const [saveError, setSaveError] = useState(''); const [saving, setSaving] = useState(false);
   const params = useLocalSearchParams<{ id: string }>();
   const reduced = useReducedMotion();
   const trek = trekById(Array.isArray(params.id) ? params.id[0] : params.id);
@@ -63,7 +66,7 @@ export default function TrekScreen() {
     <Backdrop>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
-          <Image accessibilityLabel={`${trek.name} in the ${trek.region} region`} resizeMode="cover" source={trek.image} style={StyleSheet.absoluteFill} />
+          <Image accessibilityLabel={`${trek.name} in the ${trek.region} region`} resizeMode="cover" source={trek.image} style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]} />
           <LinearGradient colors={['rgba(8,13,18,0.10)', 'rgba(8,13,18,0.62)', colors.night]} style={StyleSheet.absoluteFill} />
           <View style={styles.heroCopy}>
             <Text style={styles.heroRegion}>{trek.region.toUpperCase()}</Text>
@@ -87,6 +90,7 @@ export default function TrekScreen() {
           </Card>
         </Reveal>
 
+        <View style={styles.section}><Notice message={saveError || library.error} /><Button label={library.data.savedTrekIds.includes(trek.id) ? 'Saved · remove from shortlist' : 'Save trek to shortlist'} variant="outline" busy={saving} disabled={!library.loaded || saving} onPress={() => { setSaving(true); setSaveError(''); void library.update(data => ({ ...data, savedTrekIds: data.savedTrekIds.includes(trek.id) ? data.savedTrekIds.filter(id => id !== trek.id) : [...data.savedTrekIds, trek.id] })).catch(() => setSaveError('Could not update saved treks. Please retry.')).finally(() => setSaving(false)); }} /><Button label="View my saved treks" variant="quiet" onPress={() => router.push({ pathname: '/trips', params: { section: 'saved' } })} /></View>
         <Reveal delay={70}>
           <Text style={styles.summary}>{trek.summary}</Text>
           <Text style={styles.caveat}>Planning overview only. Waypoints and durations are approximate, not a verified trail or an acclimatisation schedule.</Text>
@@ -184,6 +188,7 @@ export default function TrekScreen() {
           <Button label="Photographer & original photo" variant="quiet" onPress={() => { void Linking.openURL(photoCredits[trek.id].source).catch(() => undefined); }} />
           <Button label="Photo license" variant="quiet" onPress={() => { void Linking.openURL(`https://creativecommons.org/licenses/by-sa/${photoCredits[trek.id].license}/`).catch(() => undefined); }} />
         </View>
+
         <Reveal delay={150}>
           <View style={styles.section}>
             <SectionTitle title="BEFORE YOU GO" />
@@ -222,7 +227,7 @@ function Fact({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   scroll: { flexGrow: 1, paddingBottom: 44 },
-  hero: { height: 292, justifyContent: 'flex-end', overflow: 'hidden' },
+  hero: { height: 360, justifyContent: 'flex-end', overflow: 'hidden' },
   heroCopy: { gap: 8, paddingHorizontal: 20, paddingBottom: 20 },
   heroRegion: { color: colors.lime, fontSize: 11, fontWeight: '800', letterSpacing: 2 },
   heroName: { color: colors.ink, fontSize: 34, fontWeight: '800', letterSpacing: -1.2, lineHeight: 38 },

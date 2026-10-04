@@ -57,7 +57,7 @@ export function TrekCard({ trek, onPress, compact = false }: { trek: Trek; onPre
 const styles = StyleSheet.create({
   card: {
     borderRadius: radius.lg,
-    height: 208,
+    height: 280,
     justifyContent: 'space-between',
     overflow: 'hidden',
     backgroundColor: colors.navy,
@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
   difficultyText: { color: colors.white, fontSize: 10, fontWeight: '800', letterSpacing: 0.8 },
   bottom: { padding: 16 },
   name: { color: colors.white, fontSize: 23, fontWeight: '800', letterSpacing: -0.6, lineHeight: 28 },
-  stats: { alignItems: 'center', flexDirection: 'row', gap: 8, marginTop: 8 },
+  stats: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   stat: { color: 'rgba(255,255,255,0.72)', fontSize: 12.5, fontWeight: '600' },
   statDot: { backgroundColor: 'rgba(255,255,255,0.34)', borderRadius: 2, height: 3, width: 3 },
 });

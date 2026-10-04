@@ -70,10 +70,7 @@ export default function MapScreen() {
   }
 
   return (
-    <View style={styles.root}>
-      <View style={{ position: 'absolute', left: 0, right: 0, top: insets.top + (params.group ? 175 : 145), bottom: selected ? 305 : 44 }}><NepalMap positions={positions} key="nepal-map" myCoords={coords} onSelectTrek={selectTrek} region={region} regionNonce={nonce} selectedId={selectedId} /></View>
-      <Text style={{ position: 'absolute', bottom: selected ? 290 : 12, left: 16, color: colors.muted, fontSize: 11 }}>Online tiles · approximate waypoints, not a navigation track</Text>
-
+    <ScrollView style={{ flex: 1, backgroundColor: colors.nightDeep }} contentContainerStyle={styles.root}>
       <View pointerEvents="box-none" style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
         <Reveal>
           <View style={styles.titleRow}>
@@ -110,17 +107,23 @@ export default function MapScreen() {
         )}
       </View>
 
+      <View style={{ flex: 1, minHeight: 140 }}>
+        <NepalMap positions={positions} myCoords={coords} onSelectTrek={selectTrek} region={region} regionNonce={nonce} selectedId={selectedId} />
       <Pressable
         accessibilityLabel="Find my location"
         accessibilityRole="button"
         disabled={state === 'locating'}
         onPress={() => void focusMe()}
-        style={({ pressed }) => [styles.locateButton, { bottom: insets.bottom + (selected ? 315 : 60) }, pressed && styles.pressed]}
+        style={({ pressed }) => [styles.locateButton, { bottom: 24 }, pressed && styles.pressed]}
       >
         <TabIcon color={state === 'locating' ? colors.faint : colors.onAccent} name="pin" size={22} />
       </Pressable>
 
+      </View>
+      <Text style={{ color: colors.muted, fontSize: 11, paddingHorizontal: 16, paddingVertical: 8 }}>Online tiles · approximate waypoints, not a navigation track</Text>
+
       {selected && stats ? (
+        <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
         <Animated.View entering={reduced ? undefined : FadeInUp.duration(320)} pointerEvents="box-none" style={[styles.sheet, { paddingBottom: 16 }]}>
           <Pressable accessibilityRole="button" accessibilityLabel="Close trek details" onPress={() => setSelectedId(null)} style={{ alignSelf: 'flex-end', minHeight: 32, minWidth: 44 }}><Text style={{ color: colors.lime }}>Close ×</Text></Pressable>
           <View style={styles.sheetHeader}>
@@ -158,14 +161,15 @@ export default function MapScreen() {
             <Button label="Prepare" onPress={() => router.push({ pathname: '/plan', params: { trek: selected.id } })} style={styles.sheetButton} variant="outline" />
           </View>
         </Animated.View>
+        </View>
       ) : null}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: colors.nightDeep, flex: 1 },
-  topBar: { left: 0, position: 'absolute', right: 0, top: 0 },
+  root: { backgroundColor: colors.nightDeep, flexGrow: 1, minHeight: 660 },
+  topBar: { flexShrink: 0 },
   titleRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 12, paddingHorizontal: 20 },
   titleCopy: { flex: 1 },
   titleKicker: { color: colors.lime, fontSize: 10, fontWeight: '800', letterSpacing: 1.8 },
@@ -187,11 +191,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     borderRadius: radius.xl,
     borderWidth: 1,
-    left: 16,
-    bottom: 8,
     padding: 14,
-    position: 'absolute',
-    right: 16,
   },
   sheetHeader: { flexDirection: 'row' },
   sheetCopy: { flex: 1 },
