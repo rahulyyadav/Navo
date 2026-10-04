@@ -57,3 +57,13 @@ Before expanding navigation, integrate licensed validated GPX/route geometry and
 Add background recording only as a separate tested feature with clear consent, visible controls and platform lifecycle/battery validation. Preserve the current foreground recorder's stop and gap semantics. Test privacy deletion, storage failures and account switching.
 
 Deliver a concise evidence-based report of what passed and what remains blocked. Run lint, typecheck, tests, export and CI. Commit only source and intended assets; exclude credentials and local QA fixtures. Merge to main only after checks pass and within the owner's authorization.
+
+## Follow-up: My Treks and inbox storage
+
+- My Treks adds search by name/meeting place/origin and upcoming/past/all filters using Nepal's date. Empty search results provide a one-tap reset.
+- Notifications now distinguish a live server snapshot from an initial/cached snapshot, display unread counts and timestamps, and filter unread updates or invitations.
+- A validated, account-specific local cache retains the latest 50 inbox items. Items older than seven days are discarded on opening the inbox. Privacy clearing removes this cache too. Personal trip plans remain device-local; this does not add multi-device plan backup.
+- Cached notifications are visibly stale and cannot submit invitation or alert actions until a live snapshot returns. Initial snapshots no longer trigger a new-update banner.
+- Shared page spacing accounts for narrow phones, font scale, wide screens and bottom safe areas on My Treks, notifications, trip details and recording.
+- Validation: 29 client tests; lint/typecheck; all-platform export. Isolated UI fixture checks at 320×568 and 430×932 confirmed wrapping, search reset, unread filtering and cache persistence after a simulated disconnect/reload. Sample notifications were fixture-only; no invitation was sent or accepted.
+- Physical-device large-text, VoiceOver/TalkBack, remote push and live multi-user journeys remain release checks.

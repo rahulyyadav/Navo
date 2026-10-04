@@ -1,3 +1,4 @@
+import { usePageLayout } from '@/hooks/usePageLayout';
 import { useRef, useState } from 'react';
 import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -15,6 +16,7 @@ export default function TripScreen() {
   return <TripDetails key={trip.id} trip={trip} library={library} />;
 }
 function TripDetails({ trip, library }: { trip: PersonalTrip; library: ReturnType<typeof useTripLibrary> }) {
+  const layout = usePageLayout();
   const [returnNotes, setReturnNotes] = useState(trip.returnNotes); const [stayNotes, setStayNotes] = useState(trip.stayNotes);
   const [budget, setBudget] = useState(String(trip.budgetPaisa / 100)); const [expense, setExpense] = useState(''); const [amount, setAmount] = useState('');
   const [message, setMessage] = useState(''); const [busy, setBusy] = useState(false); const [remove, setRemove] = useState(false);
@@ -30,7 +32,7 @@ function TripDetails({ trip, library }: { trip: PersonalTrip; library: ReturnTyp
     finally { locked.current = false; setBusy(false); }
   }
   async function directions(mode: 'driving' | 'transit') { try { await Linking.openURL(directionsURL(trip.meeting, trip.origin, mode)); } catch { setMessage('Could not open maps. Try your map app using the meeting place above.'); } }
-  return <Backdrop><ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
+  return <Backdrop><ScrollView contentContainerStyle={[styles.page, layout.page]} keyboardShouldPersistTaps="handled">
     <Badge label="YOUR TRIP · SAVED ON THIS DEVICE" tone="lime" /><Heading title={trip.name} subtitle={trip.date + ' · depart ' + trip.time + ' NPT'} />
     <Card><SectionTitle title="THE DAY AT A GLANCE" /><Text style={styles.title}>{trip.origin || 'Starting place not set'} → {trip.meeting}</Text><Text style={styles.copy}>{trip.people} people planned · {trip.walkingHours} walking hours</Text><Text style={styles.copy}>{trip.approachMinutes === null ? 'Approach time not added' : trip.approachMinutes + ' min planned approach'}{finish ? '\nBack at trailhead ≈ ' + finish + ' NPT' : ''}</Text><Text style={styles.copy}>This is your personal plan. Group membership and a booking are not created by saving it.</Text></Card>
     <Card><SectionTitle title="GET THERE & COME HOME" /><Text style={styles.copy}>Open Google Maps with this plan’s start and meeting place. Confirm the last bus or a return pickup locally.</Text><Button label="Road / cab directions" variant="outline" onPress={() => void directions('driving')} /><Button label="Transit options" variant="quiet" onPress={() => void directions('transit')} /><Field label="Return transport and turnaround plan" value={returnNotes} onChangeText={setReturnNotes} multiline maxLength={1000} placeholder="Pickup point, latest turnaround time, last bus…" /></Card>
