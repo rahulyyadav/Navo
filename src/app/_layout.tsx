@@ -64,6 +64,7 @@ function Routes() {
 
   return <><Stack screenOptions={{
     headerShadowVisible: false,
+    headerBackTitle: 'Back',
     headerStyle: { backgroundColor: colors.night },
     headerTintColor: colors.ink,
     headerTitleStyle: { fontWeight: '700' },

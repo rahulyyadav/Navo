@@ -8,6 +8,9 @@ import { Avatar, Backdrop, Badge, Button, Card, Chip, Eyebrow, Field, Reveal, Se
 import { TrekCard } from '@/components/TrekCard';
 import { TabIcon } from '@/components/TabIcon';
 import { useNavo } from '@/context/NavoContext';
+import { recommendPlaces, type SearchPlace } from '@/services/discovery-search';
+import { dayHikes } from '@/services/day-hike';
+import { usePageLayout } from '@/hooks/usePageLayout';
 import { treks } from '@/data/treks';
 import { goalLabels } from '@/data/onboarding';
 import { useTripLibrary } from '@/hooks/useTripLibrary';
@@ -15,8 +18,13 @@ import { useCloud } from '@/context/CloudContext';
 import { colors, radius, space } from '@/theme/tokens';
 
 const ALL = 'All Nepal';
+const places: SearchPlace[] = [
+  ...dayHikes.filter(hike => hike.id !== 'custom').map(hike => ({ id: hike.id, name: hike.name, region: 'Kathmandu Valley', kind: 'day' as const, detail: hike.trailhead, aliases: ['day hike', 'day trip', ...(hike.id === 'phulchowki' ? ['pulchowki', 'phulchoki', 'lalitpur'] : ['budhanilkantha'])] })),
+  ...treks.map(trek => ({ id: trek.id, name: trek.name, region: trek.region, kind: 'trek' as const, detail: trek.difficulty, aliases: [trek.id === 'everest-base-camp' ? 'ebc' : trek.id === 'annapurna-base-camp' ? 'abc' : '', trek.days] })),
+];
 
 export default function DiscoverScreen() {
+  const layout = usePageLayout();
   const library = useTripLibrary();
   const cloud = useCloud();
   const unread = cloud.notifications.filter(item => !item.read).length;
@@ -28,6 +36,7 @@ export default function DiscoverScreen() {
   const [savedOnly, setSavedOnly] = useState(false);
   const [search, setSearch] = useState('');
 
+  const suggestions = useMemo(() => recommendPlaces(places, search), [search]);
   const regions = useMemo(() => [ALL, ...Array.from(new Set(treks.map(trek => trek.region)))], []);
   const visible = useMemo(
     () => treks.filter(trek => (region === ALL || trek.region === region) && (difficulty === 'Any pace' || trek.difficulty === difficulty) && (!savedOnly || library.data.savedTrekIds.includes(trek.id)) && `${trek.name} ${trek.region} ${trek.difficulty}`.toLowerCase().includes(search.trim().toLowerCase())),
@@ -39,7 +48,7 @@ export default function DiscoverScreen() {
 
   return (
     <Backdrop>
-      <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 12 }]} showsVerticalScrollIndicator={false}>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.scroll, layout.page, { paddingTop: insets.top + 12 }]} showsVerticalScrollIndicator={false}>
         <Reveal>
           <View style={styles.header}>
             <View style={styles.headerCopy}>
@@ -54,7 +63,7 @@ export default function DiscoverScreen() {
         <Pressable accessibilityRole="button" onPress={() => router.push('/notifications')} style={styles.inbox}><View style={{ flex: 1 }}><Text style={styles.footerTitle}>{unread ? `${unread} new trail updates` : 'Your trail inbox'}</Text><Text style={styles.footerDetail}>Invitations, check-ins and group alerts</Text></View><Text style={styles.seeAll}>Open →</Text></Pressable>
 
         <Reveal delay={60}>
-          <View style={styles.actions}>
+          <View style={[styles.actions, layout.compact && { flexDirection: 'column' }]}>
             <Pressable accessibilityRole="button" onPress={() => router.push('/(tabs)/map')} style={({ pressed }) => [styles.action, styles.actionLime, pressed && styles.pressed]}>
               <TabIcon color={colors.onAccent} name="compass" size={22} />
               <Text style={styles.actionTitle}>Trail map</Text>
@@ -100,8 +109,10 @@ export default function DiscoverScreen() {
         </ScrollView>
 
         {showFilters && <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>{['Any pace', 'Moderate', 'Challenging', 'Strenuous'].map(value => <Chip key={value} label={value} selected={difficulty === value} onPress={() => setDifficulty(value)} />)}<Chip label="Saved only" selected={savedOnly} onPress={() => setSavedOnly(value => !value)} /></ScrollView>}
-        <Field label="Find your next trek" placeholder="Try Langtang or moderate" value={search} onChangeText={setSearch} />
-        {visible.length === 0 && <Card><Text style={styles.footerDetail}>{savedOnly ? 'No saved treks match these filters. Save a trek from its detail page.' : 'No treks match these filters.'}</Text><Button label="Reset filters" variant="quiet" onPress={() => { setRegion(ALL); setDifficulty('Any pace'); setSearch(''); setSavedOnly(false); }} /></Card>}
+        <Field label="Find your next trek" placeholder="Kathmandu, Pulchowki, Langtang…" value={search} onChangeText={setSearch} />
+        <Card style={{ marginBottom: 16 }}><SectionTitle title={search.trim() ? 'MATCHING PLACES' : 'DAY HIKES NEAR KATHMANDU'} /><Text style={styles.footerDetail}>Suggestions from Navo’s planning catalogue · confirm the route before you go.</Text>{suggestions.map(place => <Pressable key={place.id} accessibilityRole="button" accessibilityLabel={'Explore ' + place.name} style={styles.suggestion} onPress={() => place.kind === 'day' ? router.push({ pathname: '/day-hike', params: { hike: place.id } }) : router.push({ pathname: '/trek/[id]', params: { id: place.id } })}><View style={{ flex: 1 }}><Text style={styles.suggestionTitle}>{place.name}</Text><Text style={styles.footerDetail}>{place.region} · {place.kind === 'day' ? 'Day hike' : place.detail}</Text></View><Text style={styles.seeAll}>→</Text></Pressable>)}{!suggestions.length && <><Text style={styles.footerDetail}>This place is not in our catalogue yet. You can still plan a hike with your own confirmed meeting point.</Text><Button label="Plan another hike" variant="quiet" onPress={() => router.push({ pathname: '/day-hike', params: { hike: 'custom', name: search.slice(0,60) } })} /></>}</Card>
+
+        {visible.length === 0 && <Card><Text style={styles.footerDetail}>{savedOnly ? 'No saved treks match these filters. Save a trek from its detail page.' : 'No multi-day treks match these filters. Day-hike suggestions appear above.'}</Text><Button label="Reset filters" variant="quiet" onPress={() => { setRegion(ALL); setDifficulty('Any pace'); setSearch(''); setSavedOnly(false); }} /></Card>}
         <Animated.View layout={relayout} style={styles.list}>
           {visible.map(trek => (
             <Animated.View key={trek.id} layout={relayout}>
@@ -137,6 +148,8 @@ export default function DiscoverScreen() {
 }
 
 const styles = StyleSheet.create({
+  suggestion: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, paddingVertical: 12, borderBottomWidth: 1, borderColor: colors.line },
+  suggestionTitle: { color: colors.ink, fontSize: 18, fontWeight: '600' },
   scroll: { flexGrow: 1, paddingBottom: 36, paddingHorizontal: 20 },
   header: { alignItems: 'center', flexDirection: 'row', gap: 14 },
   headerCopy: { flex: 1 },

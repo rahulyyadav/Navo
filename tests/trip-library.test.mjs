@@ -81,3 +81,12 @@ test('inbox cache bounds age, validates data and isolates accounts', async () =>
   await inbox.clearInbox('alice');
   assert.equal(await inbox.readInbox('alice'),null);
 });
+test('discovery suggestions support aliases, multiword intent and no invented matches', async () => {
+  const {recommendPlaces} = await load('../src/services/discovery-search.ts');
+  const places = [{id:'phulchowki',name:'Phulchowki',region:'Kathmandu Valley',kind:'day',detail:'Godawari',aliases:['pulchowki','day hike']},{id:'everest',name:'Everest Base Camp',region:'Khumbu',kind:'trek',detail:'Strenuous',aliases:['ebc']}];
+  assert.equal(recommendPlaces(places,'Pulchowki')[0].id,'phulchowki');
+  assert.equal(recommendPlaces(places,'Kathmandu day hike')[0].id,'phulchowki');
+  assert.equal(recommendPlaces(places,'EBC')[0].id,'everest');
+  assert.deepEqual(recommendPlaces(places,'unknown place'),[]);
+  assert.deepEqual(recommendPlaces(places,'').map(p=>p.id),['phulchowki']);
+});
