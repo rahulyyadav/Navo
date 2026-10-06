@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
 import { useFirebaseAuth } from '@/context/AuthContext';
 import type { OnboardingAnswers, Profile, TrekGroup } from '@/types/navo';
 import {
@@ -9,6 +9,7 @@ import {
   saveOnboarding,
   saveProfile,
 } from '@/services/profile';
+import { unregisterPush } from '@/services/push';
 import { useCloud } from '@/context/CloudContext';
 import { friendlyAuthError } from '@/services/auth-errors';
 
@@ -78,6 +79,18 @@ export function NavoProvider({ children }: PropsWithChildren) {
     return () => { active = false; };
   }, [isLoaded, isSignedIn, userId]);
 
+  const syncingProfile = useRef('');
+  useEffect(() => {
+    if (!cloud.ready || !cloud.remoteProfile || cloud.remoteProfile.onboarding || !data?.answers.completed) return;
+    const syncKey = `${userId}/${data.answers.completedAt ?? 'local'}`;
+    if (syncingProfile.current === syncKey) return;
+    syncingProfile.current = syncKey;
+    void cloud.api('/profile', data.answers, 'PUT').catch(() => {
+      syncingProfile.current = '';
+      setError('Your preparation is saved on this device. Reconnect to sync your profile.');
+    });
+  }, [cloud, data?.answers, userId]);
+
   const persist = useCallback(async (next: OnboardingAnswers) => {
     if (!userId || !user) return;
     const built = buildProfile({
@@ -108,13 +121,14 @@ export function NavoProvider({ children }: PropsWithChildren) {
   const handleSignOut = useCallback(async () => {
     setSigningOut(true);
     try {
+      if (cloud.ready) await unregisterPush(cloud.api).catch(() => undefined);
       await signOut();
       setSession(null);
       setError('');
     } finally {
       setSigningOut(false);
     }
-  }, [signOut]);
+  }, [signOut, cloud]);
 
   const value = useMemo<NavoState>(() => {
     const answers = cloud.remoteProfile?.onboarding ?? data?.answers ?? emptyOnboarding;

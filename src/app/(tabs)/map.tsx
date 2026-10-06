@@ -5,6 +5,9 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import type { NepalMapProps } from '@/components/maps/document';
+import { useGroupFeed } from '@/hooks/useGroupFeed';
+import type { CloudMember } from '@/types/cloud';
 import { NepalMap } from '@/components/NepalMap';
 import { TabIcon } from '@/components/TabIcon';
 import { Badge, Button, Reveal, useReducedMotion } from '@/components/ui';
@@ -16,12 +19,17 @@ import { colors, radius, shadow, space } from '@/theme/tokens';
 const difficultyTone = { Moderate: 'lime', Challenging: 'warning', Strenuous: 'danger' } as const;
 
 export default function MapScreen() {
-  const params = useLocalSearchParams<{ trek?: string }>();
+  const params = useLocalSearchParams<{ trek?: string; group?: string; latitude?: string; longitude?: string }>();
+  const members = useGroupFeed<CloudMember>(params.group ?? '', 'members');
+  const positions: NonNullable<NepalMapProps['positions']> = members.items.filter(item => item.lastLocation && item.locationSharingEnabled).map(item => ({ id: item.id, name: item.name, latitude: item.lastLocation!.latitude, longitude: item.lastLocation!.longitude, recordedAt: item.lastLocation!.capturedAt }));
+  const alertLat = Number(params.latitude); const alertLng = Number(params.longitude);
+  const hasAlertPosition = Boolean(params.latitude && params.longitude && Number.isFinite(alertLat) && Number.isFinite(alertLng) && Math.abs(alertLat) <= 90 && Math.abs(alertLng) <= 180);
+  if (hasAlertPosition) positions.push({ id: 'alert', name: 'Alert position', latitude: alertLat, longitude: alertLng, recordedAt: 'at alert creation', alert: true });
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
   const { coords, state, locate } = useMyLocation();
   const [selectedId, setSelectedId] = useState<string | null>(typeof params.trek === 'string' && trekById(params.trek) ? params.trek : null);
-  const [region, setRegion] = useState<MapRegion>(() => { const trek = typeof params.trek === 'string' ? trekById(params.trek) : null; return trek ? regionForTrek(trek) : NEPAL_REGION; });
+  const [region, setRegion] = useState<MapRegion>(() => { if (hasAlertPosition) return { latitude: alertLat, longitude: alertLng, latitudeDelta: 0.03, longitudeDelta: 0.03 }; const trek = typeof params.trek === 'string' ? trekById(params.trek) : null; return trek ? regionForTrek(trek) : NEPAL_REGION; });
   const [nonce, setNonce] = useState(0);
 
   const [appliedTrek, setAppliedTrek] = useState(params.trek);
@@ -29,6 +37,17 @@ export default function MapScreen() {
     setAppliedTrek(params.trek);
     const next = typeof params.trek === 'string' ? trekById(params.trek) : null;
     if (next) { setSelectedId(next.id); setRegion(regionForTrek(next)); setNonce(value => value + 1); }
+  }
+
+  const alertKey = hasAlertPosition ? `${alertLat}/${alertLng}` : '';
+  const [appliedAlert, setAppliedAlert] = useState(alertKey);
+  if (alertKey !== appliedAlert) {
+    setAppliedAlert(alertKey);
+    if (hasAlertPosition) {
+      setSelectedId(null);
+      setRegion({ latitude: alertLat, longitude: alertLng, latitudeDelta: 0.03, longitudeDelta: 0.03 });
+      setNonce(value => value + 1);
+    }
   }
 
   const selected = useMemo(() => (selectedId ? trekById(selectedId) : null), [selectedId]);
@@ -53,7 +72,7 @@ export default function MapScreen() {
 
   return (
     <View style={styles.root}>
-      <View style={{ position: 'absolute', left: 0, right: 0, top: insets.top + 145, bottom: Math.max(insets.bottom, 12) + 72 + (selected ? 305 : 44) }}><NepalMap key="nepal-map" myCoords={coords} onSelectTrek={selectTrek} region={region} regionNonce={nonce} selectedId={selectedId} /></View>
+      <View style={{ position: 'absolute', left: 0, right: 0, top: insets.top + 145, bottom: Math.max(insets.bottom, 12) + 72 + (selected ? 305 : 44) }}><NepalMap positions={positions} key="nepal-map" myCoords={coords} onSelectTrek={selectTrek} region={region} regionNonce={nonce} selectedId={selectedId} /></View>
       <Text style={{ position: 'absolute', bottom: Math.max(insets.bottom, 12) + 72 + (selected ? 290 : 12), left: 16, color: colors.muted, fontSize: 11 }}>Online tiles · approximate waypoints, not a navigation track</Text>
 
       <View pointerEvents="box-none" style={[styles.topBar, { paddingTop: insets.top + 10 }]}>

@@ -26,13 +26,14 @@ export default function AlertScreen() {
   const lock = useRef(false); const eventRequest = useRef(requestId());
   const preview = gid === 'demo';
   const canResolve = event && (event.senderId === userId || group?.ownerId === userId);
-  const alarmEventId = event?.id;
-  const alarmResolvedAt = event?.resolvedAt;
+  const eventId = event?.id;
+  const resolvedAt = event?.resolvedAt;
   useEffect(() => {
-    if (!alarmEventId || alarmResolvedAt || !answers.alertsEnabled) return;
-    void startAlarm().catch(() => setError('Sound could not play. Check your media volume.'));
-    return () => { void releaseAlarm(); };
-  }, [alarmEventId, alarmResolvedAt, answers.alertsEnabled]);
+    if (!eventId || resolvedAt || !answers.alertsEnabled) return;
+    let active = true;
+    void startAlarm().then(() => { if (active) setSound(true); }).catch(() => setError('Sound could not play. Check your media volume.'));
+    return () => { active = false; void releaseAlarm(); };
+  }, [eventId, resolvedAt, answers.alertsEnabled]);
   useEffect(() => () => { void releaseAlarm(); }, []);
   async function sendSOS() {
     if (lock.current || !group) return; lock.current = true; setBusy(true); setError('');
@@ -45,7 +46,7 @@ export default function AlertScreen() {
   }
   async function act(action: string) {
     if (!event || lock.current) return; lock.current = true; setBusy(true);
-    try { await cloud.api(`/groups/${gid}/alerts/${event.id}`, { action }); if (action === 'resolve') await releaseAlarm(); }
+    try { await cloud.api(`/groups/${gid}/alerts/${event.id}`, { action }); if (action === 'resolve') { await releaseAlarm(); setSound(false); } }
     catch (failure) { setError(actionError(failure)); }
     finally { lock.current = false; setBusy(false); }
   }
@@ -55,7 +56,7 @@ export default function AlertScreen() {
     <Badge label={preview ? 'ON-DEVICE SOUND PREVIEW' : event ? (event.resolvedAt ? 'RESOLVED' : `${event.kind.toUpperCase()} · GROUP ALERT`) : 'SOS CONFIRMATION'} tone="danger" />
     <Heading title={preview ? 'Test your phone’s alarm.' : event ? event.message : 'Need your crew’s help?'} subtitle={preview ? 'This preview is not sent to anyone.' : group?.name ?? 'Connect to your group to send or read an alert.'} />
     <Notice message={error || feed.error} />
-    {event ? <Card><Text style={{ color: colors.ink, fontSize: 17 }}>{event.senderName}</Text><Text style={{ color: colors.muted, marginVertical: 12 }}>{event.createdAt ? new Date(event.createdAt).toLocaleString() : 'Syncing time'} · {event.acknowledgedBy.length} acknowledged</Text>{event.latitude !== null && event.longitude !== null && <Button label="View alert position" variant="outline" onPress={() => router.push({ pathname: '/(tabs)/map', params: { group: gid, latitude: String(event.latitude), longitude: String(event.longitude) } })} />}{!event.resolvedAt && <><Button label={event.acknowledgedBy.includes(userId) ? 'Acknowledged' : 'Acknowledge alert'} disabled={busy || event.acknowledgedBy.includes(userId)} onPress={() => void act('acknowledge')} />{canResolve && <Button label="Resolve alert" variant="outline" disabled={busy} onPress={() => void act('resolve')} />}</>}</Card> : !preview && !params.alertId && group && <>
+    {event ? <Card><Text style={{ color: colors.ink, fontSize: 17 }}>{event.senderName}</Text><Text style={{ color: colors.muted, marginVertical: 12 }}>{event.createdAt ? new Date(event.createdAt).toLocaleString() : 'Syncing time'} · {event.acknowledgedBy.length} acknowledged{typeof event.recipientCount === 'number' ? ` · queued for ${event.recipientCount} members` : ''}</Text>{event.latitude !== null && event.longitude !== null && <Button label="View alert position" variant="outline" onPress={() => router.push({ pathname: '/(tabs)/map', params: { group: gid, latitude: String(event.latitude), longitude: String(event.longitude) } })} />}{!event.resolvedAt && <><Button label={event.acknowledgedBy.includes(userId) ? 'Acknowledged' : 'Acknowledge alert'} disabled={busy || event.acknowledgedBy.includes(userId)} onPress={() => void act('acknowledge')} />{canResolve && <Button label="Resolve alert" variant="outline" disabled={busy} onPress={() => void act('resolve')} />}</>}</Card> : !preview && !params.alertId && group && <>
       <Button label={coords ? 'Refresh attached position' : 'Attach my position (optional)'} variant="outline" busy={locationState === 'locating'} onPress={() => void locate()} />
       {coords && <Text style={{ color: colors.muted }}>{coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)} · ±{Math.round(coords.accuracy ?? 0)} m</Text>}
       <Pressable accessibilityRole="button" accessibilityLabel="Prepare SOS confirmation" disabled={busy} onPress={() => setConfirm(true)} onLongPress={() => void sendSOS()} delayLongPress={2000} style={{ padding: 28, borderRadius: 28, backgroundColor: colors.dangerDeep }}><Text style={{ color: colors.onAccent, fontSize: 24, fontWeight: '800', textAlign: 'center' }}>{busy ? 'Sending…' : 'Hold 2 seconds for SOS'}</Text></Pressable>

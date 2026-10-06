@@ -3,6 +3,8 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View
 import { Text } from '@/components/Typography';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Avatar, Backdrop, Badge, Button, Card, Chip, Field, Heading, Notice, Reveal, SectionTitle } from '@/components/ui';
+import { TrekLocationSession } from '@/components/TrekLocationSession';
+import { GroupInviteTools } from '@/components/GroupInviteTools';
 import { CloudStatus } from '@/components/CloudStatus';
 import { useCloud } from '@/context/CloudContext';
 import { useNavo } from '@/context/NavoContext';
@@ -21,6 +23,7 @@ export default function GroupScreen() {
   const members = useGroupFeed<CloudMember>(gid, 'members');
   const messages = useGroupFeed<CloudMessage>(gid, 'messages');
   const alerts = useGroupFeed<CloudAlert>(gid, 'alerts');
+  const invitations = useGroupFeed<{ id: string; inviteeName?: string; status: string }>(group?.ownerId === userId ? gid : '', 'invitations');
   const { locate, state: gpsState } = useMyLocation();
   const [tab, setTab] = useState('Crew'); const [email, setEmail] = useState(''); const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(''); const [error, setError] = useState(''); const [success, setSuccess] = useState('');
@@ -43,13 +46,17 @@ export default function GroupScreen() {
     await cloud.api(`/groups/${gid}/checkins`, { latitude: coords.latitude, longitude: coords.longitude, accuracy: coords.accuracy ?? 100000, capturedAt: new Date(coords.timestamp ?? Date.now()).toISOString() }); setSuccess('Checked in. Your latest position is shared with this group.');
   }); }
   function testAlert() { return action('test', async () => { const result = await cloud.api<{ id: string }>(`/groups/${gid}/alerts`, { kind: 'test', requestId: requestId() }); router.push({ pathname: '/alert', params: { groupId: gid, alertId: result.id } }); }); }
-  if (!group) return <Backdrop><View style={styles.scroll}><Heading title="Connecting to your crew." subtitle="This group appears after Firebase confirms your membership." /><CloudStatus /><Button label="Back to groups" onPress={() => router.replace('/(tabs)/groups')} /></View></Backdrop>;
+  if (!group) return <Backdrop><View style={styles.scroll}><Heading title={cloud.status === 'Connected' ? 'This group is unavailable.' : 'Connecting to your crew.'} subtitle={cloud.status === 'Connected' ? 'The group may have been removed, or your membership has changed.' : 'Your group appears after your membership is confirmed.'} /><CloudStatus /><Button label="Back to groups" onPress={() => router.replace('/(tabs)/groups')} /></View></Backdrop>;
   return <Backdrop><KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={96}><ScrollView ref={list} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
     <Reveal><Badge label={`${group.members.length} MEMBERS · ${group.startDate}`} tone="lime" /><Heading title={group.name} subtitle="Stay close, even when the trail opens up." /></Reveal>
+    {group.outing && <Card><SectionTitle title="MEETUP PLAN" /><Text style={styles.name}>{group.outing.meetingPoint}</Text><Text style={styles.copy}>{group.startDate} · depart {group.outing.startTime} Nepal time</Text><Text style={styles.copy}>{group.outing.walkingHours} walking hours planned · {group.members.length} joined / {group.outing.expectedPeople} expected</Text><Text style={styles.copy}>Confirm transport, the trail and a turnaround time together in Chat.</Text></Card>}
     <CloudStatus /><View style={styles.row}>{['Crew', 'Chat', 'Safety'].map(name => <Chip key={name} label={name} selected={tab === name} onPress={() => setTab(name)} />)}</View>
     <Notice message={error || members.error || messages.error || alerts.error} />{success && <Notice message={success} tone="info" />}
     {(members.error || messages.error || alerts.error) && <Button label="Retry group feeds" variant="outline" onPress={() => { members.retry(); messages.retry(); alerts.retry(); }} />}
     {tab === 'Crew' && <>
+      {group.ownerId === userId && <GroupInviteTools groupId={gid} />}
+      {group.ownerId === userId && invitations.items.some(item => item.status === 'pending') && <Card><SectionTitle title="PENDING INVITATIONS" />{invitations.items.filter(item => item.status === 'pending').map(item => <View key={item.id}><Text style={styles.name}>{item.inviteeName ?? 'Invited trekker'}</Text><Button label="Cancel invitation" variant="quiet" disabled={Boolean(busy)} onPress={() => void action('revoke', async () => { await cloud.api(`/groups/${gid}/invites/${item.id}/respond`, { decision: 'revoked' }); setSuccess('Invitation cancelled.'); })} /></View>)}</Card>}
+      <Notice message={invitations.error} />
       <SectionTitle title="YOUR PEOPLE" />
       {members.loading && <Text style={styles.copy}>Loading members…</Text>}
       {members.items.map(member => <Card key={member.id}><View style={styles.row}><Avatar name={member.name} size={44} /><View style={{ flex: 1 }}><Text style={styles.name}>{member.name}{member.id === userId ? ' (you)' : ''}</Text><Text style={styles.copy}>{member.id === group.ownerId ? 'Owner' : 'Member'}</Text></View></View>{member.lastLocation && <Text style={styles.copy}>Last shared {timeAgo(member.lastLocationAt ?? '')} · {member.lastLocation.latitude.toFixed(4)}, {member.lastLocation.longitude.toFixed(4)} · ±{Math.round(member.lastLocation.accuracy)} m</Text>}{group.ownerId === userId && member.id !== userId && <Button label="Remove member" variant="quiet" disabled={Boolean(busy)} onPress={() => void action('remove', async () => { await cloud.api(`/groups/${gid}/members/${member.id}`, undefined, 'DELETE'); })} />}</Card>)}
@@ -62,11 +69,11 @@ export default function GroupScreen() {
       <Field label="Message your crew" multiline value={message} editable={!busy} onChangeText={setMessage} placeholder="What’s the plan for tomorrow?" maxLength={2000} /><Button label={busy === 'message' ? 'Sending…' : 'Send message'} disabled={!message.trim() || Boolean(busy)} busy={busy === 'message'} onPress={() => void send()} /><Text style={styles.copy}>If sending fails, your draft stays here. Retry uses the same message ID to avoid duplicates.</Text>
     </>}
     {tab === 'Safety' && <>
+      <TrekLocationSession groupId={gid} />
       <Button label="Check in safe & share position" disabled={Boolean(busy)} busy={busy === 'checkin' || gpsState === 'locating'} onPress={() => void checkin()} /><Button label="View group positions" variant="outline" onPress={() => router.push({ pathname: '/(tabs)/map', params: { group: gid, trek: group.trekId } })} />
-      <Button label="Stop showing my last position" variant="quiet" onPress={() => void action('stop', async () => { await cloud.api(`/groups/${gid}/location`, undefined, 'DELETE'); setSuccess('Your current member position is hidden. Previous check-in events remain in group history.'); })} />
       {group.ownerId === userId && <Button label="Send test group alert" variant="outline" disabled={Boolean(busy)} busy={busy === 'test'} onPress={() => void testAlert()} />}
       <Button label="SOS · open confirmation" variant="danger" onPress={() => router.push({ pathname: '/alert', params: { groupId: gid, kind: 'sos' } })} />
-      <Text style={styles.copy}>SOS notifies connected group members. It does not call emergency services. Off-route detection is unavailable until a verified trail track is supplied.</Text>
+      <Text style={styles.copy}>Checking in starts a 4-hour check-in interval; overdue notices require the server worker. SOS notifies connected group members. It does not call emergency services. Off-route detection is unavailable until a verified trail track is supplied.</Text>
       <SectionTitle title="RECENT GROUP ALERTS" />{alerts.items.map(item => <Pressable key={item.id} accessibilityRole="button" onPress={() => router.push({ pathname: '/alert', params: { groupId: gid, alertId: item.id } })}><Card><Badge label={item.resolvedAt ? 'RESOLVED' : item.kind.toUpperCase()} tone={item.kind === 'sos' && !item.resolvedAt ? 'danger' : 'neutral'} /><Text style={styles.name}>{item.message}</Text><Text style={styles.copy}>{item.createdAt ? timeAgo(item.createdAt) : 'Syncing'} · {item.acknowledgedBy.length} acknowledged</Text></Card></Pressable>)}
     </>}
     <Button label="Save an offline trip pack" variant="quiet" onPress={() => router.push({ pathname: '/offline', params: { group: gid, trek: group.trekId } })} />

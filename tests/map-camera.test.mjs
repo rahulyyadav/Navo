@@ -10,7 +10,7 @@ const {mapDocument, scriptJSON} = await import(`data:text/javascript;base64,${Bu
 function harness(){
   const camera = []; const pan=[];
   const layer = ()=>({addTo(){return this},on(){return this},bindPopup(){return this},bindTooltip(){return this},clearLayers(){},setPosition(){}});
-  const map={zoomControl:layer(),fitBounds:(...args)=>camera.push(args),panTo:(...args)=>pan.push(args),removeLayer(){},invalidateSize(){}};
+  const map={on(){},hasLayer(){return true},zoomControl:layer(),fitBounds:(...args)=>camera.push(args),panTo:(...args)=>pan.push(args),removeLayer(){},invalidateSize(){}};
   const context={L:{map:()=>map,tileLayer:layer,control:{layers:layer},layerGroup:layer,circleMarker:layer,circle:layer,polyline:layer},document:{getElementById:()=>({style:{},textContent:''}),createElement:()=>({textContent:''})},window:{addEventListener(){}},parent:{postMessage(){}},setTimeout:()=>1,clearTimeout(){},ResizeObserver:class{observe(){}}};
   const props={region:{latitude:28,longitude:84,latitudeDelta:.2,longitudeDelta:.2},regionNonce:0,selectedId:'route',myCoords:null,onSelectTrek(){}};
   const html=mapDocument(props); const script=html.match(/<script>([\s\S]*)<\/script>/)[1];

@@ -21,6 +21,7 @@ const CODE_MESSAGES: Record<string, string> = {
   'auth/too-many-requests': 'Too many attempts. Please wait a moment and try again.',
   'auth/network-request-failed': 'We couldn’t connect. Check your internet connection and try again.',
   'auth/operation-not-allowed': 'That sign-in method is not enabled in Firebase yet.',
+  'auth/configuration-not-found': 'Navo’s Firebase Authentication has not been set up yet. Enable Authentication and your sign-in method in the Firebase console, then try again.',
   'auth/unauthorized-domain': 'This domain is not authorized in Firebase Authentication settings.',
   'auth/popup-blocked': 'Your browser blocked Google sign-in. Allow popups and try again.',
   'auth/popup-closed-by-user': 'Google sign-in was cancelled. You can try again or continue with email.',

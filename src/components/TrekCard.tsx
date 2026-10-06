@@ -1,5 +1,6 @@
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { Text } from '@/components/Typography';
+import { useState } from 'react';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -14,6 +15,7 @@ const tone = {
 } as const;
 
 export function TrekCard({ trek, onPress, compact = false }: { trek: Trek; onPress: () => void; compact?: boolean }) {
+  const [imageFailed, setImageFailed] = useState(false);
   const reduced = useReducedMotion();
   const scale = useSharedValue(1);
   const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
@@ -28,8 +30,8 @@ export function TrekCard({ trek, onPress, compact = false }: { trek: Trek; onPre
       onPressOut={() => press(1)}
     >
       <Animated.View style={[styles.card, compact && styles.cardCompact, animated]}>
-        <Image source={trek.image} style={StyleSheet.absoluteFill} resizeMode="cover" accessibilityLabel={`${trek.name} in the ${trek.region} region`} />
-        <LinearGradient colors={['rgba(8,13,18,0.05)', 'rgba(8,13,18,0.55)', 'rgba(8,13,18,0.94)']} style={StyleSheet.absoluteFill} />
+        <Image source={trek.image} onError={() => setImageFailed(true)} style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]} resizeMode="cover" accessibilityLabel={`${trek.name} in the ${trek.region} region`} />
+        <LinearGradient colors={['rgba(8,13,18,0.05)', 'rgba(8,13,18,0.08)', 'rgba(8,13,18,0.94)']} style={StyleSheet.absoluteFill} />
         <View style={styles.topRow}>
           <View style={styles.region}><Text style={styles.regionText}>{trek.region.toUpperCase()}</Text></View>
           <View style={[styles.difficulty, { backgroundColor: tone[trek.difficulty] }]}>
@@ -37,6 +39,7 @@ export function TrekCard({ trek, onPress, compact = false }: { trek: Trek; onPre
           </View>
         </View>
         <View style={styles.bottom}>
+          {imageFailed && <Text style={styles.stat}>Photo unavailable · trek details below</Text>}
           <Text style={styles.name} numberOfLines={2}>{trek.name}</Text>
           <View style={styles.stats}>
             <Text style={styles.stat}>{trek.days}</Text>
@@ -55,7 +58,7 @@ export function TrekCard({ trek, onPress, compact = false }: { trek: Trek; onPre
 const styles = StyleSheet.create({
   card: {
     borderRadius: radius.lg,
-    height: 208,
+    height: 280,
     justifyContent: 'space-between',
     overflow: 'hidden',
     backgroundColor: colors.navy,
@@ -68,7 +71,7 @@ const styles = StyleSheet.create({
   difficultyText: { color: colors.white, fontSize: 10, fontWeight: '800', letterSpacing: 0.8 },
   bottom: { padding: 16 },
   name: { color: colors.white, fontSize: 23, fontWeight: '800', letterSpacing: -0.6, lineHeight: 28 },
-  stats: { alignItems: 'center', flexDirection: 'row', gap: 8, marginTop: 8 },
+  stats: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   stat: { color: 'rgba(255,255,255,0.72)', fontSize: 12.5, fontWeight: '600' },
   statDot: { backgroundColor: 'rgba(255,255,255,0.34)', borderRadius: 2, height: 3, width: 3 },
 });

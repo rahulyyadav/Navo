@@ -30,5 +30,5 @@ export function useGoogleSignIn() {
     }
   }, []);
 
-  return { busy, message, ready: Boolean(firebaseAuth), start };
+  return { busy, message, ready: Boolean(firebaseAuth), unavailableReason: '', start };
 }

@@ -30,7 +30,14 @@
       "expo-status-bar",
       "expo-web-browser",
       "expo-secure-store",
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "enableBackgroundPlayback": false
+        }
+      ],
       [
         "expo-location",
         {
@@ -39,6 +46,13 @@
         }
       ],
       "expo-asset",
+      [
+        "expo-notifications",
+        {
+          "color": "#E4FF89",
+          "defaultChannel": "trek-alerts"
+        }
+      ],
       "expo-font",
       [
         "expo-sensors",

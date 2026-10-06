@@ -22,11 +22,15 @@ def test_missing_token_is_rejected_before_firebase_initialization(monkeypatch):
 def test_firebase_token_is_verified_with_revocation_check(monkeypatch):
     app = object()
     monkeypatch.setattr(authentication, 'firebase_app', lambda: app)
-    verify = Mock(return_value={'uid': 'firebase-uid'})
+    monkeypatch.setattr(authentication, 'database', lambda: None)
+    limiter = Mock()
+    monkeypatch.setattr(authentication, 'limit_requests', limiter)
+    verify = Mock(return_value={'uid': 'firebase-uid', 'email_verified': True})
     monkeypatch.setattr(authentication.auth, 'verify_id_token', verify)
     credentials = HTTPAuthorizationCredentials(scheme='Bearer', credentials='id-token')
     assert authentication.current_user(credentials) == 'firebase-uid'
     verify.assert_called_once_with('id-token', app=app, check_revoked=True)
+    limiter.assert_called_once_with(None, 'firebase-uid')
 
 
 @pytest.mark.parametrize('uid', ['', 'bad/id', 'x' * 129, None])
@@ -50,6 +54,7 @@ def test_token_failure_does_not_disclose_internal_details(monkeypatch):
 def test_session_profile_uses_authenticated_firebase_identity(monkeypatch):
     ref = Mock()
     ref.get.return_value.exists = False
+    ref.get.return_value.to_dict.return_value = None
     db = Mock()
     db.collection.return_value.document.return_value = ref
     monkeypatch.setattr(main, 'database', lambda: db)
@@ -60,7 +65,7 @@ def test_session_profile_uses_authenticated_firebase_identity(monkeypatch):
     finally:
         main.app.dependency_overrides.clear()
     assert response.status_code == 200
-    assert response.json() == {'id': 'firebase-uid'}
+    assert response.json() == {'id': 'firebase-uid', 'connected': True}
     db.collection.return_value.document.assert_called_once_with('firebase-uid')
     record = ref.set.call_args.args[0]
     assert record['email'] == 'hiker@example.com'
@@ -81,9 +86,10 @@ def test_unverified_email_cannot_be_used_as_an_invitation_identity(monkeypatch):
     db.collection.return_value.document.return_value = ref
     monkeypatch.setattr(main, 'database', lambda: db)
     monkeypatch.setattr(main.auth, 'get_user', lambda uid: SimpleNamespace(email='Victim@Example.com', display_name='Trekker', photo_url=None, email_verified=False))
-    main.connect_session('firebase-uid')
-    assert ref.set.call_args.args[0]['email'] is None
-    assert 'createdAt' not in ref.set.call_args.args[0]
+    with pytest.raises(HTTPException) as error:
+        main.connect_session('firebase-uid')
+    assert error.value.status_code == 403
+    ref.set.assert_not_called()
 
 
 def test_missing_server_credentials_are_setup_error_not_user_signout(monkeypatch):
@@ -104,3 +110,14 @@ def test_missing_server_credentials_are_setup_error_not_user_signout(monkeypatch
         initialize.assert_not_called()
     finally:
         storage.firebase_app.cache_clear()
+
+
+def test_unverified_identity_is_rejected_before_cloud_rate_limit(monkeypatch):
+    monkeypatch.setattr(authentication, 'firebase_app', lambda: object())
+    monkeypatch.setattr(authentication.auth, 'verify_id_token', lambda *args, **kwargs: {'uid': 'person', 'email_verified': False})
+    limiter = Mock()
+    monkeypatch.setattr(authentication, 'limit_requests', limiter)
+    with pytest.raises(HTTPException) as error:
+        authentication.current_user(HTTPAuthorizationCredentials(scheme='Bearer', credentials='token'))
+    assert error.value.status_code == 403
+    limiter.assert_not_called()

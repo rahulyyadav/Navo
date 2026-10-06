@@ -128,7 +128,7 @@ export function Button({ label, onPress, variant = 'primary', busy = false, disa
       </Animated.View>
       <View style={ui.buttonInner}>
         {busy ? <ActivityIndicator color={colors.onAccent} /> : icon ? <Text style={[labelStyle, ui.buttonIcon]}>{icon}</Text> : null}
-        <Text style={[labelStyle, ui.buttonLabel]} numberOfLines={1}>{label}</Text>
+        <Text style={[labelStyle, ui.buttonLabel]} >{label}</Text>
         {!busy && !icon && <Text style={[labelStyle, ui.buttonArrow]}>→</Text>}
       </View>
     </Pressable>;
@@ -145,7 +145,7 @@ export function Button({ label, onPress, variant = 'primary', busy = false, disa
   >
     <Animated.View style={[ui.buttonInner, animated]}>
       {busy ? <ActivityIndicator color={colors.lime} /> : icon ? <Text style={[labelStyle, ui.buttonIcon]}>{icon}</Text> : null}
-      <Text style={[labelStyle, ui.buttonLabel]} numberOfLines={1}>{label}</Text>
+      <Text style={[labelStyle, ui.buttonLabel]} >{label}</Text>
     </Animated.View>
   </Pressable>;
 }
@@ -170,6 +170,7 @@ export function Field({
 }: TextInputProps & { label: string; error?: string; hint?: string }) {
   const reduced = useReducedMotion();
   const [focused, setFocused] = useState(false);
+  const [revealed, setRevealed] = useState(false);
   const ring = useSharedValue(0);
   useEffect(() => { ring.value = withTiming(focused ? 1 : 0, { duration: reduced ? 0 : 180 }); }, [focused, ring, reduced]);
   const animatedRing = useAnimatedStyle(() => ({
@@ -184,10 +185,12 @@ export function Field({
         accessibilityLabel={label}
         placeholderTextColor={colors.faint}
         {...input}
+        secureTextEntry={input.secureTextEntry && !revealed}
         onFocus={event => { setFocused(true); input.onFocus?.(event); }}
         onBlur={event => { setFocused(false); input.onBlur?.(event); }}
         style={[ui.fieldInput, input.style]}
       />
+      {input.secureTextEntry && <Pressable accessibilityRole="button" accessibilityLabel={revealed ? 'Hide password' : 'Show password'} disabled={input.editable === false} style={{ minWidth: 48, minHeight: 48, justifyContent: 'center', alignItems: 'center' }} onPress={() => setRevealed(value => !value)}><Text style={{ color: colors.lime, fontSize: 13, fontWeight: '700' }}>{revealed ? 'Hide' : 'Show'}</Text></Pressable>}
     </Animated.View>
     {error ? <Text accessibilityRole="alert" style={ui.fieldErrorText}>{error}</Text> : null}
     {!error && hint ? <Text style={ui.fieldHint}>{hint}</Text> : null}
@@ -209,12 +212,13 @@ export function OptionCard({
   symbol?: string;
   disabled?: boolean;
 }) {
+  const reduced = useReducedMotion();
   const glow = useSharedValue(selected ? 1 : 0);
-  useEffect(() => { glow.value = withTiming(selected ? 1 : 0, { duration: 220 }); }, [selected, glow]);
+  useEffect(() => { glow.value = withTiming(selected ? 1 : 0, { duration: reduced ? 0 : 180 }); }, [selected, glow, reduced]);
   const animated = useAnimatedStyle(() => ({
     borderColor: selected ? colors.lime : colors.line,
     backgroundColor: selected ? 'rgba(228,255,137,0.10)' : 'rgba(25,41,58,0.72)',
-    transform: [{ scale: 1 + glow.value * 0.012 }],
+    transform: [{ scale: reduced ? 1 : 1 + glow.value * 0.012 }],
   }));
   return <Pressable accessibilityRole="button" accessibilityState={{ selected, disabled }} disabled={disabled} onPress={onPress} style={({ pressed }) => [pressed && ui.inactive]}>
     <Animated.View style={[ui.optionCard, animated]}>
@@ -333,9 +337,9 @@ const ui = StyleSheet.create({
 
   fieldBlock: { marginBottom: space.md },
   fieldLabel: { color: colors.ink, fontSize: 14, fontWeight: '700', marginBottom: 9 },
-  fieldShell: { borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.line, backgroundColor: colors.navy, minHeight: 62, paddingHorizontal: 18, justifyContent: 'center' },
+  fieldShell: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.line, backgroundColor: colors.navy, minHeight: 62, paddingHorizontal: 18, justifyContent: 'center' },
   fieldError: { borderColor: colors.danger },
-  fieldInput: { color: colors.ink, fontSize: 17, paddingVertical: 16 },
+  fieldInput: { flex: 1, minWidth: 0, color: colors.ink, fontSize: 17, paddingVertical: 16 },
   fieldErrorText: { color: colors.danger, fontSize: 13, lineHeight: 19, marginTop: 8 },
   fieldHint: { color: colors.faint, fontSize: 13, lineHeight: 19, marginTop: 8 },
 
@@ -352,7 +356,7 @@ const ui = StyleSheet.create({
   radioOn: { borderColor: colors.lime },
   radioDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: colors.lime },
 
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.line, backgroundColor: 'rgba(25,41,58,0.7)', paddingHorizontal: 16, paddingVertical: 11 },
+  chip: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.line, backgroundColor: 'rgba(25,41,58,0.7)', paddingHorizontal: 16, paddingVertical: 11 },
   chipOn: { borderColor: colors.lime, backgroundColor: 'rgba(228,255,137,0.16)' },
   chipText: { color: colors.muted, fontSize: 14, fontWeight: '600' },
   chipTextOn: { color: colors.lime },

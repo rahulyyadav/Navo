@@ -1,6 +1,8 @@
+import { useTripLibrary } from '@/hooks/useTripLibrary';
+import { photoCredits } from '@/data/photo-credits';
 import { useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Image, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Linking, Image, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Text } from '@/components/Typography';
 import Svg, { Circle as SvgCircle, Defs, LinearGradient as SvgGradient, Path, Stop } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -43,6 +45,9 @@ export default function TrekScreen() {
 }
 
 export function TrekDetail({ id }: { id: string }) {
+  const library = useTripLibrary();
+  const [saveError, setSaveError] = useState('');
+  const [saving, setSaving] = useState(false);
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const scroll = useRef<ScrollView>(null);
@@ -109,6 +114,13 @@ export function TrekDetail({ id }: { id: string }) {
           <Reveal delay={150}><Pressable accessibilityRole="button" accessibilityLabel="See trek route and information" onPress={() => scroll.current?.scrollTo({ y: detailsY.current, animated: !reduced })} style={({ pressed }) => [styles.detailLink, pressed && styles.pressed]}><Text style={styles.detailLinkText}>Explore this trek</Text><Text style={styles.detailArrow}>↓</Text></Pressable></Reveal>
         </View>
         <View onLayout={event => { detailsY.current = event.nativeEvent.layout.y; }}>
+          <View style={styles.section}>
+            <Text accessibilityLiveRegion="polite" style={styles.caveat}>{saveError || library.error}</Text>
+            <Button label={library.data.savedTrekIds.includes(trek.id) ? 'Saved · remove from shortlist' : 'Save trek to shortlist'} variant="outline" busy={saving} disabled={!library.loaded || saving} onPress={() => { setSaving(true); setSaveError(''); void library.update(data => ({ ...data, savedTrekIds: data.savedTrekIds.includes(trek.id) ? data.savedTrekIds.filter(id => id !== trek.id) : [...data.savedTrekIds, trek.id] })).catch(() => setSaveError('Could not update saved treks. Please retry.')).finally(() => setSaving(false)); }} />
+            <Button label="View my saved treks" variant="quiet" onPress={() => router.push({ pathname: '/trips', params: { section: 'saved' } })} />
+            {photoCredits[trek.id] && <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(photoCredits[trek.id].source)}><Text style={styles.caveat}>Photo: {photoCredits[trek.id].author} · CC BY-SA {photoCredits[trek.id].license}</Text></Pressable>}
+          </View>
+
         <Reveal delay={70}>
           <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: "/journey", params: { trek: trek.id } })} style={[styles.detailLink, { marginTop: 20 }]}><Text style={styles.detailLinkText}>Start Trek</Text><TabIcon name="route" color="#E4FF89" size={22} /></Pressable>
           <Text style={styles.summary}>{trek.summary}</Text>

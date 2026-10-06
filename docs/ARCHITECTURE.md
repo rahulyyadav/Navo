@@ -1,3 +1,5 @@
+> Implementation status (2026-10-01): the repository now uses Firebase Authentication, Firestore read subscriptions and the FastAPI backend in `backend/`. Earlier architecture proposals below are historical planning context. Use [Production setup](PRODUCTION-SETUP.md) and [QA checklist](QA-CHECKLIST.md) for the actual configuration, current boundaries and unverified release gates.
+
 # Navo architecture
 
 ## System boundary

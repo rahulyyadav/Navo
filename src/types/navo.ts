@@ -40,6 +40,7 @@ export type GroupMember = {
 };
 
 export type TrekGroup = {
+  outing?: { destination: string; meetingPoint: string; startTime: string; expectedPeople: number; walkingHours: number } | null;
   id: string;
   name: string;
   trekId: string;

@@ -26,6 +26,7 @@ test('errors never disclose arbitrary backend details', () => {
 test('Firebase codes map to actionable copy', () => {
   assert.match(friendlyAuthError({ code: 'auth/invalid-credential' }), /email or password/);
   assert.match(friendlyAuthError({ code: 'auth/email-already-in-use' }), /Log in instead/);
+  assert.match(friendlyAuthError({ code: 'auth/configuration-not-found' }), /Firebase Authentication has not been set up/);
   assert.match(friendlyAuthError({ code: 'auth/weak-password' }), /stronger password/);
   assert.match(friendlyAuthError({ code: 'auth/popup-blocked' }), /popups/);
   assert.match(friendlyAuthError({ code: 'auth/unauthorized-domain' }), /not authorized/);
@@ -163,4 +164,20 @@ test('preparation restores only known, unique checklist entries', () => {
 test('departure dates reject impossible calendar dates', () => {
   for (const value of ['', '2028-02-29', '2026-10-01']) assert.equal(validDepartureDate(value), true);
   for (const value of ['2026-02-29', '2026-13-01', '2026-04-31', 'tomorrow']) assert.equal(validDepartureDate(value), false);
+});
+
+const { distanceToRoute, offRouteDecision } = await loadModule('../src/services/route-distance.ts');
+test('off-route distance measures the nearest segment, not just a waypoint', () => {
+  const route = [{ latitude: 28, longitude: 84 }, { latitude: 28, longitude: 84.02 }];
+  assert.ok(distanceToRoute({ latitude: 28, longitude: 84.01 }, route) < 1);
+  assert.ok(distanceToRoute({ latitude: 28.002, longitude: 84.01 }, route) > 200);
+  assert.equal(distanceToRoute({ latitude: 28, longitude: 84 }, []), null);
+});
+test('off-route alerts require verified geometry, sustained deviation and cooldown', () => {
+  const state = { verified: true, distance: 300, accuracy: 10, now: 40000, startedAt: 0, lastAlertAt: null };
+  assert.equal(offRouteDecision(state).alert, true);
+  assert.equal(offRouteDecision({ ...state, verified: false }).alert, false);
+  assert.equal(offRouteDecision({ ...state, accuracy: 100 }).alert, false);
+  assert.equal(offRouteDecision({ ...state, now: 10000 }).alert, false);
+  assert.equal(offRouteDecision({ ...state, lastAlertAt: 35000 }).alert, false);
 });
