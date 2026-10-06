@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Keyboard, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Keyboard, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Text } from '@/components/Typography';
 import Animated, { FadeInRight, FadeOutLeft, LinearTransition } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';

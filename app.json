@@ -38,7 +38,14 @@
           "locationAlwaysAndWhenInUsePermission": "Navo uses your location while you view the map or request coordinates."
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-font",
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "Navo uses optional pressure and motion sensors to show relative elevation changes during your trek."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

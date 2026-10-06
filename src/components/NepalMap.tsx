@@ -18,8 +18,9 @@ export function NepalMap(props: NepalMapProps) {
     window.addEventListener('message', receive);
     return () => window.removeEventListener('message', receive);
   }, [onSelectTrek]);
+  const payload = JSON.stringify({ type: 'navo-update', payload: mapPayload(props) });
   useEffect(() => {
-    frame.current?.contentWindow?.postMessage(JSON.stringify({ type: 'navo-update', payload: mapPayload(props) }), '*');
-  }, [props]);
-  return <iframe ref={frame} title="Nepal trails and terrain map" srcDoc={html} sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox" referrerPolicy="strict-origin-when-cross-origin" style={{ border: 0, width: '100%', height: '100%', flex: 1 }} />;
+    frame.current?.contentWindow?.postMessage(payload, '*');
+  }, [payload]);
+  return <iframe ref={frame} title="Nepal trails and terrain map" srcDoc={html} onLoad={() => frame.current?.contentWindow?.postMessage(payload, '*')} sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox" referrerPolicy="strict-origin-when-cross-origin" style={{ border: 0, width: '100%', height: '100%', flex: 1 }} />;
 }

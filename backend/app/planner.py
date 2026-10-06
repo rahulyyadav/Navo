@@ -57,7 +57,7 @@ async def generate(request: PlanRequest, call=None):
     if call is None:
         if not config.nebius_api_key or not config.nebius_model or 'nemotron' not in config.nebius_model.lower():
             raise HTTPException(503, 'Configure a Nebius API key and the exact Nemotron model ID on the server.')
-        if config.nebius_base_url.rstrip('/') != 'https://api.tokenfactory.nebius.com/v1':
+        if config.nebius_base_url.rstrip('/') != 'https://api.tokenfactory.us-central1.nebius.com/v1':
             raise HTTPException(503, 'Use the documented Nebius Token Factory endpoint.')
         async def call(messages):
             async with httpx.AsyncClient(timeout=65) as client:

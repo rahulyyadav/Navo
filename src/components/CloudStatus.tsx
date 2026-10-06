@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { Text } from '@/components/Typography';
 import { useCloud } from '@/context/CloudContext';
 import { Badge, Button, Notice } from './ui';
 import { colors } from '@/theme/tokens';

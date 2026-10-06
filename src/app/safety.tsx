@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Linking, Share, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Share, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/Typography';
 
 import { Backdrop, Badge, Button, Card, Eyebrow, Heading, Notice, Reveal, SectionTitle } from '@/components/ui';
 import { TabIcon } from '@/components/TabIcon';

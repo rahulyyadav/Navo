@@ -1,4 +1,5 @@
-import { ScrollView, Text, StyleSheet, Pressable, View } from 'react-native';
+import { ScrollView, StyleSheet, Pressable, View } from 'react-native';
+import { Text } from '@/components/Typography';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Backdrop, Badge, Button, Card, Heading, Reveal } from '@/components/ui';
@@ -10,7 +11,7 @@ import { colors } from '@/theme/tokens';
 export default function GroupsScreen() {
   const cloud = useCloud(); const insets = useSafeAreaInsets();
   const pending = cloud.notifications.filter(item => !item.read).length;
-  return <Backdrop><ScrollView contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 16 }]}><Reveal><Heading title="Better, together." subtitle="Your crew, conversations and check-ins. One shared place for the journey ahead." /></Reveal><CloudStatus />
+  return <Backdrop><ScrollView contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 16, paddingBottom: Math.max(insets.bottom, 12) + 88 }]}><Reveal><Heading title="Better, together." subtitle="Your crew, conversations and check-ins. One shared place for the journey ahead." /></Reveal><CloudStatus />
     <Button label={`Invitations & updates${pending ? ` · ${pending}` : ''}`} variant="outline" onPress={() => router.push('/notifications')} />
     <Button label="Create a group" disabled={!cloud.ready} onPress={() => router.push('/group/new')} />
     {!cloud.groups.length && <Card><Text style={styles.title}>Find your trail circle.</Text><Text style={styles.copy}>Create a group or accept an invitation to start planning together.</Text></Card>}

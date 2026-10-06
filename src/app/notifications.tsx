@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { ScrollView, Text, View, StyleSheet } from 'react-native';
+import { ScrollView, View, StyleSheet } from 'react-native';
+import { Text } from '@/components/Typography';
 import { router } from 'expo-router';
 import { Backdrop, Badge, Button, Card, Heading, Notice, Reveal } from '@/components/ui';
 import { CloudStatus } from '@/components/CloudStatus';

@@ -5,13 +5,12 @@ import {
   Image,
   Pressable,
   StyleSheet,
-  Text,
-  TextInput,
   View,
   type StyleProp,
   type TextInputProps,
   type ViewStyle,
 } from 'react-native';
+import { Text, TextInput } from '@/components/Typography';
 import Animated, {
   FadeIn,
   FadeInDown,

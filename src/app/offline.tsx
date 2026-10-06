@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, Text, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
+import { Text } from '@/components/Typography';
 import { useLocalSearchParams } from 'expo-router';
 import { Backdrop, Badge, Button, Card, Heading, Notice, SectionTitle } from '@/components/ui';
 import { useNavo } from '@/context/NavoContext';

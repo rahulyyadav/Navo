@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Keyboard, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Keyboard, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Text } from '@/components/Typography';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -113,7 +114,7 @@ export default function ProfileScreen() {
 
   return (
     <Backdrop>
-      <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 12 }]} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 12, paddingBottom: Math.max(insets.bottom, 12) + 88 }]} showsVerticalScrollIndicator={false}>
         <Reveal>
           <View style={styles.identity}>
             <Avatar name={name} size={84} uri={imageUrl} />

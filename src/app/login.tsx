@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { Keyboard, StyleSheet, Text, View } from 'react-native';
+import { Keyboard, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/Typography';
 import { router, useLocalSearchParams } from 'expo-router';
 import { sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth';
 

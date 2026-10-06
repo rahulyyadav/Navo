@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
+import { Text } from '@/components/Typography';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Badge, Button, Card, Heading, Notice } from '@/components/ui';
@@ -25,11 +26,13 @@ export default function AlertScreen() {
   const lock = useRef(false); const eventRequest = useRef(requestId());
   const preview = gid === 'demo';
   const canResolve = event && (event.senderId === userId || group?.ownerId === userId);
+  const alarmEventId = event?.id;
+  const alarmResolvedAt = event?.resolvedAt;
   useEffect(() => {
-    if (!event || event.resolvedAt || !answers.alertsEnabled) return;
+    if (!alarmEventId || alarmResolvedAt || !answers.alertsEnabled) return;
     void startAlarm().catch(() => setError('Sound could not play. Check your media volume.'));
     return () => { void releaseAlarm(); };
-  }, [event?.id, event?.resolvedAt, answers.alertsEnabled]);
+  }, [alarmEventId, alarmResolvedAt, answers.alertsEnabled]);
   useEffect(() => () => { void releaseAlarm(); }, []);
   async function sendSOS() {
     if (lock.current || !group) return; lock.current = true; setBusy(true); setError('');

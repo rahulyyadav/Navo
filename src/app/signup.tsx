@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
-import { Keyboard, StyleSheet, Text, View } from 'react-native';
+import { Keyboard, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/Typography';
 import { router, useLocalSearchParams } from 'expo-router';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } from 'firebase/auth';
 
 import { AuthDivider, AuthShell } from '@/components/auth/AuthShell';
 import { GoogleButton } from '@/components/auth/GoogleButton';
@@ -56,6 +57,7 @@ export default function SignupScreen() {
       const credential = await createUserWithEmailAndPassword(firebaseAuth, trimmed, password);
       await updateProfile(credential.user, { displayName: fullName });
       await credential.user.reload();
+      await sendEmailVerification(credential.user);
     } catch (failure) {
       setError(friendlyAuthError(failure, 'We couldn’t create your account. Please try again.'));
     } finally {

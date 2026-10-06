@@ -9,8 +9,9 @@ export type NepalMapProps = {
   onSelectTrek: (id: string) => void;
   myCoords: Coords | null;
   interactive?: boolean;
+  followUser?: boolean;
 };
-export const mapPayload = ({ region, selectedId, myCoords }: NepalMapProps) => ({ region, selectedId, myCoords });
+export const mapPayload = ({ region, selectedId, myCoords, regionNonce, followUser }: NepalMapProps) => ({ region, selectedId, myCoords, regionNonce, followUser });
 // Escape script terminators even if future route data comes from a remote source.
 export const scriptJSON = (value: unknown) => JSON.stringify(value).replace(/</g, '\\u003c');
 
@@ -33,11 +34,12 @@ function loaded(){clearTimeout(timeout);status.style.display='none'}
 for(const layer of [osm,topo]){layer.on('tileload',loaded);layer.on('tileerror',()=>{status.style.display='block';status.textContent='Some tiles are unavailable. Try the other map layer or check your connection.'})}
 if(interactive)L.control.layers({'Trails & places':osm,'Terrain / contours':topo},null,{collapsed:true}).addTo(map);
 const data=${scriptJSON(data)};
-const markers=L.layerGroup().addTo(map);let position;
+const markers=L.layerGroup().addTo(map);let position;let lastCamera=null;
 window.updateNavoMap=function(payload){
  markers.clearLayers();
  for(const trek of data){
  const selected=payload.selectedId===trek.id;
+ if(selected)L.polyline(trek.points.map(p=>[p.latitude,p.longitude]),{color:trek.color,weight:2,opacity:.55,dashArray:'5 10'}).addTo(markers).bindTooltip('Illustrative waypoint connections — not a navigation track');
  const points=selected?trek.points:[trek.points[trek.points.length-1]];
  for(const point of points){const content=document.createElement('div');content.textContent=trek.name+' · '+point.name+' · approx. '+point.elevation+' m';
  const marker=L.circleMarker([point.latitude,point.longitude],{radius:selected?7:9,color:trek.color,fillColor:trek.color,fillOpacity:.8,weight:2}).addTo(markers).bindPopup(content);
@@ -45,8 +47,9 @@ window.updateNavoMap=function(payload){
  }
  if(position)map.removeLayer(position);
  if(payload.myCoords){const p=payload.myCoords;position=L.circle([p.latitude,p.longitude],{radius:Math.max(p.accuracy||10,10),color:'#168de2',fillOpacity:.25}).addTo(map);position.bindTooltip('Your GPS position')}
- const r=payload.region;
- map.fitBounds([[r.latitude-r.latitudeDelta/2,r.longitude-r.longitudeDelta/2],[r.latitude+r.latitudeDelta/2,r.longitude+r.longitudeDelta/2]],{padding:[30,30],animate:false});
+ if(payload.followUser && payload.myCoords){const p=payload.myCoords;map.panTo([p.latitude,p.longitude],{animate:true,duration:.8});}
+ const r=payload.region;const camera=JSON.stringify([payload.regionNonce, payload.selectedId]);
+ if(camera!==lastCamera){lastCamera=camera;map.fitBounds([[r.latitude-r.latitudeDelta/2,r.longitude-r.longitudeDelta/2],[r.latitude+r.latitudeDelta/2,r.longitude+r.longitudeDelta/2]],{padding:[30,30],animate:false});}
 };
 window.addEventListener('message',event=>{if(event.source!==parent)return;try{const msg=JSON.parse(event.data);if(msg.type==='navo-update')window.updateNavoMap(msg.payload)}catch{}});
 window.updateNavoMap(${scriptJSON(mapPayload(props))});

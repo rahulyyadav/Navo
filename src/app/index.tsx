@@ -7,10 +7,10 @@ import {
   LayoutChangeEvent,
   PanResponder,
   StyleSheet,
-  Text,
   View,
   useWindowDimensions,
 } from 'react-native';
+import { Text } from '@/components/Typography';
 import { useReducedMotion } from '@/components/ui';
 import { shouldCompleteSlide } from '@/services/onboarding-slide';
 import { colors } from '@/theme/tokens';
@@ -159,7 +159,7 @@ export default function OnboardingScreen() {
             {...panResponder.panHandlers}
           >
             <Animated.View pointerEvents="none" style={[styles.whiteFill, { width: fillWidth }]} />
-            <Animated.Text pointerEvents="none" style={[styles.slideText, { opacity: promptOpacity }]}>Slide to begin</Animated.Text>
+            <Animated.Text pointerEvents="none" style={[{ fontFamily: 'SatoshiMedium' }, styles.slideText, { opacity: promptOpacity }]}>Slide to begin</Animated.Text>
             <Text pointerEvents="none" style={styles.finishMark}>›</Text>
 
             <Animated.View
@@ -168,7 +168,7 @@ export default function OnboardingScreen() {
             >
               <Animated.View style={[styles.wake, styles.wakeTop, { opacity: wakeOpacity }]} />
               <Animated.View style={[styles.wake, styles.wakeBottom, { opacity: wakeOpacity }]} />
-              <Animated.Text style={[styles.startPlane, { transform: [{ rotate: planeRotation }] }]}>✈︎</Animated.Text>
+              <Animated.Text style={[{ fontFamily: 'SatoshiRegular' }, styles.startPlane, { transform: [{ rotate: planeRotation }] }]}>✈︎</Animated.Text>
             </Animated.View>
           </View>
         </View>

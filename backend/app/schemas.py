@@ -1,6 +1,6 @@
 from datetime import date
 from typing import Literal
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 class Model(BaseModel):
     model_config = ConfigDict(extra='forbid', str_strip_whitespace=True, allow_inf_nan=False)
@@ -80,3 +80,37 @@ class Itinerary(Model):
     days: list[PlanDay] = Field(min_length=2, max_length=30)
     explanation: str = Field(max_length=2000)
     emergencyNotes: str = Field(min_length=10, max_length=1000)
+
+class ChatMessage(Model):
+    role: Literal['user', 'assistant']
+    content: str = Field(min_length=1, max_length=6000)
+
+class ChatRequest(Model):
+    # Client-provided metadata only; never an authenticated identity.
+    email: str | None = Field(default=None, max_length=254, pattern=r'^[^\s@]+@[^\s@]+\.[^\s@]+$')
+    messages: list[ChatMessage] = Field(min_length=1, max_length=20)
+
+PreparationItem = Literal['permits', 'weather', 'insurance', 'contact', 'navigation', 'water', 'layers', 'kit', 'altitude', 'respect']
+
+class TrekPreparation(Model):
+    date: str = Field(default='', max_length=10)
+    notes: str = Field(default='', max_length=2000)
+    checked: list[PreparationItem] = Field(default_factory=list, max_length=10)
+    reviewed: list[PreparationItem] = Field(default_factory=list, max_length=10)
+
+    @field_validator('date')
+    @classmethod
+    def real_date(cls, value):
+        if value:
+            from datetime import date as calendar_date
+            if calendar_date.fromisoformat(value).isoformat() != value:
+                raise ValueError('Use YYYY-MM-DD for departure.')
+        return value
+
+    @model_validator(mode='after')
+    def consistent_decisions(self):
+        self.checked = list(dict.fromkeys(self.checked))
+        self.reviewed = list(dict.fromkeys(self.reviewed))
+        if not set(self.checked).issubset(self.reviewed):
+            raise ValueError('Prepared items must also be reviewed.')
+        return self

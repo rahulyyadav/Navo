@@ -5,7 +5,8 @@
 ```bash
 git clone https://github.com/rahulyyadav/Navo.git
 cd Navo
-npm install
+nvm use
+npm ci
 npm run start
 ```
 
@@ -32,7 +33,9 @@ Use `feat/`, `fix/`, `docs/`, or `test/` prefixes. Keep pull requests small enou
 Before requesting review:
 
 ```bash
+npm run lint
 npm run typecheck
+npm test
 npm run doctor
 ```
 

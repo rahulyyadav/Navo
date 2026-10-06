@@ -1,0 +1,25 @@
+{
+  "retrievedAtUTC": "2026-10-06T01:18:15.125345+00:00",
+  "source": "https://www.openstreetmap.org/api/0.6/relation/17548991/full",
+  "relationId": 17548991,
+  "relationVersion": 3,
+  "relationTimestamp": "2025-11-18T15:04:43Z",
+  "sourceSHA256": "92cfe4194664be03f6610a797b32822708b8e3083ac34537d26bb3bb4afe1e02",
+  "sourceLicence": "ODbL 1.0",
+  "attribution": "\u00a9 OpenStreetMap contributors",
+  "wayCount": 56,
+  "nodeCount": 1696,
+  "elevationSampleCount": 0,
+  "connectedComponentWayCounts": [
+    53,
+    3
+  ],
+  "minimumComponentSeparationMetres": 203.6,
+  "closestGapNodes": [
+    "5858784102",
+    "12284570697"
+  ],
+  "sumSourceWayLengthMetres": 23900.6,
+  "exportSegments": 56,
+  "navigationReady": false
+}

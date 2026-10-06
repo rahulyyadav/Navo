@@ -42,7 +42,7 @@ The mobile client never receives the Nebius API key. Model calls, safety-rule ev
 - The UI must expose stale, missing, or uncertain data.
 - Route and map providers must explicitly permit the intended online and offline use.
 
-## Planned backend
+## Backend
 
 - Python 3.12, FastAPI, and Pydantic
 - PostgreSQL/PostGIS for route and waypoint geometry
@@ -50,4 +50,4 @@ The mobile client never receives the Nebius API key. Model calls, safety-rule ev
 - Optional Nebius Serverless Job for offline-pack generation
 - JSON Schema validation for every model response
 
-The backend will be added only after the first model call and first physical-device route rendering are proven independently.
+The backend is implemented in `backend/app/`. Firebase Admin verifies client ID tokens and writes cloud data to Firestore. PostgreSQL/PostGIS and offline pack generation remain planned. Live cloud and Nemotron integration still require credentials and physical-device verification.

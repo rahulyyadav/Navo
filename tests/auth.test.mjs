@@ -155,7 +155,7 @@ test('timers and relative dates stay readable', () => {
 
 const { normalizePreparation, validDepartureDate, essentials } = await loadModule('../src/services/preparation.ts');
 test('preparation restores only known, unique checklist entries', () => {
-  assert.deepEqual(normalizePreparation(null), { date: '', notes: '', checked: [] });
+  assert.deepEqual(normalizePreparation(null), { date: '', notes: '', checked: [], reviewed: [] });
   assert.deepEqual(normalizePreparation({ checked: ['water', 'water', 'not-an-item', 3], notes: 'x'.repeat(2100) }).checked, ['water']);
   assert.equal(normalizePreparation({ notes: 'x'.repeat(2100) }).notes.length, 2000);
   assert.equal(new Set(essentials.map(item => item.id)).size, essentials.length);

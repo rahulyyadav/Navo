@@ -6,6 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from firebase_admin import auth, firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 from .auth import current_user
+from .chat import reply as chat_reply
+from .schemas import ChatRequest, TrekPreparation
 from .config import settings
 from .database import database
 from .planner import ROUTES, generate, route_by_id
@@ -42,26 +44,17 @@ def member_record(uid, person):
 def health():
     return {'status': 'ok', 'firebaseConfigured': bool(settings().firebase_project_id), 'aiConfigured': bool(settings().nebius_api_key and settings().nebius_model), 'demoEnabled': settings().enable_demo}
 
-@app.post('/firebase/custom-token')
-def bridge(uid: str = Depends(current_user)):
+@app.post('/session')
+def connect_session(uid: str = Depends(current_user)):
     db = database()
-    if not settings().clerk_secret_key:
-        raise HTTPException(503, 'Configure Clerk credentials on the server.')
     try:
-        response = httpx.get(f'https://api.clerk.com/v1/users/{uid}', headers={'Authorization': f'Bearer {settings().clerk_secret_key}'}, timeout=15)
-        response.raise_for_status()
-        person = response.json()
-        email = next((e['email_address'].lower() for e in person['email_addresses'] if e['id'] == person['primary_email_address_id'] and e.get('verification', {}).get('status') == 'verified'), None)
-        if not email:
-            raise HTTPException(403, 'A verified primary email is required.')
+        person = auth.get_user(uid)
         ref = db.collection('users').document(uid)
-        value = {'id': uid, 'clerkUserId': uid, 'email': email, 'displayName': ' '.join(filter(None, [person.get('first_name'), person.get('last_name')])) or 'Trekker', 'avatarUrl': person.get('image_url'), 'updatedAt': STAMP}
+        value = {'id': uid, 'email': (person.email or '').lower() if person.email_verified else None, 'displayName': person.display_name or 'Trekker', 'avatarUrl': person.photo_url, 'updatedAt': STAMP}
         if not ref.get().exists:
             value['createdAt'] = STAMP
         ref.set(value, merge=True)
-        return {'token': auth.create_custom_token(uid).decode()}
-    except HTTPException:
-        raise
+        return {'id': uid}
     except Exception:
         raise HTTPException(503, 'Could not connect your Firebase session. Check server credentials.') from None
 
@@ -264,3 +257,21 @@ def get_plan(pid: str, uid: str = Depends(current_user)):
 async def revise(pid: str, value: PlanRequest, uid: str = Depends(current_user)):
     get_plan(pid, uid)
     return await plan(value, uid)
+
+@app.post('/chat')
+async def chat(value: ChatRequest):
+    return await chat_reply(value)
+
+
+@app.get('/preparations/{rid}')
+def get_preparation(rid: str, uid: str = Depends(current_user)):
+    route_by_id(rid)
+    result = database().collection('users').document(uid).collection('preparations').document(rid).get().to_dict()
+    return {key: result.get(key, default) for key, default in {'date': '', 'notes': '', 'checked': [], 'reviewed': []}.items()} if result else None
+
+
+@app.put('/preparations/{rid}')
+def save_preparation(rid: str, value: TrekPreparation, uid: str = Depends(current_user)):
+    route_by_id(rid)
+    database().collection('users').document(uid).collection('preparations').document(rid).set({**value.model_dump(), 'trekId': rid, 'updatedAt': STAMP})
+    return {'saved': True}

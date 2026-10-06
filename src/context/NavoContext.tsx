@@ -45,15 +45,10 @@ type SessionData = {
 const NavoContext = createContext<NavoState | null>(null);
 
 export function NavoProvider({ children }: PropsWithChildren) {
-<<<<<<< HEAD
   const { loaded: isLoaded, user, signOut } = useFirebaseAuth();
   const isSignedIn = Boolean(user);
   const userId = user?.uid ?? '';
-=======
-  const { isLoaded, isSignedIn, userId, signOut } = useAuth();
-  const { user } = useUser();
   const cloud = useCloud();
->>>>>>> 643afe2 (Updated authentication and UI)
   const [session, setSession] = useState<SessionData | null>(null);
   const [error, setError] = useState('');
   const [signingOut, setSigningOut] = useState(false);
@@ -127,15 +122,9 @@ export function NavoProvider({ children }: PropsWithChildren) {
       authLoaded: isLoaded,
       isSignedIn: Boolean(isSignedIn),
       userId: userId ?? '',
-<<<<<<< HEAD
       email: user?.email ?? data?.profile?.email ?? '',
       imageUrl: user?.photoURL ?? data?.profile?.imageUrl ?? null,
-      profile: data?.profile ?? null,
-=======
-      email: user?.primaryEmailAddress?.emailAddress ?? data?.profile?.email ?? '',
-      imageUrl: user?.hasImage ? user.imageUrl : data?.profile?.imageUrl ?? null,
-      profile: user && cloud.remoteProfile?.onboarding ? buildProfile({ userId: userId ?? '', email: user.primaryEmailAddress?.emailAddress ?? '', imageUrl: user.hasImage ? user.imageUrl : null, answers: cloud.remoteProfile.onboarding, createdAt: data?.profile?.createdAt }) : data?.profile ?? null,
->>>>>>> 643afe2 (Updated authentication and UI)
+      profile: user && cloud.remoteProfile?.onboarding ? buildProfile({ userId, email: user.email ?? '', imageUrl: user.photoURL, answers: cloud.remoteProfile.onboarding, createdAt: data?.profile?.createdAt }) : data?.profile ?? null,
       answers,
       hydrated: data !== null,
       needsOnboarding: Boolean(isSignedIn) && data !== null && !answers.completed,

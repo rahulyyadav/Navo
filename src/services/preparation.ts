@@ -10,12 +10,14 @@ export const essentials = [
   { id: 'altitude', section: 'On the trail', label: 'Review altitude illness signs with your team', detail: 'Do not ascend with symptoms of altitude illness. Worsening symptoms require descent and medical help.' },
   { id: 'respect', section: 'On the trail', label: 'Plan for waste and local customs', detail: 'Carry rubbish out, respect sacred sites and ask before photographing people.' },
 ] as const;
-export type Preparation = { date: string; notes: string; checked: string[] };
-export const emptyPreparation: Preparation = { date: '', notes: '', checked: [] };
+export type Preparation = { date: string; notes: string; checked: string[]; reviewed: string[] };
+export const emptyPreparation: Preparation = { date: '', notes: '', checked: [], reviewed: [] };
 export function normalizePreparation(value: unknown): Preparation {
-  if (!value || typeof value !== 'object') return { ...emptyPreparation, checked: [] };
+  if (!value || typeof value !== 'object') return { ...emptyPreparation, checked: [], reviewed: [] };
   const input = value as Partial<Preparation>;
-  return { date: typeof input.date === 'string' ? input.date.slice(0, 10) : '', notes: typeof input.notes === 'string' ? input.notes.slice(0, 2000) : '', checked: Array.isArray(input.checked) ? [...new Set(input.checked.filter(id => essentials.some(item => item.id === id)))] : [] };
+  const known = (values: unknown) => Array.isArray(values) ? [...new Set(values.filter((id): id is string => typeof id === 'string' && essentials.some(item => item.id === id)))] : [];
+  const checked = known(input.checked);
+  return { date: typeof input.date === 'string' ? input.date.slice(0, 10) : '', notes: typeof input.notes === 'string' ? input.notes.slice(0, 2000) : '', checked, reviewed: [...new Set([...known(input.reviewed), ...checked])] };
 }
 export function validDepartureDate(value: string) {
   if (!value) return true;
@@ -28,3 +30,14 @@ export const trekkingResources = [
   { label: 'DHM · weather & warnings', url: 'https://dhm.gov.np/' },
   { label: 'HRA · altitude advice', url: 'https://himalayanrescue.org/altitude' },
 ];
+
+export function decidePreparation(plan: Preparation, id: string, prepared: boolean | null): Preparation {
+  if (!essentials.some(item => item.id === id)) return plan;
+  return { ...plan, checked: [...plan.checked.filter(value => value !== id), ...(prepared === true ? [id] : [])], reviewed: [...plan.reviewed.filter(value => value !== id), ...(prepared !== null ? [id] : [])] };
+}
+export function preparationShare(trekName: string, plan: Preparation) {
+  const prepared = essentials.filter(item => plan.checked.includes(item.id));
+  const notYet = essentials.filter(item => plan.reviewed.includes(item.id) && !plan.checked.includes(item.id));
+  const unreviewed = essentials.length - plan.reviewed.length;
+  return [`My Navo trek preparation — ${trekName}`, `Departure: ${plan.date || 'Not set'}`, `${prepared.length}/${essentials.length} prepared`, prepared.length ? `Prepared:\n${prepared.map(item => `✓ ${item.label}`).join('\n')}` : '', notYet.length ? `Not prepared yet:\n${notYet.map(item => `○ ${item.label}`).join('\n')}` : '', unreviewed ? `${unreviewed} items still to review` : '', plan.notes ? `Notes: ${plan.notes}` : ''].filter(Boolean).join('\n\n');
+}
