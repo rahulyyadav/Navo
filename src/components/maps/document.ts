@@ -8,11 +8,16 @@ export type NepalMapProps = {
   selectedId: string | null;
   onSelectTrek: (id: string) => void;
   myCoords: Coords | null;
+  walkingRoutes?: { id: string; geometry: { latitude: number; longitude: number }[] }[];
+  walkingRouteId?: string;
+  endpoints?: { start?: { latitude: number; longitude: number }; end: { latitude: number; longitude: number } };
+  onSelectCoordinate?: (point: { latitude: number; longitude: number }) => void;
+  importedSegments?: { latitude: number; longitude: number }[][];
   interactive?: boolean;
   followUser?: boolean;
   positions?: { id: string; name: string; latitude: number; longitude: number; recordedAt: string; alert?: boolean }[];
 };
-export const mapPayload = ({ region, regionNonce, selectedId, myCoords, followUser, positions = [] }: NepalMapProps) => ({ region, regionNonce, selectedId, myCoords, followUser, positions });
+export const mapPayload = ({ region, regionNonce, selectedId, myCoords, followUser, positions = [], importedSegments = [], walkingRoutes = [], walkingRouteId, endpoints }: NepalMapProps) => ({ region, regionNonce, selectedId, myCoords, followUser, positions, importedSegments, walkingRoutes, walkingRouteId, endpoints });
 // Escape script terminators even if future route data comes from a remote source.
 export const scriptJSON = (value: unknown) => JSON.stringify(value).replace(/</g, '\\u003c');
 
@@ -37,10 +42,19 @@ map.on('baselayerchange',loading);
 for(const layer of [osm,topo]){layer.on('tileload',()=>{if(map.hasLayer(layer))loaded()});layer.on('tileerror',()=>{status.style.display='block';status.textContent='Some tiles are unavailable. Try the other map layer or check your connection.'})}
 if(interactive)L.control.layers({'Trails & places':osm,'Terrain / contours':topo},null,{collapsed:true}).addTo(map);
 const data=${scriptJSON(data)};
+map.on('click',event=>{const value=JSON.stringify({type:'select-coordinate',latitude:event.latlng.lat,longitude:event.latlng.lng});if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(value);else parent.postMessage(value,'*')});
 const markers=L.layerGroup().addTo(map);let position;let lastCamera=null;
+window.updateNavoPosition=function(payload){
+ if(position)map.removeLayer(position);
+ if(payload.myCoords){const p=payload.myCoords;position=L.circle([p.latitude,p.longitude],{radius:Math.max(p.accuracy||10,10),color:'#168de2',fillOpacity:.25}).addTo(map);position.bindTooltip('Your GPS position')}
+ if(payload.followUser && payload.myCoords){const p=payload.myCoords;map.panTo([p.latitude,p.longitude],{animate:true,duration:.8});}
+};
 window.updateNavoMap=function(payload){
  markers.clearLayers();
- for(const trek of data){
+ for(const route of (payload.walkingRoutes||[])){const selected=route.id===payload.walkingRouteId;const line=route.geometry.map(p=>[p.latitude,p.longitude]);L.polyline(line,{color:'#19293A',weight:selected?8:5,opacity:selected?.85:.4}).addTo(markers);L.polyline(line,{color:selected?'#E4FF89':'#168DE2',weight:selected?4:3,opacity:selected?1:.7}).addTo(markers).bindTooltip(selected?'Selected route':'Alternative route');}
+ if(payload.endpoints){const e=payload.endpoints;if(e.start)L.circleMarker([e.start.latitude,e.start.longitude],{radius:8,color:'#9BE89B',fillOpacity:1}).addTo(markers).bindTooltip('Routed start');L.circleMarker([e.end.latitude,e.end.longitude],{radius:8,color:'#FF9D8A',fillOpacity:1}).addTo(markers).bindTooltip(payload.walkingRoutes?.length?'Routed endpoint':'Selected destination');}
+ for(const segment of (payload.importedSegments||[])){L.polyline(segment.map(p=>[p.latitude,p.longitude]),{color:'#E4FF89',weight:4}).addTo(markers).bindTooltip('Imported GPX — not verified');}
+ for(const trek of ((payload.importedSegments?.length||payload.walkingRoutes?.length||payload.endpoints)?[]:data)){
  const selected=payload.selectedId===trek.id;
  if(selected)L.polyline(trek.points.map(p=>[p.latitude,p.longitude]),{color:trek.color,weight:2,opacity:.55,dashArray:'5 10'}).addTo(markers).bindTooltip('Illustrative waypoint connections — not a navigation track');
  const points=selected?trek.points:[trek.points[trek.points.length-1]];
@@ -52,14 +66,13 @@ window.updateNavoMap=function(payload){
   const label=document.createElement('div');label.textContent=point.name+' · last shared '+point.recordedAt+' (not live tracking)';
   L.circleMarker([point.latitude,point.longitude],{radius:10,color:point.alert?'#ff6f61':'#168de2',fillOpacity:.8}).addTo(markers).bindPopup(label);
  }
- if(position)map.removeLayer(position);
- if(payload.myCoords){const p=payload.myCoords;position=L.circle([p.latitude,p.longitude],{radius:Math.max(p.accuracy||10,10),color:'#168de2',fillOpacity:.25}).addTo(map);position.bindTooltip('Your GPS position')}
- if(payload.followUser && payload.myCoords){const p=payload.myCoords;map.panTo([p.latitude,p.longitude],{animate:true,duration:.8});}
- const r=payload.region;const camera=JSON.stringify([payload.regionNonce, payload.selectedId]);
+ const r=payload.region;const camera=JSON.stringify([payload.regionNonce, payload.selectedId,payload.walkingRouteId]);
  if(camera!==lastCamera){lastCamera=camera;map.fitBounds([[r.latitude-r.latitudeDelta/2,r.longitude-r.longitudeDelta/2],[r.latitude+r.latitudeDelta/2,r.longitude+r.longitudeDelta/2]],{padding:[30,30],animate:false});}
+ if(Object.prototype.hasOwnProperty.call(payload,'myCoords'))window.updateNavoPosition(payload);
 };
-window.addEventListener('message',event=>{if(event.source!==parent)return;try{const msg=JSON.parse(event.data);if(msg.type==='navo-update')window.updateNavoMap(msg.payload)}catch{}});
+window.addEventListener('message',event=>{if(event.source!==parent)return;try{const msg=JSON.parse(event.data);if(msg.type==='navo-update')window.updateNavoMap(msg.payload);else if(msg.type==='navo-position')window.updateNavoPosition(msg.payload)}catch{}});
 window.updateNavoMap(${scriptJSON(mapPayload(props))});
+window.updateNavoPosition(${scriptJSON({myCoords:props.myCoords,followUser:props.followUser})});
 new ResizeObserver(()=>map.invalidateSize()).observe(document.getElementById('map'));
 }
 </script></body></html>`;

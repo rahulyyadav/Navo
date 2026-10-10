@@ -45,3 +45,17 @@ test('chat sends loaded email metadata without a Firebase bearer token', async (
     return new Response(JSON.stringify({ reply: 'Hello' }));
   }, async () => assert.deepEqual(await requestChatAPI([{ role: 'user', content: 'Hi' }], 'trekker@example.com'), { reply: 'Hello' }));
 });
+test('a chat-only endpoint works while shared services are unconfigured', async () => {
+  const previousMain = process.env.EXPO_PUBLIC_API_BASE_URL, previousChat = process.env.EXPO_PUBLIC_CHAT_BASE_URL;
+  process.env.EXPO_PUBLIC_API_BASE_URL = ''; process.env.EXPO_PUBLIC_CHAT_BASE_URL = 'http://chat.local:8004';
+  let chat;
+  try { chat = await import(`data:text/javascript;base64,${Buffer.from(compiled + '\n// isolated chat endpoint').toString('base64')}`); }
+  finally { if(previousMain===undefined)delete process.env.EXPO_PUBLIC_API_BASE_URL;else process.env.EXPO_PUBLIC_API_BASE_URL=previousMain;if(previousChat===undefined)delete process.env.EXPO_PUBLIC_CHAT_BASE_URL;else process.env.EXPO_PUBLIC_CHAT_BASE_URL=previousChat; }
+  await withFetch(async (url,options)=>{assert.equal(url,'http://chat.local:8004/chat');assert.equal(options.headers.Authorization,undefined);return new Response(JSON.stringify({reply:'A grounded route reply'}));},async()=>assert.deepEqual(await chat.requestChatAPI([{role:'user',content:'How long?'}],null),{reply:'A grounded route reply'}));
+});
+test('guest chat normalizes empty email metadata to null',async()=>{
+ await withFetch(async(url,options)=>{assert.equal(JSON.parse(options.body).email,null);return new Response(JSON.stringify({reply:'Hello'}));},async()=>assert.deepEqual(await requestChatAPI([{role:'user',content:'Hi'}],''),{reply:'Hello'}));
+});
+test('malformed optional email metadata never blocks a route question',async()=>{
+ await withFetch(async(url,options)=>{assert.equal(JSON.parse(options.body).email,null);return new Response(JSON.stringify({reply:'Hello'}));},async()=>assert.deepEqual(await requestChatAPI([{role:'user',content:'Hi'}],'No email shared'),{reply:'Hello'}));
+});

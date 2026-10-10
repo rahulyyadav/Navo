@@ -9,10 +9,10 @@
     "scheme": "navo",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.rahulyadav.navo"
+      "bundleIdentifier": "com.thakurbibek.navo"
     },
     "android": {
-      "package": "com.rahulyadav.navo",
+      "package": "com.thakurbibek.navo",
       "adaptiveIcon": {
         "backgroundColor": "#0D141A",
         "foregroundImage": "./assets/android-icon-foreground.png",

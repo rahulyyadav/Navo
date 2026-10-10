@@ -6,10 +6,12 @@ const issues=[];
 for (const key of ['EXPO_PUBLIC_FIREBASE_API_KEY','EXPO_PUBLIC_FIREBASE_PROJECT_ID','EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN','EXPO_PUBLIC_FIREBASE_APP_ID','EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID','EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID']) {
   if (!env[key]?.trim()) issues.push(`${key} is missing.`);
 }
-for (const key of ['EXPO_PUBLIC_API_BASE_URL','EXPO_PUBLIC_PRIVACY_URL']) {
+for (const key of ['EXPO_PUBLIC_API_BASE_URL','EXPO_PUBLIC_PRIVACY_URL','EXPO_PUBLIC_PHOTON_URL','EXPO_PUBLIC_WALKING_ROUTER_URL']) {
   try { const url=new URL(env[key]); if(url.protocol!=='https:' || /^(localhost|127\.|192\.168\.|10\.)/.test(url.hostname)) throw new Error(); }
   catch { issues.push(`${key} must be a public HTTPS URL.`); }
 }
+if(/routing\.openstreetmap\.de|photon\.komoot\.io/.test((env.EXPO_PUBLIC_PHOTON_URL??'')+' '+(env.EXPO_PUBLIC_WALKING_ROUTER_URL??''))) issues.push('Configure provider-approved production capacity; public test endpoints have no availability guarantee.');
+if(env.EXPO_PUBLIC_CHAT_BASE_URL?.trim()){try{const url=new URL(env.EXPO_PUBLIC_CHAT_BASE_URL);if(url.protocol!=='https:' || /^(localhost|127\.|192\.168\.|10\.)/.test(url.hostname) || url.username || url.password)throw new Error();}catch{issues.push('EXPO_PUBLIC_CHAT_BASE_URL must be a public HTTPS URL, or unset to use the main backend.');}}
 if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(env.EXPO_PUBLIC_SUPPORT_EMAIL??'')) issues.push('EXPO_PUBLIC_SUPPORT_EMAIL is missing or invalid.');
 if(env.EXPO_PUBLIC_ENABLE_DEMO==='true') issues.push('Disable EXPO_PUBLIC_ENABLE_DEMO for production.');
 for(const key of Object.keys(env)) if(key.startsWith('EXPO_PUBLIC_') && /(PRIVATE_KEY|SECRET|NEBIUS_API_KEY|SERVICE_ACCOUNT)/.test(key)) issues.push(`${key} must not be bundled into the app.`);

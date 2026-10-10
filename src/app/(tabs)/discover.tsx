@@ -12,7 +12,7 @@ export default function DiscoverScreen() {
     unread={cloud.notifications.filter(item => !item.read).length}
     onInbox={() => router.push('/notifications')}
     onGroups={() => router.push('/(tabs)/groups')}
-    onPlan={() => router.push('/plan')}
+    onPlan={() => router.push('/trek-plan')}
     onTrek={trek => router.push(`/trek/${trek.id}`)}
     onCopilot={() => router.push('/(tabs)/ai')}
     onOffline={() => router.push('/safety')}

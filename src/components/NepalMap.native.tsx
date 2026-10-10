@@ -2,21 +2,24 @@ import { useEffect, useRef, useState } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
 import { Text } from '@/components/Typography';
 import { WebView } from 'react-native-webview';
-import { mapDocument, mapPayload, scriptJSON, type NepalMapProps } from './maps/document';
+import { mapDocument, type NepalMapProps } from './maps/document';
+import { useMapPayload } from '@/hooks/useMapPayload';
 import { trekById } from '@/data/treks';
 
 export function NepalMap(props: NepalMapProps) {
   const webview = useRef<WebView>(null);
   const [html] = useState(() => mapDocument(props));
   const [failed, setFailed] = useState(false);
-  const payload = scriptJSON(mapPayload(props));
+  const { fixed: payload, moving } = useMapPayload(props);
   useEffect(() => {
     webview.current?.injectJavaScript(`window.updateNavoMap && window.updateNavoMap(${payload});true;`);
   }, [payload]);
+  useEffect(() => { webview.current?.injectJavaScript(`window.updateNavoPosition && window.updateNavoPosition(${moving});true;`); }, [moving]);
   return <View style={styles.root}>
-    <WebView ref={webview} source={{ html }} onLoadEnd={() => webview.current?.injectJavaScript(`window.updateNavoMap && window.updateNavoMap(${payload});true;`)} originWhitelist={['*']} applicationNameForUserAgent="Navo/1.0 (Nepal trek map)" javaScriptEnabled domStorageEnabled scrollEnabled={false} onError={() => setFailed(true)} onMessage={event => {
+    <WebView ref={webview} source={{ html }} onLoadEnd={() => webview.current?.injectJavaScript(`window.updateNavoMap && window.updateNavoMap(${payload});window.updateNavoPosition && window.updateNavoPosition(${moving});true;`)} originWhitelist={['*']} applicationNameForUserAgent="Navo/1.0 (Nepal trek map)" javaScriptEnabled domStorageEnabled scrollEnabled={false} onError={() => setFailed(true)} onMessage={event => {
       try {
         const message = JSON.parse(event.nativeEvent.data);
+        if (message.type === 'select-coordinate' && Number.isFinite(message.latitude) && Math.abs(message.latitude) <= 90 && Number.isFinite(message.longitude) && Math.abs(message.longitude) <= 180) props.onSelectCoordinate?.({ latitude: message.latitude, longitude: message.longitude });
         if (message.type === 'select-trek' && typeof message.id === 'string' && trekById(message.id)) props.onSelectTrek(message.id);
       } catch { /* Ignore malformed map events. */ }
     }} onShouldStartLoadWithRequest={request => {

@@ -19,7 +19,7 @@ export default function TripsScreen() {
   const params = useLocalSearchParams<{ section?: string }>();
   const [tab, setTab] = useState(params.section === 'saved' ? 'Saved treks' : params.section === 'activity' ? 'Activity' : 'Plans');
   return <Backdrop><ScrollView contentContainerStyle={[styles.page, layout.page]} keyboardShouldPersistTaps="handled">
-    <Badge label="YOUR PLANS · YOUR PACE" tone="lime" /><Heading title="My treks." subtitle="Your plans, saved places and recorded walks. Available on this device, for this account." />
+    <Badge label="YOUR PLANS · YOUR PACE" tone="lime" /><Heading title="My treks." subtitle="Your plans, saved places and recorded walks. Available on this device, for this account." /><Button label="Walking plans & hike history" variant="outline" onPress={() => router.push('/adventures')} /><Button label="My GPX routes" variant="outline" onPress={() => router.push('/routes')} />
     <View style={styles.row}>{['Plans', 'Saved treks', 'Activity'].map(label => <Chip key={label} label={label} selected={tab === label} onPress={() => setTab(label)} />)}</View>
     <Notice message={library.error} />{Boolean(library.error) && <Button label="Retry saved trips" variant="outline" onPress={() => void library.reload()} />}
     {!library.loaded && !library.error && <Text style={styles.copy}>Opening your trip library…</Text>}

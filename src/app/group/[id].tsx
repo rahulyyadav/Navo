@@ -51,7 +51,7 @@ export default function GroupScreen() {
     <Reveal><Badge label={`${group.members.length} MEMBERS · ${group.startDate}`} tone="lime" /><Heading title={group.name} subtitle="Stay close, even when the trail opens up." /></Reveal>
     {group.outing && <Card><SectionTitle title="MEETUP PLAN" /><Text style={styles.name}>{group.outing.meetingPoint}</Text><Text style={styles.copy}>{group.startDate} · depart {group.outing.startTime} Nepal time</Text><Text style={styles.copy}>{group.outing.walkingHours} walking hours planned · {group.members.length} joined / {group.outing.expectedPeople} expected</Text><Text style={styles.copy}>Confirm transport, the trail and a turnaround time together in Chat.</Text></Card>}
     <CloudStatus /><View style={styles.row}>{['Crew', 'Chat', 'Safety'].map(name => <Chip key={name} label={name} selected={tab === name} onPress={() => setTab(name)} />)}</View>
-    <Notice message={error || members.error || messages.error || alerts.error} />{success && <Notice message={success} tone="info" />}
+    <Notice message={error || members.error || messages.error || alerts.error} />{Boolean(success) && <Notice message={success} tone="info" />}
     {(members.error || messages.error || alerts.error) && <Button label="Retry group feeds" variant="outline" onPress={() => { members.retry(); messages.retry(); alerts.retry(); }} />}
     {tab === 'Crew' && <>
       {group.ownerId === userId && <GroupInviteTools groupId={gid} />}
