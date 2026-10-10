@@ -67,7 +67,7 @@ function Routes() {
   return <><Stack screenOptions={{
     headerShadowVisible: false,
     headerBackTitle: 'Back',
-    headerStyle: { backgroundColor: colors.night },
+    headerStyle: { backgroundColor: colors.homeMiddle },
     headerTintColor: colors.ink,
     headerTitleStyle: { fontFamily: 'SatoshiBold', fontWeight: 'normal' },
     contentStyle: { backgroundColor: colors.night },
@@ -96,10 +96,14 @@ function Routes() {
       <Stack.Screen name="plan" options={{ headerShown: false }} />
       <Stack.Screen name="trips" options={{ title: 'Your trips' }} />
       <Stack.Screen name="trip/[id]" options={{ title: 'Trip details' }} />
+      <Stack.Screen name="navigate" options={{ title: 'Your journey', gestureEnabled: false }} />
+      <Stack.Screen name="adventures" options={{ title: 'Walking adventures' }} />
+      <Stack.Screen name="routes" options={{ title: 'My routes' }} />
       <Stack.Screen name="record-hike" options={{ title: 'Record a hike' }} />
       <Stack.Screen name="day-hike" options={{ title: "Plan a day hike" }} />
       <Stack.Screen name="safety" options={{ title: 'Offline essentials', headerBackTitle: 'Back' }} />
     </Stack.Protected>
+    <Stack.Screen name="trek-plan" options={{ title: 'Plan your trek' }} />
     <Stack.Screen name="join" options={{ title: "Join a trek group" }} />
     <Stack.Screen name="privacy" options={{ title: "Privacy & data" }} />
   </Stack>{isSignedIn && !needsOnboarding && <IncomingUpdates />}</>;

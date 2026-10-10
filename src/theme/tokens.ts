@@ -1,4 +1,9 @@
 export const colors = {
+  homeTop: '#8AA9C4',
+  homeMiddle: '#536D86',
+  homeBottom: '#3C5872',
+  surface: 'rgba(31, 52, 72, 0.80)',
+  surfaceSoft: 'rgba(204,222,239,0.14)',
   night: '#0D141A',
   nightDeep: '#080D12',
   navy: '#19293A',
@@ -49,7 +54,7 @@ export const glowDanger = {
 };
 
 export const gradients = {
-  night: [colors.nightDeep, colors.night, colors.navy] as const,
+  night: [colors.homeTop, colors.homeMiddle, colors.homeBottom] as const,
   card: ['rgba(29,46,63,0.95)', 'rgba(19,31,42,0.92)'] as const,
   lime: [colors.lime, colors.limeDeep] as const,
   danger: [colors.danger, colors.dangerDeep] as const,

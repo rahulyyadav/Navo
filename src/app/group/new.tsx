@@ -4,7 +4,7 @@ import { Text } from '@/components/Typography';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button, Card, Chip, Eyebrow, Field, Notice, OptionCard, Reveal } from '@/components/ui';
+import { Backdrop, Button, Card, Chip, Eyebrow, Field, Notice, OptionCard, Reveal } from '@/components/ui';
 import { useNavo } from '@/context/NavoContext';
 import { trekById, treks } from '@/data/treks';
 import { formatDate } from '@/services/format';
@@ -70,7 +70,7 @@ export default function NewGroupScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 28 }]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+    <Backdrop><ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 28 }]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
       <Reveal>
         <View style={styles.intro}>
           <Eyebrow>NEW GROUP</Eyebrow>
@@ -136,7 +136,7 @@ export default function NewGroupScreen() {
           <Button label="Cancel" onPress={() => router.back()} style={styles.cancel} variant="quiet" />
         </View>
       </Reveal>
-    </ScrollView>
+    </ScrollView></Backdrop>
   );
 }
 

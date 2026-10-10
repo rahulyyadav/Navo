@@ -45,3 +45,10 @@ test('forecast rejects wrong dates and impossible values', async t => {
  result.daily.time = [date];
  assert.equal((await fetchDayWeather(27,85,date)).rainChance,20);
 });
+
+test('suggested departure rolls date and time together at Nepal midnight', async () => {
+  const code = await readFile(new URL('../src/services/day-hike.ts', import.meta.url), 'utf8');
+  const output = ts.transpileModule(code, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const { suggestedDeparture } = await import(`data:text/javascript;base64,${Buffer.from(output).toString('base64')}`);
+  assert.deepEqual(suggestedDeparture(new Date('2026-10-10T18:10:00Z')), { date: '2026-10-11', time: '00:10' });
+});

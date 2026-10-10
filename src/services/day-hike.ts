@@ -54,3 +54,12 @@ export function validateWalkHours(hours: string): string | null {
   return !hours.trim() || !Number.isFinite(Number(hours)) || Number(hours) <= 0 || Number(hours) > 16
     ? 'Allow more than 0 and up to 16 hours for walking, breaks and return to the trailhead.' : null;
 }
+
+export function nepalDateTime(now = new Date()) {
+  const nepal = new Date(now.getTime() + 345 * 60000).toISOString();
+  return { date: nepal.slice(0, 10), time: nepal.slice(11, 16) };
+}
+/** Suggest a departure 15 minutes ahead, including Nepal midnight rollover. */
+export function suggestedDeparture(now = new Date()) {
+  return nepalDateTime(new Date(now.getTime() + 15 * 60000));
+}

@@ -104,7 +104,46 @@ class ChatMessage(Model):
     role: Literal['user', 'assistant']
     content: str = Field(min_length=1, max_length=6000)
 
+class WeatherChatContext(Model):
+    windUnit: Literal['km/h'] = 'km/h'
+    temperatureUnit: Literal['Celsius'] = 'Celsius'
+    timezone: Literal['Asia/Kathmandu'] = 'Asia/Kathmandu'
+    source: Literal['Open-Meteo']
+    scope: Literal['destination whole-day']
+    date: str = Field(pattern=r'^\d{4}-\d{2}-\d{2}$')
+    fetchedAt: datetime
+    sunset: str = Field(max_length=30)
+    sunrise: str | None = Field(default=None, max_length=30)
+    temperatureMin: float = Field(ge=-100, le=65)
+    temperatureMax: float = Field(ge=-100, le=65)
+    rainChanceMax: float = Field(ge=0, le=100)
+    windMax: float = Field(ge=0, le=500)
+
+class TrekChatContext(Model):
+    destination: str = Field(min_length=1, max_length=200)
+    origin: str = Field(min_length=1, max_length=200)
+    provider: Literal['osrm-foot', 'user-gpx']
+    distanceM: float = Field(ge=0, le=500000)
+    durationS: float = Field(ge=0, le=1000000)
+    ascentM: float | None = Field(default=None, ge=0, le=100000)
+    date: str = Field(pattern=r'^\d{4}-\d{2}-\d{2}$')
+    startTime: str = Field(pattern=r'^([01]\d|2[0-3]):[0-5]\d$')
+    remainingM: float | None = Field(default=None, ge=0, le=500000)
+    eta: str | None = Field(default=None, max_length=60)
+    weatherAvailable: bool = False
+    sunset: str | None = Field(default=None, max_length=30)
+    weather: WeatherChatContext | None = None
+
+    @model_validator(mode='after')
+    def consistent_weather(self):
+        if self.weatherAvailable != (self.weather is not None):
+            raise ValueError('Weather context must include its actual snapshot.')
+        if self.weather and (self.weather.date != self.date or self.weather.sunset != self.sunset or self.weather.temperatureMin > self.weather.temperatureMax):
+            raise ValueError('Weather context does not match the planned date.')
+        return self
+
 class ChatRequest(Model):
+    context: TrekChatContext | None = None
     # Client-provided metadata only; never an authenticated identity.
     email: str | None = Field(default=None, max_length=254, pattern=r'^[^\s@]+@[^\s@]+\.[^\s@]+$')
     messages: list[ChatMessage] = Field(min_length=1, max_length=20)

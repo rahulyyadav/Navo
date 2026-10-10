@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { Text } from '@/components/Typography';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Backdrop, Badge, Button, Card, Heading, Notice, SectionTitle } from '@/components/ui';
 import { useNavo } from '@/context/NavoContext';
 import { useCloud } from '@/context/CloudContext';
@@ -35,7 +35,7 @@ export default function OfflineScreen() {
     } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not save trip pack.'); }
     finally { setBusy(false); }
   }
-  return <Backdrop><ScrollView contentContainerStyle={styles.scroll}><Heading title="Beyond the last signal." subtitle="Save a snapshot you can read on this device. Re-download before departure to update it." /><Notice message={error} />
+  return <Backdrop><ScrollView contentContainerStyle={styles.scroll}><Heading title="Beyond the last signal." subtitle="Save a snapshot you can read on this device. Re-download before departure to update it." /><Notice message={error} /><Button label="Import & manage GPX routes" variant="outline" onPress={() => router.push('/routes')} />
     <Button label={pack ? 'Update saved trip pack' : 'Save trip pack on this device'} busy={busy} disabled={busy} onPress={() => void save()} />
     {pack && <><Badge label="SAVED ON THIS DEVICE" tone="lime" /><Text style={styles.copy}>Saved {new Date(pack.savedAt).toLocaleString()}. Group information is a snapshot, not live.</Text><Heading title={pack.trekName} /><SectionTitle title={pack.outing ? "MEETUP PLAN" : "APPROXIMATE WAYPOINTS"} />{pack.outing && <Card><Text style={styles.title}>{pack.outing.meetingPoint}</Text><Text style={styles.copy}>{pack.startDate ?? 'Date not saved'} · depart {pack.outing.startTime} NPT · {pack.outing.walkingHours} planned walking hours · {pack.outing.expectedPeople} expected people. No verified trail track is included.</Text></Card>}{pack.waypoints.map(point => <Card key={point.name}><Text style={styles.title}>{point.name} · {point.elevation} m</Text><Text style={styles.copy}>{point.latitude.toFixed(5)}, {point.longitude.toFixed(5)}</Text></Card>)}
       <SectionTitle title="EMERGENCY CONTACT" /><Text style={styles.copy}>{pack.contact ? `${pack.contact.name} · ${pack.contact.phone}` : 'No emergency contact saved. Add one in your profile.'}</Text>

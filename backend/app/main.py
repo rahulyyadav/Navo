@@ -4,6 +4,8 @@ from datetime import datetime, timezone, timedelta
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+import logging
 from firebase_admin import auth, firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 from .auth import current_user
@@ -23,6 +25,13 @@ app.add_middleware(CORSMiddleware, allow_origins=[v.strip() for v in settings().
 @app.exception_handler(Exception)
 async def unexpected_error(request, error):
     return JSONResponse(status_code=503, content={'detail': 'The service is temporarily unavailable. Check server setup and try again.'})
+
+@app.exception_handler(RequestValidationError)
+async def invalid_request(request, error):
+    # Log schema paths/types only; never log credentials, message content or positions.
+    fields = [{'field': '.'.join(str(p) for p in item.get('loc', ())), 'type': item.get('type')} for item in error.errors()]
+    logging.getLogger('uvicorn.error').warning('Request validation failed: %s', fields)
+    return JSONResponse(status_code=422, content={'detail': 'Some request details could not be validated. Check your inputs and retry.'})
 
 STAMP = firestore.SERVER_TIMESTAMP
 

@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { actionError } from '@/lib/api';
+import { colors } from '@/theme/tokens';
 import { Reveal } from '@/components/ui';
 
 type Message = { role: 'user' | 'assistant'; content: string };
@@ -38,7 +39,7 @@ export function AIChatPage({ ready, retry, request }: Props) {
     finally { lock.current = false; setPending(''); }
   }
   return <View style={styles.page}>
-    <LinearGradient colors={['#819EB8', '#536D86', '#3C5872']} style={StyleSheet.absoluteFill} />
+    <LinearGradient colors={[colors.homeTop, colors.homeMiddle, colors.homeBottom]} style={StyleSheet.absoluteFill} />
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
       <View style={[styles.header, { paddingTop: insets.top + 18 }]}><View><Text style={styles.title}>Navo AI</Text><Text style={styles.subtitle}>Your mountain companion</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Start a new chat" disabled={Boolean(pending)} onPress={() => { setMessages([]); setDraft(''); setError(''); }} style={styles.newChat}><Text style={styles.newChatText}>＋</Text></Pressable></View>
       <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.conversation} onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: true })}>

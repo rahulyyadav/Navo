@@ -1,0 +1,40 @@
+import type { HourlyForecast } from "../weather/hourly";
+import type { Coordinate, Place } from "../places/types";
+export type RouteInstruction = {
+  text: string;
+  distanceM: number;
+  durationS: number;
+  coordinate: Coordinate;
+  geometry: Coordinate[];
+};
+export type WalkingRoute = {
+  id: string;
+  name: string;
+  geometry: Coordinate[];
+  distanceM: number;
+  durationS: number;
+  ascentM: number | null;
+  descentM: number | null;
+  instructions: RouteInstruction[];
+  provider: "osrm-foot" | "user-gpx";
+  durationBasis?: "provider" | "4kmh-assumption";
+  fetchedAt: string;
+  snappedStart: Coordinate;
+  snappedEnd: Coordinate;
+  startOffsetM: number;
+  endOffsetM: number;
+};
+export type RoutePlan = {
+  version: 1;
+  id: string;
+  name: string;
+  origin: Place;
+  destination: Place;
+  stops: Place[];
+  date: string;
+  time: string;
+  pace: "relaxed" | "normal" | "brisk";
+  route: WalkingRoute;
+  savedAt: string;
+  weather?: HourlyForecast | null;
+};

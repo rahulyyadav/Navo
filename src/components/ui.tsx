@@ -48,9 +48,7 @@ export function Reveal({ children, delay = 0, distance = 18 }: PropsWithChildren
 export function Backdrop({ children }: PropsWithChildren) {
   return <View style={ui.backdropRoot}>
     <LinearGradient colors={[...gradients.night]} style={StyleSheet.absoluteFill} />
-    <View pointerEvents="none" style={[ui.glow, ui.glowTopRight]} />
-    <View pointerEvents="none" style={[ui.glow, ui.glowBottomLeft]} />
-    <View pointerEvents="none" style={ui.grain} />
+
     {children}
   </View>;
 }
@@ -298,7 +296,7 @@ const ui = StyleSheet.create({
   glowBottomLeft: { width: 320, height: 320, left: -150, bottom: -140, backgroundColor: colors.info, opacity: 0.1 },
   grain: { ...StyleSheet.absoluteFill, backgroundColor: 'transparent' },
 
-  card: { borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.navy, overflow: 'hidden' },
+  card: { borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface, overflow: 'hidden' },
   cardPadded: { padding: space.lg },
 
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -310,17 +308,17 @@ const ui = StyleSheet.create({
 
   eyebrow: { color: colors.lime, fontSize: 11, fontWeight: '800', letterSpacing: 2, marginBottom: 12 },
   headingBlock: { marginBottom: space.lg },
-  h1: { color: colors.ink, fontSize: 36, fontWeight: '600', letterSpacing: -1.4, lineHeight: 42 },
+  h1: { color: colors.ink, fontSize: 28, fontWeight: '600', letterSpacing: -0.7, lineHeight: 35 },
   lede: { color: colors.muted, fontSize: 16, lineHeight: 25, marginTop: 12 },
 
   sectionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
   sectionTitle: { color: colors.ink, fontSize: 13, fontWeight: '800', letterSpacing: 1.6 },
 
-  buttonBase: { minHeight: 62, borderRadius: radius.pill, overflow: 'hidden', justifyContent: 'center' },
+  buttonBase: { minHeight: 54, borderRadius: radius.pill, overflow: 'hidden', justifyContent: 'center' },
   buttonPrimaryWrap: { ...glowLime },
   buttonDangerWrap: { ...shadow },
   gradientFill: { flex: 1 },
-  buttonInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 22, minHeight: 62 },
+  buttonInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 22, minHeight: 54 },
   buttonLabel: { fontSize: 16, fontWeight: '700', flexShrink: 1 },
   buttonTextDark: { color: colors.onAccent },
   buttonTextLight: { color: colors.ink },
@@ -337,7 +335,7 @@ const ui = StyleSheet.create({
 
   fieldBlock: { marginBottom: space.md },
   fieldLabel: { color: colors.ink, fontSize: 14, fontWeight: '700', marginBottom: 9 },
-  fieldShell: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.line, backgroundColor: colors.navy, minHeight: 62, paddingHorizontal: 18, justifyContent: 'center' },
+  fieldShell: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.line, backgroundColor: colors.navy, minHeight: 54, paddingHorizontal: 18, justifyContent: 'center' },
   fieldError: { borderColor: colors.danger },
   fieldInput: { flex: 1, minWidth: 0, color: colors.ink, fontSize: 17, paddingVertical: 16 },
   fieldErrorText: { color: colors.danger, fontSize: 13, lineHeight: 19, marginTop: 8 },

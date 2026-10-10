@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from time import perf_counter
 import httpx
 from fastapi import HTTPException
-from .config import settings
+from .config import settings, token_factory_url_allowed
 
 @dataclass(frozen=True)
 class Completion:
@@ -16,7 +16,7 @@ class Completion:
 def configured():
     value = settings()
     return bool(value.nebius_api_key and 'nemotron' in value.nebius_model.lower()
-                and value.nebius_base_url.rstrip('/') == 'https://api.tokenfactory.us-central1.nebius.com/v1')
+                and token_factory_url_allowed(value.nebius_base_url))
 
 def token_count(value):
     return value if type(value) is int and value >= 0 else None

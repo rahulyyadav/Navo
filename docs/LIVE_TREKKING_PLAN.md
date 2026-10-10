@@ -80,7 +80,7 @@ Session: preparing, acquiring GPS, active, paused, degraded, ended. Persist only
 ### Phase 1 — Migrate the existing map to Google Maps
 
 - Configure platform keys through Expo app configuration/build environment. Enable Maps SDK for Android/iOS; enable Maps JavaScript API only if web is required.
-- Restrict Android keys to com.rahulyadav.navo and the correct development/release signing SHA-1s; iOS to com.rahulyadav.navo; web to approved referrers. Restrict each key to its intended API. Use separate server credentials for any future server API calls.
+- Restrict Android keys to com.thakurbibek.navo and the correct development/release signing SHA-1s; iOS to com.thakurbibek.navo; web to approved referrers. Restrict each key to its intended API. Use separate server credentials for any future server API calls.
 - Replace the native Leaflet WebView with native MapView; replace the web iframe map provider while preserving its supported behaviours.
 - Preserve all four trek selections, focus-on-location, Nepal reset, trek-detail previews and deep links. Keep Google attribution visible around the navigation dock and selected-trek sheet.
 - Add loading, missing configuration, denied permission and network failure states. Handle map readiness before applying camera commands and avoid resetting the camera on every render.
