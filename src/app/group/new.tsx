@@ -132,6 +132,7 @@ export default function NewGroupScreen() {
 
       <Reveal delay={160}>
         <View style={styles.footer}>
+          {!cloud.ready && <Button label="Prepare this trek on my phone" variant="outline" onPress={() => router.push({ pathname: '/plan', params: { trek: trekId } })} />}
           <Button busy={saving} disabled={saving || !cloud.ready} label={saving ? 'Creating your group…' : 'Create group'} onPress={() => void submit()} />
           <Button label="Cancel" onPress={() => router.back()} style={styles.cancel} variant="quiet" />
         </View>
@@ -141,7 +142,7 @@ export default function NewGroupScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 14 },
+  scroll: { flexGrow: 1, width: '100%', maxWidth: 720, alignSelf: 'center', paddingHorizontal: 20, paddingTop: 14 },
   intro: { marginBottom: 22 },
   title: { color: colors.ink, fontSize: 30, fontWeight: '700', letterSpacing: -1, lineHeight: 36 },
   subtitle: { color: colors.muted, fontSize: 15, lineHeight: 22, marginTop: 10 },

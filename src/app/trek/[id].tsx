@@ -1,5 +1,5 @@
 import { useTripLibrary } from '@/hooks/useTripLibrary';
-import { photoCredits } from '@/data/photo-credits';
+import { galleryForTrek } from '@/data/trek-photos';
 import { useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Linking, Image, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
@@ -52,7 +52,7 @@ export function TrekDetail({ id }: { id: string }) {
   const { height } = useWindowDimensions();
   const scroll = useRef<ScrollView>(null);
   const detailsY = useRef(0);
-  const [selectedView, setSelectedView] = useState(1);
+  const [selectedView, setSelectedView] = useState(0);
   const reduced = useReducedMotion();
   const trek = trekById(id);
 
@@ -69,6 +69,8 @@ export function TrekDetail({ id }: { id: string }) {
     );
   }
 
+  const gallery = galleryForTrek(trek);
+  const activePhoto = gallery[selectedView % gallery.length];
   const stats = trekStats(trek.route);
   const profile = elevationProfile(trek.route);
   const accent = colorForTrek(trek.id);
@@ -78,7 +80,7 @@ export function TrekDetail({ id }: { id: string }) {
   return (
     <View style={styles.screen}>
       <Animated.View key={`${trek.id}-${selectedView}`} entering={reduced ? undefined : FadeIn.duration(420)} style={StyleSheet.absoluteFill} pointerEvents="none">
-        <Image source={trek.image} resizeMode="cover" style={[styles.backgroundImage, { transform: [{ scale: selectedView === 0 ? 1.2 : selectedView === 2 ? 1.45 : 1 }] }]} />
+        <Image source={activePhoto.image} accessibilityLabel={activePhoto.label} resizeMode="cover" style={styles.backgroundImage} />
       </Animated.View>
       <LinearGradient colors={['rgba(104,136,158,0.35)', 'rgba(51,81,109,0.30)', 'rgba(45,72,99,0.95)', '#304C66']} locations={[0, 0.36, 0.69, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
       <ScrollView ref={scroll} contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 118 }]} showsVerticalScrollIndicator={false}>
@@ -106,8 +108,8 @@ export function TrekDetail({ id }: { id: string }) {
             <OverviewStat symbol="⌁" value={`${stats.stops} stops`} label="Route" />
           </View></Reveal>
           <Reveal delay={120}><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gallery}>
-            {['Wide view', 'Mountain view', 'Closer view'].map((label, index) => <Pressable key={label} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected: selectedView === index }} onPress={() => setSelectedView(index)} style={({ pressed }) => [styles.photoCard, selectedView === index && styles.photoSelected, pressed && styles.pressed]}>
-              <Image source={trek.image} resizeMode="cover" style={[StyleSheet.absoluteFill, { width: '100%', height: '100%', transform: [{ scale: index === 0 ? 1.2 : index === 2 ? 1.45 : 1 }] }]} />
+            {gallery.map((photo, index) => <Pressable key={photo.source} accessibilityRole="button" accessibilityLabel={photo.label} accessibilityState={{ selected: selectedView === index }} onPress={() => setSelectedView(index)} style={({ pressed }) => [styles.photoCard, selectedView === index && styles.photoSelected, pressed && styles.pressed]}>
+              <Image source={photo.image} accessibilityLabel={photo.label} resizeMode="cover" style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]} />
               <LinearGradient colors={['transparent', 'rgba(25,41,58,0.4)']} style={StyleSheet.absoluteFill} />
             </Pressable>)}
           </ScrollView></Reveal>
@@ -118,7 +120,7 @@ export function TrekDetail({ id }: { id: string }) {
             <Text accessibilityLiveRegion="polite" style={styles.caveat}>{saveError || library.error}</Text>
             <Button label={library.data.savedTrekIds.includes(trek.id) ? 'Saved · remove from shortlist' : 'Save trek to shortlist'} variant="outline" busy={saving} disabled={!library.loaded || saving} onPress={() => { setSaving(true); setSaveError(''); void library.update(data => ({ ...data, savedTrekIds: data.savedTrekIds.includes(trek.id) ? data.savedTrekIds.filter(id => id !== trek.id) : [...data.savedTrekIds, trek.id] })).catch(() => setSaveError('Could not update saved treks. Please retry.')).finally(() => setSaving(false)); }} />
             <Button label="View my saved treks" variant="quiet" onPress={() => router.push({ pathname: '/trips', params: { section: 'saved' } })} />
-            {photoCredits[trek.id] && <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(photoCredits[trek.id].source)}><Text style={styles.caveat}>Photo: {photoCredits[trek.id].author} · CC BY-SA {photoCredits[trek.id].license}</Text></Pressable>}
+            <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(activePhoto.source).catch(() => setSaveError('Could not open the photo source.'))}><Text style={styles.caveat}>Photo: {activePhoto.author} · {activePhoto.license} ↗</Text></Pressable><Pressable accessibilityRole="link" onPress={() => void Linking.openURL(activePhoto.licenseURL).catch(() => setSaveError('Could not open the license.'))}><Text style={styles.caveat}>Photo reuse license · display cropped to fit</Text></Pressable>
           </View>
 
         <Reveal delay={70}>

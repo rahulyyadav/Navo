@@ -1,3 +1,4 @@
+import { hikingReferences } from "./hiking-references";
 import { distance } from "../trekking/navigation";
 import { isCoordinate, type Coordinate, type Place } from "./types";
 const endpoint = (
@@ -63,6 +64,7 @@ export async function searchPlaces(
 ): Promise<Place[]> {
   const q = query.trim();
   if (!q || q.length > 100) return [];
+  const references = hikingReferences(q, options.near);
   const params = new URLSearchParams({ q, limit: "6", lang: "en" });
   const bias =
     options.near && isCoordinate(options.near)
@@ -92,12 +94,14 @@ export async function searchPlaces(
           ? "Place search is busy. Wait a moment and retry."
           : "Couldn’t search places. Check your connection and retry.",
       );
-    const results = decodePlaces(await response.json(), options.near);
+    const remote = decodePlaces(await response.json(), options.near);
+    const results = [...references, ...remote.filter(p => !references.some(r => distance(r, p) < 100 && p.type === r.type))].slice(0, 6);
     cache.set(key, { time: Date.now(), results });
     if (cache.size > 50) cache.delete(cache.keys().next().value!);
     return results;
   } catch (error) {
     if (options.signal?.aborted) throw error;
+    if (references.length) return references;
     throw new Error(
       error instanceof Error &&
       !["AbortError", "TypeError", "SyntaxError"].includes(error.name)

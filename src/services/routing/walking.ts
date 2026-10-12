@@ -129,7 +129,7 @@ export function decodeWalkingRoutes(
     return {
       id: `osrm-${index}`,
       name:
-        index === 0 ? "Best available walking route" : `Alternative ${index}`,
+        `Mapped walking option ${index + 1}`,
       geometry: line,
       distanceM: r.distance,
       durationS: r.duration,
