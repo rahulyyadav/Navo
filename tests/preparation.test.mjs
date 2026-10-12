@@ -5,7 +5,7 @@ import ts from 'typescript';
 const compile = source => ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
 const url = source => `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`;
 const domainURL = url(compile(await readFile(new URL('../src/services/preparation.ts', import.meta.url), 'utf8')));
-const { normalizePreparation, decidePreparation, preparationShare } = await import(domainURL);
+const { normalizePreparation, decidePreparation, preparationShare, preparationFromStorage } = await import(domainURL);
 const syncSource = compile(await readFile(new URL('../src/services/preparationSync.ts', import.meta.url), 'utf8')).replace("'./preparation'", JSON.stringify(domainURL));
 const { createPreparationSync } = await import(url(syncSource));
 const wait = () => new Promise(resolve => setImmediate(resolve));
@@ -58,4 +58,9 @@ test('retrying a failed account read reads again instead of overwriting the acco
   assert.equal(writes, 0);
   await controller.retry();
   assert.equal(writes, 0); assert.deepEqual(state.plan.checked, ['water']); assert.equal(state.status, 'saved');
+});
+
+test('offline packs unwrap account outboxes, device drafts and legacy checklists', () => {
+  for (const raw of [{ checked: ['water'] }, { plan: { checked: ['water'] }, pending: true }]) assert.deepEqual(preparationFromStorage(raw).checked, ['water']);
+  assert.equal(preparationFromStorage(null), null);
 });

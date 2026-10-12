@@ -41,3 +41,9 @@ export function preparationShare(trekName: string, plan: Preparation) {
   const unreviewed = essentials.length - plan.reviewed.length;
   return [`My Navo trek preparation — ${trekName}`, `Departure: ${plan.date || 'Not set'}`, `${prepared.length}/${essentials.length} prepared`, prepared.length ? `Prepared:\n${prepared.map(item => `✓ ${item.label}`).join('\n')}` : '', notYet.length ? `Not prepared yet:\n${notYet.map(item => `○ ${item.label}`).join('\n')}` : '', unreviewed ? `${unreviewed} items still to review` : '', plan.notes ? `Notes: ${plan.notes}` : ''].filter(Boolean).join('\n\n');
 }
+
+/** Account outboxes and device drafts both wrap the plan; older copies do not. */
+export function preparationFromStorage(value: unknown): Preparation | null {
+  if (!value || typeof value !== 'object') return null;
+  return normalizePreparation('plan' in value ? value.plan : value);
+}

@@ -4,9 +4,9 @@ import { readAdventures, rememberPlace } from '@/lib/adventure-store';
 import type { Place } from '@/services/places/types';
 import { colors } from '@/theme/tokens';
 import { useTripLibrary } from '@/hooks/useTripLibrary';
-import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { Image, PanResponder, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AppState, Image, PanResponder, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Text } from '@/components/Typography';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
@@ -40,12 +40,22 @@ export function HomeScreen({ name, unread, onInbox, onGroups, onPlan, onTrek, on
   const [mode, setMode] = useState<'treks' | 'groups'>('treks');
   const [selected, setSelected] = useState(0);
   const [seeAll, setSeeAll] = useState(false);
+  const [rotating, setRotating] = useState(true);
+  const [failedImageId, setFailedImageId] = useState('');
   const list = treks.filter(trek => (region === 'All Nepal' || trek.region === region) && (difficulty === 'Any pace' || trek.difficulty === difficulty) && (!savedOnly || library.data.savedTrekIds.includes(trek.id)) && `${trek.name} ${trek.region} ${trek.difficulty}`.toLowerCase().includes(search.toLowerCase().trim()));
   const featured = list[selected % Math.max(list.length, 1)];
+  useFocusEffect(useCallback(() => {
+    if (reduced || !rotating || searchOpen || filterOpen || seeAll || list.length < 2) return;
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const stop = () => { if (timer) clearInterval(timer); timer = undefined; };
+    const start = () => { stop(); if (AppState.currentState === 'active') timer = setInterval(() => setSelected(value => (value + 1) % list.length), 8000); };
+    start(); const subscription = AppState.addEventListener('change', start);
+    return () => { stop(); subscription.remove(); };
+  }, [reduced, rotating, searchOpen, filterOpen, seeAll, list.length]));
   const swipe = useMemo(() => PanResponder.create({
     onMoveShouldSetPanResponder: (_, gesture) => list.length > 1 && Math.abs(gesture.dx) > 18 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.5,
     onPanResponderRelease: (_, gesture) => {
-      if (Math.abs(gesture.dx) > 40) setSelected(current => (current + (gesture.dx < 0 ? 1 : -1) + list.length) % list.length);
+      if (Math.abs(gesture.dx) > 40) { setRotating(false); setSelected(current => (current + (gesture.dx < 0 ? 1 : -1) + list.length) % list.length); }
     },
   }), [list.length]);
   const heroHeight = Math.max(390, Math.min(height * 0.55, 560));
@@ -92,12 +102,12 @@ export function HomeScreen({ name, unread, onInbox, onGroups, onPlan, onTrek, on
         <View style={[styles.deck, { height: heroHeight + 32 }]}>
           <View style={[styles.backCard, styles.backCardFar]} /><View style={[styles.backCard, styles.backCardNear]} />
           <Animated.View {...swipe.panHandlers} key={featured.id} entering={reduced ? undefined : FadeIn.duration(320)} style={[styles.hero, { height: heroHeight }]}>
-            <Image source={featured.image} resizeMode="cover" style={StyleSheet.absoluteFill} />
+            <Image source={featured.image} resizeMode="cover" accessibilityLabel={`${featured.name}, ${featured.region}, Nepal`} onError={() => setFailedImageId(featured.id)} style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]} />
             <LinearGradient colors={['rgba(45,83,112,0.65)', 'rgba(32,63,87,0.12)', 'rgba(20,48,70,0.62)']} locations={[0, 0.5, 1]} style={StyleSheet.absoluteFill} />
             <Pressable accessibilityRole="button" accessibilityLabel={`View ${featured.name} trek`} accessibilityHint={`${featured.days}, ${featured.difficulty}. Swipe sideways to browse destinations.`} onPress={() => onTrek(featured)} style={styles.heroHit}>
               <View style={styles.heroTop}><Text style={styles.destination}>{featured.name},{'\n'}{featured.region}, Nepal</Text><View style={styles.openCircle}><Text style={styles.openArrow}>↗</Text></View></View>
             </Pressable>
-
+            <View style={styles.photoFooter}>{failedImageId === featured.id && <Text style={styles.photoCaption}>Photo could not load · reopen to retry</Text>}<Text style={styles.photoCaption}>{selected % list.length + 1} / {list.length} · Swipe to explore</Text>{!reduced && list.length > 1 && <Pressable accessibilityRole="button" onPress={() => setRotating(value => !value)} style={styles.photoControl}><Text style={styles.photoCaption}>{rotating ? 'Pause slideshow' : 'Play slideshow'}</Text></Pressable>}</View>
           </Animated.View>
         </View>
       </Reveal> : <View style={styles.empty}><Text style={styles.sectionTitle}>No treks found</Text><Text style={styles.noticeText}>Try a different region or search.</Text></View>}
@@ -108,6 +118,8 @@ export function HomeScreen({ name, unread, onInbox, onGroups, onPlan, onTrek, on
   </View>;
 }
 const styles = StyleSheet.create({
+  photoFooter: { position: 'absolute', bottom: 18, left: 18, right: 18, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  photoCaption: { color: 'white', fontSize: 12 }, photoControl: { minHeight: 44, paddingHorizontal: 12, justifyContent: 'center', backgroundColor: 'rgba(25,41,58,.7)', borderRadius: 22 },
   page: { flex: 1, backgroundColor: '#536D86' }, scroll: { paddingHorizontal: 20 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 6 }, greetingBlock: { flex: 1 }, greeting: { color: 'white', fontSize: 27, fontWeight: '600', letterSpacing: -0.7 },
   notice: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 9 }, noticeIcon: { width: 14, height: 14, borderRadius: 7, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.38)', textAlign: 'center', color: 'white', fontSize: 11, fontWeight: '700' }, noticeText: { color: 'rgba(255,255,255,0.74)', fontSize: 12, lineHeight: 18 },

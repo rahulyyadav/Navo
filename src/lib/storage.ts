@@ -29,7 +29,7 @@ export { dropRaw };
 /** Remove only this account's explicitly downloaded trip data. */
 export async function clearTripDownloads(userId: string) {
   if (!userId) return;
-  const prefixes = ['offline-pack', 'ai-plan', 'preparation'].map(kind => `${PREFIX}${kind}:${userId}:`);
+  const prefixes = ['offline-pack', 'ai-plan', 'preparation', 'device-preparation'].map(kind => `${PREFIX}${kind}:${userId}:`);
   const keys = (await AsyncStorage.getAllKeys()).filter(key => prefixes.some(prefix => key.startsWith(prefix)));
   await AsyncStorage.multiRemove(keys);
 }

@@ -1,3 +1,4 @@
+import { AIReply } from './AIReply';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text, TextInput } from '@/components/Typography';
@@ -44,7 +45,7 @@ export function AIChatPage({ ready, retry, request }: Props) {
       <View style={[styles.header, { paddingTop: insets.top + 18 }]}><View><Text style={styles.title}>Navo AI</Text><Text style={styles.subtitle}>Your mountain companion</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Start a new chat" disabled={Boolean(pending)} onPress={() => { setMessages([]); setDraft(''); setError(''); }} style={styles.newChat}><Text style={styles.newChatText}>＋</Text></Pressable></View>
       <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.conversation} onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: true })}>
         {!messages.length && !pending && <Reveal><View style={styles.welcome}><Text style={styles.welcomeTitle}>Where will we go?</Text><Text style={styles.welcomeCopy}>Find your trail, prepare your pack, or talk through a trek. Let’s take it one step at a time.</Text>{suggestions.map(text => <Pressable key={text} accessibilityRole="button" onPress={() => void send(text)} style={({ pressed }) => [styles.suggestion, pressed && styles.pressed]}><Text style={styles.suggestionText}>{text}</Text><Text style={styles.suggestionText}>↗</Text></Pressable>)}</View></Reveal>}
-        {messages.map((message, index) => <View key={index} style={[styles.bubble, message.role === 'user' ? styles.userBubble : styles.aiBubble]}><Text style={styles.sender}>{message.role === 'user' ? 'YOU' : 'NAVO AI'}</Text><Text selectable style={styles.message}>{message.content}</Text></View>)}
+        {messages.map((message, index) => <View key={index} style={[styles.bubble, message.role === 'user' ? styles.userBubble : styles.aiBubble]}><Text style={styles.sender}>{message.role === 'user' ? 'YOU' : 'NAVO AI'}</Text>{message.role === 'assistant' ? <AIReply content={message.content} style={styles.message} /> : <Text selectable style={styles.message}>{message.content}</Text>}</View>)}
         {pending && <><View style={[styles.bubble, styles.userBubble]}><Text style={styles.message}>{pending}</Text></View><View accessibilityLiveRegion="polite" style={styles.thinking}><ActivityIndicator color="white" size="small" /><Text style={styles.subtitle}>Thinking about your trail…</Text></View></>}
       </ScrollView>
       <View style={[styles.composerArea, { paddingBottom: Math.max(insets.bottom, 12) + (keyboardOpen ? 0 : 80) }]}>

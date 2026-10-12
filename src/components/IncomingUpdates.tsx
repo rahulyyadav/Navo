@@ -52,10 +52,12 @@ export function IncomingUpdates() {
     const seen = new Set<string>();
     void import('expo-notifications').then(async notificationsAPI => {
       if (!active) return;
+      notificationsAPI.setNotificationHandler({ handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }) });
       const handle = (response: import('expo-notifications').NotificationResponse) => {
         if (!active || seen.has(response.notification.request.identifier)) return;
         seen.add(response.notification.request.identifier);
-        const { groupId, alertId } = response.notification.request.content.data ?? {};
+        const { groupId, alertId, kind } = response.notification.request.content.data ?? {};
+        if (kind === 'hike-inspiration') { router.push('/trek-plan'); return; }
         if (typeof groupId === 'string' && /^[a-zA-Z0-9]{1,80}$/.test(groupId) && typeof alertId === 'string' && /^[a-zA-Z0-9]{1,80}$/.test(alertId)) {
           router.push({ pathname: '/alert', params: { groupId, alertId } });
         }

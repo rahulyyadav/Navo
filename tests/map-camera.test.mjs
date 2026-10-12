@@ -9,7 +9,7 @@ const {outputText} = ts.transpileModule(source,{compilerOptions:{module:ts.Modul
 const {mapDocument, scriptJSON} = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`);
 function harness(){
   const camera = []; const pan=[];
-  const layer = ()=>({addTo(){return this},on(){return this},bindPopup(){return this},bindTooltip(){return this},clearLayers(){},setPosition(){}});
+  const layer = ()=>({addTo(){return this},on(){return this},bindPopup(){return this},bindTooltip(){return this},clearLayers(){},setLatLng(){return this},setRadius(){return this},setPosition(){}});
   const map={on(){},hasLayer(){return true},zoomControl:layer(),fitBounds:(...args)=>camera.push(args),panTo:(...args)=>pan.push(args),removeLayer(){},invalidateSize(){}};
   const context={L:{map:()=>map,tileLayer:layer,control:{layers:layer},layerGroup:layer,circleMarker:layer,circle:layer,polyline:layer},document:{getElementById:()=>({style:{},textContent:''}),createElement:()=>({textContent:''})},window:{addEventListener(){}},parent:{postMessage(){}},setTimeout:()=>1,clearTimeout(){},ResizeObserver:class{observe(){}}};
   const props={region:{latitude:28,longitude:84,latitudeDelta:.2,longitudeDelta:.2},regionNonce:0,selectedId:'route',myCoords:null,onSelectTrek(){}};

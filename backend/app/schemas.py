@@ -119,7 +119,12 @@ class WeatherChatContext(Model):
     rainChanceMax: float = Field(ge=0, le=100)
     windMax: float = Field(ge=0, le=500)
 
+class RouteChatDirection(Model):
+    text: str = Field(min_length=1, max_length=200)
+    distanceM: float = Field(ge=0, le=500000)
+
 class TrekChatContext(Model):
+    directions: list[RouteChatDirection] = Field(default_factory=list, max_length=12)
     destination: str = Field(min_length=1, max_length=200)
     origin: str = Field(min_length=1, max_length=200)
     provider: Literal['osrm-foot', 'user-gpx']

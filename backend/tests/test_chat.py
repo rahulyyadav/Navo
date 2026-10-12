@@ -118,3 +118,13 @@ def test_chat_weather_units_are_explicit_and_cannot_be_relabelled():
     assert value.model_dump()['temperatureUnit'] == 'Celsius'
     with pytest.raises(ValidationError):
         WeatherChatContext(**{**value.model_dump(), 'windUnit': 'm/s'})
+
+
+def test_walking_chat_bounds_mapped_directions():
+    import pytest
+    from pydantic import ValidationError
+    context = {'destination': 'Thamel', 'origin': 'Kathmandu', 'provider': 'osrm-foot', 'distanceM': 1864, 'durationS': 1493, 'date': '2026-10-13', 'startTime': '07:00', 'directions': [{'text': 'Turn left onto Pragya Marg', 'distanceM': 152}]}
+    request = ChatRequest(messages=[{'role': 'user', 'content': 'Describe the route'}], context=context)
+    assert request.context.directions[0].text == 'Turn left onto Pragya Marg'
+    with pytest.raises(ValidationError):
+        ChatRequest(messages=[{'role': 'user', 'content': 'Describe the route'}], context={**context, 'directions': context['directions'] * 13})
