@@ -4,6 +4,7 @@ export type TrekChatContext = {
   destination: string;
   origin: string;
   provider: string;
+  directions?: { text: string; distanceM: number }[];
   distanceM: number;
   durationS: number;
   ascentM: number | null;
@@ -50,6 +51,7 @@ export function trekChatContext(
     destination: plan.destination.name.slice(0, 200),
     origin: plan.origin.name.slice(0, 200),
     provider: plan.route.provider,
+    directions: plan.route.instructions.slice(0, 12).map(step => ({ text: step.text.slice(0, 200), distanceM: step.distanceM })),
     distanceM: plan.route.distanceM,
     durationS: plannedDuration(plan.route, plan.pace),
     ascentM: plan.route.ascentM,

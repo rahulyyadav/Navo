@@ -1,3 +1,4 @@
+import { AIReply } from "./AIReply";
 import { useEffect, useRef, useState } from "react";
 import { Text } from "@/components/Typography";
 import { Button, Card, Field, Notice, SectionTitle } from "@/components/ui";
@@ -49,7 +50,7 @@ export function RouteAssistant({
     <Card>
       <SectionTitle title="Ask Navo about this route" />
       <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 22 }}>
-        Send this route’s names, distance, estimated timing and available
+        Send this route’s names, distance, estimated timing, the first twelve mapped directions and available
         progress to Navo AI. Raw GPS coordinates and recorded paths are
         excluded. Available point forecasts and daylight times are included with their
         source and fetch time. Unknown weather stays unavailable.
@@ -79,17 +80,7 @@ export function RouteAssistant({
       )}
       <Notice message={error} />
       {Boolean(reply) && (
-        <Text
-          selectable
-          style={{
-            color: colors.ink,
-            fontSize: 16,
-            lineHeight: 25,
-            marginTop: 16,
-          }}
-        >
-          {reply}
-        </Text>
+        <AIReply content={reply} style={{ color: colors.ink, fontSize: 16, lineHeight: 25, marginTop: 8 }} />
       )}
     </Card>
   );

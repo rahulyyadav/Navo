@@ -28,16 +28,17 @@ export function mapDocument(props: NepalMapProps) {
 <style>html,body,#map{height:100%;width:100%;margin:0;background:#19293a;font-family:system-ui}#status{position:absolute;z-index:1000;left:12px;right:12px;top:12px;background:#0d141a;color:white;padding:12px;border-radius:12px;font-size:13px}button{padding:8px;margin-left:8px}.leaflet-control-attribution{font-size:10px!important}.leaflet-popup-content{line-height:1.5}.leaflet-control-layers{font-size:14px}.leaflet-control-zoom a{width:44px!important;height:44px!important;line-height:44px!important}.leaflet-control-layers-toggle{width:44px!important;height:44px!important}.leaflet-control-layers label{padding:6px 0}</style></head><body><div id="map" aria-label="Interactive Nepal map"></div><div id="status" role="status">Loading online map…</div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script><script>
 const status=document.getElementById('status');
-let timeout=setTimeout(()=>{status.style.display='block';status.textContent='Map unavailable. Check your connection and reopen the map.'},15000);
+function mapStatus(failed){const value=JSON.stringify({type:'map-status',failed});if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(value);else parent.postMessage(value,'*')}
+let timeout=setTimeout(()=>{status.style.display='block';status.textContent='Map unavailable. Check your connection and reopen the map.';mapStatus(true)},15000);
 function notify(id){const value=JSON.stringify({type:'select-trek',id});if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(value);else parent.postMessage(value,'*')}
-if(typeof L==='undefined'){clearTimeout(timeout);status.textContent='Map could not load. Check your connection and reopen the map.'}else{
+if(typeof L==='undefined'){clearTimeout(timeout);status.textContent='Map could not load. Check your connection and reopen the map.';mapStatus(true)}else{
 const interactive=${props.interactive !== false};
 const map=L.map('map',{zoomControl:interactive,dragging:interactive,scrollWheelZoom:interactive,touchZoom:interactive,doubleClickZoom:interactive,keyboard:interactive,attributionControl:true});
 if(interactive)map.zoomControl.setPosition('bottomleft');
 const osm=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'}).addTo(map);
 const topo=L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{maxZoom:17,attribution:'&copy; OpenStreetMap, SRTM | <a href="https://opentopomap.org" target="_blank">OpenTopoMap</a> (CC-BY-SA)'});
 function loading(){clearTimeout(timeout);status.style.display='block';status.textContent='Loading map tiles…';timeout=setTimeout(()=>{status.style.display='block';status.textContent='Tiles are taking longer than expected. Check your connection or try the other layer.'},15000)}
-function loaded(){clearTimeout(timeout);status.style.display='none'}
+function loaded(){clearTimeout(timeout);status.style.display='none';mapStatus(false)}
 map.on('baselayerchange',loading);
 for(const layer of [osm,topo]){layer.on('tileload',()=>{if(map.hasLayer(layer))loaded()});layer.on('tileerror',()=>{status.style.display='block';status.textContent='Some tiles are unavailable. Try the other map layer or check your connection.'})}
 if(interactive)L.control.layers({'Trails & places':osm,'Terrain / contours':topo},null,{collapsed:true}).addTo(map);
@@ -45,8 +46,7 @@ const data=${scriptJSON(data)};
 map.on('click',event=>{const value=JSON.stringify({type:'select-coordinate',latitude:event.latlng.lat,longitude:event.latlng.lng});if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(value);else parent.postMessage(value,'*')});
 const markers=L.layerGroup().addTo(map);let position;let lastCamera=null;
 window.updateNavoPosition=function(payload){
- if(position)map.removeLayer(position);
- if(payload.myCoords){const p=payload.myCoords;position=L.circle([p.latitude,p.longitude],{radius:Math.max(p.accuracy||10,10),color:'#168de2',fillOpacity:.25}).addTo(map);position.bindTooltip('Your GPS position')}
+ if(payload.myCoords){const p=payload.myCoords;if(position){position.setLatLng([p.latitude,p.longitude]);position.setRadius(Math.max(p.accuracy||10,10))}else{position=L.circle([p.latitude,p.longitude],{radius:Math.max(p.accuracy||10,10),color:'#168de2',fillOpacity:.25}).addTo(map);position.bindTooltip('Your GPS position')}}else if(position){map.removeLayer(position);position=null}
  if(payload.followUser && payload.myCoords){const p=payload.myCoords;map.panTo([p.latitude,p.longitude],{animate:true,duration:.8});}
 };
 window.updateNavoMap=function(payload){
@@ -73,7 +73,7 @@ window.updateNavoMap=function(payload){
 window.addEventListener('message',event=>{if(event.source!==parent)return;try{const msg=JSON.parse(event.data);if(msg.type==='navo-update')window.updateNavoMap(msg.payload);else if(msg.type==='navo-position')window.updateNavoPosition(msg.payload)}catch{}});
 window.updateNavoMap(${scriptJSON(mapPayload(props))});
 window.updateNavoPosition(${scriptJSON({myCoords:props.myCoords,followUser:props.followUser})});
-new ResizeObserver(()=>map.invalidateSize()).observe(document.getElementById('map'));
+let resizeFrame;new ResizeObserver(()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>map.invalidateSize({pan:false}))}).observe(document.getElementById('map'));
 }
 </script></body></html>`;
 }

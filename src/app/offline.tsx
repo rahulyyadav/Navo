@@ -8,7 +8,7 @@ import { useCloud } from '@/context/CloudContext';
 import { useGroupFeed } from '@/hooks/useGroupFeed';
 import { trekById, treks } from '@/data/treks';
 import { readJSON, writeJSON } from '@/lib/storage';
-import { essentials, type Preparation } from '@/services/preparation';
+import { essentials, preparationFromStorage, type Preparation } from '@/services/preparation';
 import type { AIPlan, CloudMember } from '@/types/cloud';
 import type { EmergencyContact, TrekGroup } from '@/types/navo';
 import { colors } from '@/theme/tokens';
@@ -28,7 +28,8 @@ export default function OfflineScreen() {
     if (busy) return; setBusy(true); setError('');
     try {
       if (params.group && (!cloud.ready || members.loading || members.cached || members.error)) throw new Error('Wait for a fresh group roster before saving. Your existing pack is unchanged.');
-      const [plan, preparation] = await Promise.all([readJSON<AIPlan>(`ai-plan:${userId}:${trek.id}`), readJSON<Preparation>(`preparation:${userId}:${trek.id}`)]);
+      const [plan, accountPreparation, devicePreparation] = await Promise.all([readJSON<AIPlan>(`ai-plan:${userId}:${trek.id}`), readJSON<unknown>(`preparation:${userId}:${trek.id}`), readJSON<unknown>(`device-preparation:${userId}:${trek.id}`)]);
+      const preparation = preparationFromStorage(devicePreparation ?? accountPreparation);
       if (custom && !group?.outing) throw new Error('Reconnect to your hike group before saving its meeting plan.');
       const next: Pack = { startDate: group?.startDate, outing: group?.outing ?? null, version: 1, savedAt: new Date().toISOString(), trekId: trek.id, trekName: trek.name, waypoints: trek.route, members: params.group ? members.items : pack?.members ?? [], contact: answers.emergencyContact, plan, preparation };
       await writeJSON(key, next); setStored({ key, value: next });

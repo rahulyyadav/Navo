@@ -5,7 +5,7 @@ import { Badge, Button, Notice } from './ui';
 import { useFirebaseAuth } from '@/context/AuthContext';
 import { sendEmailVerification } from 'firebase/auth';
 import { useEffect, useRef, useState } from 'react';
-import { apiBase } from '@/lib/api';
+import { apiBase, chatBase } from '@/lib/api';
 import { colors } from '@/theme/tokens';
 export function CloudStatus() {
   const cloud = useCloud();
@@ -32,7 +32,7 @@ export function CloudStatus() {
       setFeedback({ uid, success: false, message: code === 'auth/too-many-requests' ? 'Too many requests. Wait a minute before trying again.' : code === 'auth/network-request-failed' ? 'Could not contact the email service. Check your connection and retry.' : 'Could not complete verification. Try again or sign in again to refresh your session.' });
     } finally { lock.current = false; setBusy(''); }
   }
-  if (!apiBase) return <View style={styles.wrap}><Badge label="PERSONAL PLANNING AVAILABLE" tone="lime" /><Text style={styles.copy}>Save your trip on this phone now. Shared groups and AI planning are not connected in this build. Email verification will not enable those services until Navo is connected.</Text></View>;
+  if (!apiBase) return <View style={styles.wrap}><Badge label="PERSONAL PLANNING AVAILABLE" tone="lime" /><Text style={styles.copy}>Save your trip on this phone now. Shared groups are not connected in this build. {chatBase ? 'AI chat is configured separately; it needs a reachable server connection.' : 'AI chat also needs a server connection.'} Email verification will not enable those services until Navo is connected.</Text></View>;
   return <View style={styles.wrap}><Badge label={cloud.ready ? 'CONNECTED' : 'CONNECT YOUR ACCOUNT'} tone={cloud.ready ? 'lime' : 'warning'} />
     {!cloud.ready && <Text style={styles.copy}>Your saved plans still work. Connect to invite your crew and sync group updates.</Text>}
     <Notice message={feedback.uid === user?.uid ? feedback.message : ''} tone={feedback.success ? 'success' : 'warning'} />
