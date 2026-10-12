@@ -8,7 +8,8 @@ function compile(path,dependencies={}) { const source=ts.transpileModule(readFil
 const utf8=compile('../src/services/utf8.ts');
 const navigation=compile('../src/services/trekking/navigation.ts');
 const types=compile('../src/services/places/types.ts');
-const places=compile('../src/services/places/search.ts',{'../trekking/navigation':navigation,'./types':types});
+const references=compile('../src/services/places/hiking-references.ts',{'../trekking/navigation':navigation,'./types':types});
+const places=compile('../src/services/places/search.ts',{'../trekking/navigation':navigation,'./types':types,'./hiking-references':references});
 const walking=compile('../src/services/routing/walking.ts',{'../trekking/navigation':navigation,'../places/types':types});
 const distance=compile('../src/services/route-distance.ts');
 const progress=compile('../src/services/routing/progress.ts',{'../trekking/navigation':navigation,'../route-distance':distance});
@@ -75,4 +76,11 @@ test('AI route context sends weather only when an actual matching forecast is av
  const plan={route:routes[0],destination:types.coordinatePlace(endpoints[1],'Kathmandu'),origin:types.coordinatePlace(endpoints[0],'Trailhead'),pace:'normal',date:'2026-10-10',time:'07:00'};
  const missing=trekChatContext(plan,500,'07:10');assert.equal(missing.weatherAvailable,false);assert.equal(missing.sunset,null);assert.equal(missing.remainingM,500);assert.equal('latitude' in missing,false);assert.equal('geometry' in missing,false);
  const weather=hourly.decodeHourly(forecast(),'2026-10-10');const included=trekChatContext({...plan,weather});assert.equal(included.weatherAvailable,true);assert.equal(included.weather.rainChanceMax,30);assert.equal(included.sunset,'2026-10-10T17:45');assert.equal(trekChatContext({...plan,date:'2026-10-11',weather}).weatherAvailable,false);
+});
+
+test('Phulchowki spelling aliases identify the hill rather than Pulchowk neighbourhood', () => {
+ for (const query of ['Pulchowki', 'trekking of Phulchowki', 'Phulchoki', 'phul', 'फुल्चोकी']) {
+  const result = references.hikingReferences(query); assert.equal(result[0].type, 'peak'); assert.equal(result[0].id, 'osm-reference:node:3490869705');
+ }
+ assert.deepEqual(references.hikingReferences('Pulchowk'), []); assert.deepEqual(references.hikingReferences('Everest'), []);
 });

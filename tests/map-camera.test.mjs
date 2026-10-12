@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import ts from 'typescript';
 let source = await readFile(new URL('../src/components/maps/document.ts', import.meta.url),'utf8');
+source = source.replace(/import \{ outdoorTiles[^;]+;/, "const outdoorTiles='https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';const outdoorAttribution='OpenTopoMap';const satelliteTiles='';const satelliteAttribution='';const validTileTemplate=()=>true;");
 source = source.replace(/import \{ treks, type MapRegion \}[^;]+;/, `type MapRegion = {latitude:number;longitude:number;latitudeDelta:number;longitudeDelta:number};const treks=[{id:'route',name:'Overview',route:[{latitude:28,longitude:84,elevation:100,name:'start'},{latitude:28.01,longitude:84,elevation:200,name:'end'}]}];`).replace(/import \{ colorForTrek \}[^;]+;/, `const colorForTrek=()=> '#E4FF89';`);
 const {outputText} = ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}});
 const {mapDocument, scriptJSON} = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`);
@@ -11,7 +12,7 @@ function harness(){
   const camera = []; const pan=[];
   const layer = ()=>({addTo(){return this},on(){return this},bindPopup(){return this},bindTooltip(){return this},clearLayers(){},setLatLng(){return this},setRadius(){return this},setPosition(){}});
   const map={on(){},hasLayer(){return true},zoomControl:layer(),fitBounds:(...args)=>camera.push(args),panTo:(...args)=>pan.push(args),removeLayer(){},invalidateSize(){}};
-  const context={L:{map:()=>map,tileLayer:layer,control:{layers:layer},layerGroup:layer,circleMarker:layer,circle:layer,polyline:layer},document:{getElementById:()=>({style:{},textContent:''}),createElement:()=>({textContent:''})},window:{addEventListener(){}},parent:{postMessage(){}},setTimeout:()=>1,clearTimeout(){},ResizeObserver:class{observe(){}}};
+  const context={L:{map:()=>map,tileLayer:layer,control:{layers:layer,scale:layer},layerGroup:layer,circleMarker:layer,circle:layer,polyline:layer},document:{getElementById:()=>({style:{},textContent:''}),createElement:()=>({textContent:''})},window:{addEventListener(){}},parent:{postMessage(){}},setTimeout:()=>1,clearTimeout(){},ResizeObserver:class{observe(){}}};
   const props={region:{latitude:28,longitude:84,latitudeDelta:.2,longitudeDelta:.2},regionNonce:0,selectedId:'route',myCoords:null,onSelectTrek(){}};
   const html=mapDocument(props); const script=html.match(/<script>([\s\S]*)<\/script>/)[1];
   vm.runInNewContext(script,context);return {context,camera,pan,props};

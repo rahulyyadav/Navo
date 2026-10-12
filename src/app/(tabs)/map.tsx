@@ -1,3 +1,7 @@
+import { PlaceSearch } from '@/components/PlaceSearch';
+import type { Place } from '@/services/places/types';
+import { satelliteTiles, satelliteAttribution, validTileTemplate } from '@/services/map-providers';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '@/components/Typography';
@@ -29,8 +33,11 @@ export default function MapScreen() {
   const reduced = useReducedMotion();
   const { coords, state, locate } = useMyLocation();
   const [selectedId, setSelectedId] = useState<string | null>(typeof params.trek === 'string' && trekById(params.trek) ? params.trek : null);
-  const [region, setRegion] = useState<MapRegion>(() => { if (hasAlertPosition) return { latitude: alertLat, longitude: alertLng, latitudeDelta: 0.03, longitudeDelta: 0.03 }; const trek = typeof params.trek === 'string' ? trekById(params.trek) : null; return trek ? regionForTrek(trek) : NEPAL_REGION; });
+  const [region, setRegion] = useState<MapRegion>(() => { if (hasAlertPosition) return { latitude: alertLat, longitude: alertLng, latitudeDelta: 0.03, longitudeDelta: 0.03 }; const trek = typeof params.trek === 'string' ? trekById(params.trek) : null; return trek ? regionForTrek(trek) : { latitude: 27.68, longitude: 85.35, latitudeDelta: 0.32, longitudeDelta: 0.38 }; });
   const [nonce, setNonce] = useState(0);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [foundPlace, setFoundPlace] = useState<Place | null>(null);
+  const [basemap, setBasemap] = useState<'terrain' | 'streets' | 'satellite'>('terrain');
 
   const [appliedTrek, setAppliedTrek] = useState(params.trek);
   if (params.trek !== appliedTrek) {
@@ -54,6 +61,7 @@ export default function MapScreen() {
   const stats = useMemo(() => (selected ? trekStats(selected.route) : null), [selected]);
 
   function flyTo(next: MapRegion, trek: string | null) {
+    setFoundPlace(null); setSearchOpen(false);
     setSelectedId(trek);
     setRegion(next);
     setNonce(value => value + 1);
@@ -71,16 +79,16 @@ export default function MapScreen() {
   }
 
   return (
-    <View style={styles.root}>
-      <View style={{ position: 'absolute', left: 0, right: 0, top: insets.top + 145, bottom: Math.max(insets.bottom, 12) + 72 + (selected ? 305 : 44) }}><NepalMap positions={positions} key="nepal-map" myCoords={coords} onSelectTrek={selectTrek} region={region} regionNonce={nonce} selectedId={selectedId} /></View>
+    <View style={styles.root}><LinearGradient colors={[colors.homeTop, colors.homeMiddle, colors.homeBottom]} style={StyleSheet.absoluteFill} />
+      <View style={{ position: 'absolute', left: 0, right: 0, top: insets.top + 205, bottom: Math.max(insets.bottom, 12) + 72 + (selected ? 305 : foundPlace ? 185 : 44) }}><NepalMap basemap={basemap} endpoints={foundPlace ? { end: foundPlace } : undefined} positions={positions} key="nepal-map" myCoords={coords} onSelectTrek={selectTrek} region={region} regionNonce={nonce} selectedId={selectedId} /></View>
       <Text style={{ position: 'absolute', bottom: Math.max(insets.bottom, 12) + 72 + (selected ? 290 : 12), left: 16, color: colors.muted, fontSize: 11 }}>Online tiles · approximate waypoints, not a navigation track</Text>
 
       <View pointerEvents="box-none" style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
         <Reveal>
           <View style={styles.titleRow}>
             <View style={styles.titleCopy}>
-              <Text style={styles.titleKicker}>NEPAL · {treks.length} TREK OVERVIEWS</Text>
-              <Text style={styles.title}>Where will you walk?</Text>
+              <Text style={styles.titleKicker}>NEPAL · TERRAIN & TRAILS</Text>
+              <Text style={styles.title}>Find your trail.</Text>
             </View>
             <Pressable accessibilityLabel="Zoom out to all of Nepal" accessibilityRole="button" onPress={() => flyTo(NEPAL_REGION, null)} style={({ pressed }) => [styles.resetButton, pressed && styles.pressed]}>
               <TabIcon color={colors.lime} name="compass" size={20} />
@@ -88,6 +96,7 @@ export default function MapScreen() {
           </View>
         </Reveal>
 
+        <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 20, marginBottom: 8 }}><Button label={searchOpen ? 'Close search' : 'Search hikes & places'} variant="outline" onPress={() => setSearchOpen(value => !value)} style={{ flex: 1 }} /><Pressable accessibilityRole="button" accessibilityLabel={basemap === 'terrain' ? 'Switch to street map' : 'Switch to terrain map'} onPress={() => setBasemap(value => value === 'terrain' ? 'streets' : 'terrain')} style={[styles.resetButton, { minWidth: 70 }]}><Text style={{ color: colors.ink }}>{basemap === 'terrain' ? 'Streets' : 'Terrain'}</Text></Pressable>{validTileTemplate(satelliteTiles) && !!satelliteAttribution && <Pressable accessibilityRole="button" onPress={() => setBasemap('satellite')} style={styles.resetButton}><Text style={{ color: colors.ink }}>Photo</Text></Pressable>}</View>
         <ScrollView contentContainerStyle={styles.chips} horizontal showsHorizontalScrollIndicator={false}>
           {treks.map(trek => (
             <Pressable
@@ -120,6 +129,8 @@ export default function MapScreen() {
         <TabIcon color={state === 'locating' ? colors.faint : colors.onAccent} name="pin" size={22} />
       </Pressable>
 
+      {searchOpen && <ScrollView keyboardShouldPersistTaps="handled" style={{ position: 'absolute', zIndex: 20, left: 16, right: 16, top: insets.top + 195, maxHeight: '55%', backgroundColor: colors.navy, borderRadius: 24 }} contentContainerStyle={{ padding: 16 }}><PlaceSearch autoFocus near={coords ?? undefined} onSelect={place => { setFoundPlace(place); setSelectedId(null); setSearchOpen(false); setRegion({ ...place, latitudeDelta: .06, longitudeDelta: .06 }); setNonce(value => value + 1); }} /></ScrollView>}
+      {foundPlace && !searchOpen && <View style={[styles.sheet, { bottom: Math.max(insets.bottom, 12) + 72 }]}><Text style={styles.sheetTitle}>{foundPlace.name}</Text><Text style={styles.sheetSummary}>{foundPlace.type === 'peak' ? 'Hill / mountain destination · choose an accessible trailhead before routing.' : foundPlace.fullName}</Text><Button label="Plan a walk here" onPress={() => router.push({ pathname: '/trek-plan', params: { destination: JSON.stringify(foundPlace) } })} /></View>}
       {selected && stats ? (
         <Animated.View entering={reduced ? undefined : FadeInUp.duration(320)} pointerEvents="box-none" style={[styles.sheet, { paddingBottom: 16, bottom: Math.max(insets.bottom, 12) + 72 }]}>
           <Pressable accessibilityRole="button" accessibilityLabel="Close trek details" onPress={() => setSelectedId(null)} style={{ alignSelf: 'flex-end', minHeight: 32, minWidth: 44 }}><Text style={{ color: colors.lime }}>Close ×</Text></Pressable>
@@ -155,7 +166,7 @@ export default function MapScreen() {
 
           <View style={styles.sheetActions}>
             <Button label="Open trek" onPress={() => router.push(`/trek/${selected.id}`)} style={styles.sheetButton} />
-            <Button label="Start Trek" onPress={() => router.push({ pathname: '/journey', params: { trek: selected.id } })} style={styles.sheetButton} variant="outline" />
+            <Button label="Preview trek" onPress={() => router.push({ pathname: '/journey', params: { trek: selected.id } })} style={styles.sheetButton} variant="outline" />
           </View>
         </Animated.View>
       ) : null}

@@ -1,3 +1,4 @@
+import { PublishedMaps } from "@/components/PublishedMaps";
 import { openLocationSettings } from "@/lib/location-settings";
 import type { HourlyForecast } from "@/services/weather/hourly";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -567,11 +568,12 @@ function Planner({
           >
             {mapBlock}
             <Card>
+              {destination?.type === 'peak' && <Notice tone="warning" message="This route is one-way to a hill or mountain. The provider’s time is a baseline: uphill terrain, breaks, summit access and the return journey are not reliably included. Confirm the trail and allow a separate hiking time budget." />}
               <SectionTitle
                 title={
                   routes.length > 1
                     ? "Compare your routes"
-                    : "Best available route"
+                    : "Mapped walking route"
                 }
               />
               {routes.length > 1 && routes.map((r, i) => (
@@ -665,6 +667,7 @@ function Planner({
                 />
               </View>
             </Card>
+            <PublishedMaps destination={destination!} />
             <RouteAssistant
               key={`${route.id}:${date}:${time}:${pace}`}
               email={isSignedIn ? email || null : null}

@@ -106,7 +106,8 @@ export function PlaceSearch({
               marginTop: 4,
             }}
           >
-            {p.fullName}
+            {p.type === 'peak' ? 'Mountain / hill · ' : ''}{p.fullName}
+            {p.provider === 'osm-reference' ? ' · mapped landmark reference' : ''}
             {p.distanceM === undefined
               ? ""
               : ` · ${(p.distanceM / 1000).toFixed(1)} km away`}

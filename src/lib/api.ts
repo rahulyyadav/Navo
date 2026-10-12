@@ -1,3 +1,5 @@
+import { networkEnvironment } from './network-environment';
+import { resolveBackendAddress } from '../services/backend-address';
 import type { TrekChatContext } from '@/services/routing/ai-context';
 export async function withTimeout<T>(task: Promise<T>, milliseconds: number, message: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -21,6 +23,8 @@ export function requestChatAPI(messages: { role: 'user' | 'assistant'; content: 
 
 async function requestJSON<T>(path: string, body: unknown, method: string, token?: string, base = apiBase) {
   if (!base) throw new Error('Navo AI is unavailable on this connection. Please retry later.');
+  const environment = networkEnvironment();
+  base = resolveBackendAddress(base, environment.platform, environment.development, environment.expoHost);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), path.startsWith('/plans') ? 210000 : path === '/chat' ? 75000 : 20000);
   try {

@@ -1,8 +1,10 @@
+import { outdoorTiles, outdoorAttribution, satelliteTiles, satelliteAttribution, validTileTemplate } from '@/services/map-providers';
 import type { Coords } from '@/hooks/useMyLocation';
 import { treks, type MapRegion } from '@/data/treks';
 import { colorForTrek } from '@/data/map-style';
 
 export type NepalMapProps = {
+  basemap?: 'terrain' | 'streets' | 'satellite';
   region: MapRegion;
   regionNonce: number;
   selectedId: string | null;
@@ -17,7 +19,7 @@ export type NepalMapProps = {
   followUser?: boolean;
   positions?: { id: string; name: string; latitude: number; longitude: number; recordedAt: string; alert?: boolean }[];
 };
-export const mapPayload = ({ region, regionNonce, selectedId, myCoords, followUser, positions = [], importedSegments = [], walkingRoutes = [], walkingRouteId, endpoints }: NepalMapProps) => ({ region, regionNonce, selectedId, myCoords, followUser, positions, importedSegments, walkingRoutes, walkingRouteId, endpoints });
+export const mapPayload = ({ basemap, region, regionNonce, selectedId, myCoords, followUser, positions = [], importedSegments = [], walkingRoutes = [], walkingRouteId, endpoints }: NepalMapProps) => ({ basemap, region, regionNonce, selectedId, myCoords, followUser, positions, importedSegments, walkingRoutes, walkingRouteId, endpoints });
 // Escape script terminators even if future route data comes from a remote source.
 export const scriptJSON = (value: unknown) => JSON.stringify(value).replace(/</g, '\\u003c');
 
@@ -35,21 +37,28 @@ if(typeof L==='undefined'){clearTimeout(timeout);status.textContent='Map could n
 const interactive=${props.interactive !== false};
 const map=L.map('map',{zoomControl:interactive,dragging:interactive,scrollWheelZoom:interactive,touchZoom:interactive,doubleClickZoom:interactive,keyboard:interactive,attributionControl:true});
 if(interactive)map.zoomControl.setPosition('bottomleft');
-const osm=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'}).addTo(map);
-const topo=L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{maxZoom:17,attribution:'&copy; OpenStreetMap, SRTM | <a href="https://opentopomap.org" target="_blank">OpenTopoMap</a> (CC-BY-SA)'});
+const osm=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'});
+const terrainURL=${scriptJSON(validTileTemplate(outdoorTiles) ? outdoorTiles : 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png')};
+const topo=L.tileLayer(terrainURL,{maxZoom:17,attribution:${scriptJSON(outdoorAttribution.replace(/[<>]/g,''))}});
+const satelliteURL=${scriptJSON(validTileTemplate(satelliteTiles) && satelliteAttribution ? satelliteTiles : '')};
+const satellite=satelliteURL?L.tileLayer(satelliteURL,{maxZoom:19,attribution:${scriptJSON(satelliteAttribution.replace(/[<>]/g,''))}}):null;
+const baseLayers={'Terrain / contours':topo,'Streets / access':osm};if(satellite)baseLayers['Satellite imagery']=satellite;
+let activeBase=${scriptJSON(props.basemap ?? 'terrain')};(activeBase==='streets'?osm:activeBase==='satellite'&&satellite?satellite:topo).addTo(map);
+L.control.scale({imperial:false,position:'bottomright'}).addTo(map);
 function loading(){clearTimeout(timeout);status.style.display='block';status.textContent='Loading map tiles…';timeout=setTimeout(()=>{status.style.display='block';status.textContent='Tiles are taking longer than expected. Check your connection or try the other layer.'},15000)}
 function loaded(){clearTimeout(timeout);status.style.display='none';mapStatus(false)}
 map.on('baselayerchange',loading);
-for(const layer of [osm,topo]){layer.on('tileload',()=>{if(map.hasLayer(layer))loaded()});layer.on('tileerror',()=>{status.style.display='block';status.textContent='Some tiles are unavailable. Try the other map layer or check your connection.'})}
-if(interactive)L.control.layers({'Trails & places':osm,'Terrain / contours':topo},null,{collapsed:true}).addTo(map);
+for(const layer of [osm,topo,...(satellite?[satellite]:[])]){layer.on('tileload',()=>{if(map.hasLayer(layer))loaded()});layer.on('tileerror',()=>{status.style.display='block';status.textContent='Some tiles are unavailable. Try the other map layer or check your connection.'})}
+if(interactive)L.control.layers(baseLayers,null,{collapsed:true}).addTo(map);
 const data=${scriptJSON(data)};
 map.on('click',event=>{const value=JSON.stringify({type:'select-coordinate',latitude:event.latlng.lat,longitude:event.latlng.lng});if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(value);else parent.postMessage(value,'*')});
 const markers=L.layerGroup().addTo(map);let position;let lastCamera=null;
 window.updateNavoPosition=function(payload){
- if(payload.myCoords){const p=payload.myCoords;if(position){position.setLatLng([p.latitude,p.longitude]);position.setRadius(Math.max(p.accuracy||10,10))}else{position=L.circle([p.latitude,p.longitude],{radius:Math.max(p.accuracy||10,10),color:'#168de2',fillOpacity:.25}).addTo(map);position.bindTooltip('Your GPS position')}}else if(position){map.removeLayer(position);position=null}
+ if(payload.myCoords){const p=payload.myCoords;if(position){position.setLatLng([p.latitude,p.longitude]);position.setRadius(Math.max(p.accuracy||10,10))}else{position=L.circle([p.latitude,p.longitude],{radius:Math.max(p.accuracy||10,10),color:'#168de2',fillOpacity:.25}).addTo(map);position.bindTooltip('Your GPS position (accuracy circle)')}}else if(position){map.removeLayer(position);position=null}
  if(payload.followUser && payload.myCoords){const p=payload.myCoords;map.panTo([p.latitude,p.longitude],{animate:true,duration:.8});}
 };
 window.updateNavoMap=function(payload){
+ if(payload.basemap && payload.basemap!==activeBase){activeBase=payload.basemap;for(const layer of [osm,topo,...(satellite?[satellite]:[])])map.removeLayer(layer);(activeBase==='streets'?osm:activeBase==='satellite'&&satellite?satellite:topo).addTo(map);loading()}
  markers.clearLayers();
  for(const route of (payload.walkingRoutes||[])){const selected=route.id===payload.walkingRouteId;const line=route.geometry.map(p=>[p.latitude,p.longitude]);L.polyline(line,{color:'#19293A',weight:selected?8:5,opacity:selected?.85:.4}).addTo(markers);L.polyline(line,{color:selected?'#E4FF89':'#168DE2',weight:selected?4:3,opacity:selected?1:.7}).addTo(markers).bindTooltip(selected?'Selected route':'Alternative route');}
  if(payload.endpoints){const e=payload.endpoints;if(e.start)L.circleMarker([e.start.latitude,e.start.longitude],{radius:8,color:'#9BE89B',fillOpacity:1}).addTo(markers).bindTooltip('Routed start');L.circleMarker([e.end.latitude,e.end.longitude],{radius:8,color:'#FF9D8A',fillOpacity:1}).addTo(markers).bindTooltip(payload.walkingRoutes?.length?'Routed endpoint':'Selected destination');}

@@ -8,7 +8,8 @@ export type Place = Coordinate & {
   country?: string;
   countryCode?: string;
   type: string;
-  provider: "photon" | "coordinates";
+  provider: "photon" | "coordinates" | "osm-reference";
+  source?: string;
   distanceM?: number;
 };
 export function isCoordinate(value: unknown): value is Coordinate {

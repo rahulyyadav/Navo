@@ -1,0 +1,26 @@
+# Optional free preview host. No paid databases or disks are created.
+services:
+  - type: web
+    name: navo-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /health
+    autoDeployTrigger: "off"
+    envVars:
+      - key: FIREBASE_PROJECT_ID
+        value: navo-57a5c
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        value: /etc/secrets/firebase-admin.json
+      - key: NEBIUS_API_KEY
+        sync: false
+      - key: NEBIUS_BASE_URL
+        value: https://api.tokenfactory.us-central1.nebius.com/v1
+      - key: NEBIUS_MODEL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: ENABLE_DEMO
+        value: "false"
