@@ -47,3 +47,33 @@ After deployment, set EXPO_PUBLIC_API_BASE_URL and EXPO_PUBLIC_CHAT_BASE_URL to 
 ## Validation boundary
 
 Client/backend tests, lint, typecheck, Expo Doctor, exports and actual browser search/map/AI checks are recorded during implementation. Tests use supplied/captured map data and synthetic GPS only. No physical GPS accuracy, current mountain access, successful phone group creation, offline basemap availability or public service uptime is claimed.
+
+## Readability and preview connection follow-up
+
+Home now has a visible destination-search action and a slideshow control above the image deck, where it cannot sit behind the floating navigation bar. The shared blue gradient is deeper; white headers have 5.41:1 contrast and the secondary text token has 4.84:1 against its lightest stop. These are token-level measurements, not a certification of every screen. Preparation uses the same shared palette. AI send targets are at least 44 points.
+
+Render preview requests have a bounded two-minute cold-start window, while ordinary local/shared requests retain their shorter timeout. Chat and group connection states explain startup and keep personal plans available.
+
+The owner created a Python 3 Free service on Render. Its first deployment failed because it looked for requirements.txt at the repository root. The correct native Python configuration is:
+
+- Root Directory: blank.
+- Build Command: `pip install -r backend/requirements.lock`.
+- Start Command: `PYTHONPATH=backend python -m app.serve`.
+- Python family: repository `.python-version` selects the latest supported 3.13 patch, matching the Docker/test family.
+- Health Check Path: `/health`.
+
+The build command was corrected in the hosting console. Startup and private environment settings still require completion/verification. An assigned service URL does not establish a successful deployment. No Nebius secret or Firebase Admin JSON has been uploaded by Codex. Finish those steps before replacing the local app endpoints with the public service URL.
+
+## Launch-audit fixes (12 October)
+
+The route planner now puts search before the setup cards and collapses completed inputs into an editable outing summary. AI, crew options and detailed directions/map references open on demand. Review emphasizes one-way distance; unknown elevation/peak destinations no longer display a confident hiking arrival. Weather can cover the rest of the day and fetched times explicitly use Nepal time.
+
+Chat now requires the existing verified Firebase authentication and valid Admin configuration. This deliberately closes the previously public, unbudgeted endpoint. Configure Firebase before testing signed-in AI on a phone; the old anonymous localhost demo is no longer available. The client sends its Firebase bearer token and preserves actionable error messages.
+
+Server controls: AI_ENABLED=false pauses chat; AI_DAILY_REQUESTS defaults to 100 globally; AI_USER_DAILY_REQUESTS defaults to 10 per account. Firestore transactions reserve attempts before provider calls, reset on UTC dates, and count failures too. Two chat calls per process may run concurrently. These are request ceilings, not a currency billing guarantee; use provider-side credit/spend controls as well. Multiple processes share the daily Firestore budget; concurrent slots are process-local. Unknown-ascent timing/return questions receive a fixed caution rather than model-generated hiking budgets. General answers remain model-generated and need review.
+
+Outstanding release gates remain documented in LAUNCH-AUDIT-2026-10-12.md: deployment/credentials, real email and two-account group verification, deletion/recovery, dependency triage and real-device/field testing. The dated audit is historical evidence; this section records subsequent fixes.
+
+## Find walking routes fix (13 October)
+
+The button previously stopped when origin was unset and placed its error only at the top of the long planner. It now resolves a fresh precise foreground location on the user's tap when no explicit start exists, then calculates the route. A chosen trailhead is preserved. Inaccurate, stale, denied or cancelled fixes cannot become invented starting points. The action displays location/routing progress and an adjacent failure message/settings action. Successful calculation opens a distinct review state with an editable outing summary and the mapped route; recording still begins only through Start Trek. The map renderer remains the Expo Go-compatible existing implementation; MapLibre/ORS migration was not silently installed and would require native build/provider configuration.

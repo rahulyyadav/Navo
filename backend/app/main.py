@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import secrets
 from datetime import datetime, timezone, timedelta
@@ -328,9 +329,16 @@ async def revise(pid: str, value: PlanRequest, uid: str = Depends(current_user))
     get_plan(pid, uid)
     return await plan(value, uid)
 
+chat_slots = asyncio.Semaphore(2)
+
 @app.post('/chat')
-async def chat(value: ChatRequest):
-    return await chat_reply(value)
+async def chat(value: ChatRequest, uid: str = Depends(current_user)):
+    from .ai_budget import reserve_chat
+    if chat_slots.locked():
+        raise HTTPException(429, 'Navo AI is busy. Please retry shortly.', headers={'Retry-After': '15'})
+    async with chat_slots:
+        await asyncio.to_thread(reserve_chat, database(), uid)
+        return await chat_reply(value)
 
 
 @app.get('/preparations/{rid}')

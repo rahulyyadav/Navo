@@ -33,12 +33,13 @@ export function CloudStatus() {
     } finally { lock.current = false; setBusy(''); }
   }
   if (!apiBase) return <View style={styles.wrap}><Badge label="PERSONAL PLANNING AVAILABLE" tone="lime" /><Text style={styles.copy}>Your personal plans work on this phone. Shared groups are unavailable until Navo’s group service is connected.</Text></View>;
-  return <View style={styles.wrap}><Badge label={cloud.ready ? 'CONNECTED' : 'CONNECT YOUR ACCOUNT'} tone={cloud.ready ? 'lime' : 'warning'} />
-    {!cloud.ready && <Text style={styles.copy}>Your saved plans still work. Connect to invite your crew and sync group updates.</Text>}
+  const connecting = cloud.status === 'Connecting' || cloud.status === 'Connecting to Firestore';
+  return <View style={styles.wrap}><Badge label={connecting ? 'CONNECTING YOUR CREW' : cloud.ready ? 'CONNECTED' : 'CONNECT YOUR ACCOUNT'} tone={cloud.ready ? 'lime' : 'warning'} />
+    {!cloud.ready && <Text style={styles.copy}>{connecting ? 'Getting your group service ready. The first connection may take a minute; your saved plans remain available.' : 'Your saved plans still work. Connect to invite your crew and sync group updates.'}</Text>}
     <Notice message={feedback.uid === user?.uid ? feedback.message : ''} tone={feedback.success ? 'success' : 'warning'} />
     <Notice message={cloud.error} />
     {user && !user.emailVerified && <><Text style={styles.copy}>Verify {user.email} to use shared groups. You can keep planning on this device without verification.</Text><Button label={cooldown ? `Resend in ${cooldown}s` : 'Send verification email'} busy={busy === 'send'} disabled={Boolean(busy) || cooldown > 0} variant="outline" onPress={() => void verifyEmail()} /><Button label="I opened the link · check again" busy={busy === 'check'} disabled={Boolean(busy)} variant="quiet" onPress={() => void verifyEmail(true)} /></>}
-    {(!cloud.ready || cloud.error) && <Button label="Retry connection" disabled={Boolean(busy)} variant="quiet" onPress={cloud.retry} />}
+    {!connecting && (!cloud.ready || cloud.error) && <Button label="Retry connection" disabled={Boolean(busy)} variant="quiet" onPress={cloud.retry} />}
   </View>;
 }
 const styles = StyleSheet.create({ wrap: { gap: 8, marginVertical: 12 }, copy: { color: colors.muted, fontSize: 14, lineHeight: 22 } });

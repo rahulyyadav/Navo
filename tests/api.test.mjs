@@ -5,7 +5,7 @@ import ts from 'typescript';
 const originalSource = await readFile(new URL('../src/lib/api.ts', import.meta.url), 'utf8');
 const addressSource = ts.transpileModule(await readFile(new URL('../src/services/backend-address.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText;
 const addressURL = `data:text/javascript;base64,${Buffer.from(addressSource).toString('base64')}`;
-const source = originalSource.replace("import { networkEnvironment } from './network-environment';", "const networkEnvironment = () => ({ platform: 'web', development: false });").replace("'../services/backend-address'", JSON.stringify(addressURL));
+const source = originalSource.replace("import { firebaseAuth } from './firebase';", "const firebaseAuth = { currentUser: { getIdToken: async () => 'chat-test-token' } };").replace("import { networkEnvironment } from './network-environment';", "const networkEnvironment = () => ({ platform: 'web', development: false });").replace("'../services/backend-address'", JSON.stringify(addressURL));
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
 const oldBase = process.env.EXPO_PUBLIC_API_BASE_URL;
 process.env.EXPO_PUBLIC_API_BASE_URL = 'http://test.local:8000';
@@ -40,10 +40,10 @@ test('working requests preserve authenticated route and payload', async () => {
 });
 
 
-test('chat sends loaded email metadata without a Firebase bearer token', async () => {
+test('chat sends a Firebase bearer token with optional metadata', async () => {
   await withFetch(async (url, options) => {
     assert.equal(url, 'http://test.local:8000/chat');
-    assert.equal(options.headers.Authorization, undefined);
+    assert.equal(options.headers.Authorization, 'Bearer chat-test-token');
     assert.deepEqual(JSON.parse(options.body), { messages: [{ role: 'user', content: 'Hi' }], email: 'trekker@example.com' });
     return new Response(JSON.stringify({ reply: 'Hello' }));
   }, async () => assert.deepEqual(await requestChatAPI([{ role: 'user', content: 'Hi' }], 'trekker@example.com'), { reply: 'Hello' }));
@@ -54,9 +54,9 @@ test('a chat-only endpoint works while shared services are unconfigured', async 
   let chat;
   try { chat = await import(`data:text/javascript;base64,${Buffer.from(compiled + '\n// isolated chat endpoint').toString('base64')}`); }
   finally { if(previousMain===undefined)delete process.env.EXPO_PUBLIC_API_BASE_URL;else process.env.EXPO_PUBLIC_API_BASE_URL=previousMain;if(previousChat===undefined)delete process.env.EXPO_PUBLIC_CHAT_BASE_URL;else process.env.EXPO_PUBLIC_CHAT_BASE_URL=previousChat; }
-  await withFetch(async (url,options)=>{assert.equal(url,'http://chat.local:8004/chat');assert.equal(options.headers.Authorization,undefined);return new Response(JSON.stringify({reply:'A grounded route reply'}));},async()=>assert.deepEqual(await chat.requestChatAPI([{role:'user',content:'How long?'}],null),{reply:'A grounded route reply'}));
+  await withFetch(async (url,options)=>{assert.equal(url,'http://chat.local:8004/chat');assert.equal(options.headers.Authorization,'Bearer chat-test-token');return new Response(JSON.stringify({reply:'A grounded route reply'}));},async()=>assert.deepEqual(await chat.requestChatAPI([{role:'user',content:'How long?'}],null),{reply:'A grounded route reply'}));
 });
-test('guest chat normalizes empty email metadata to null',async()=>{
+test('signed-in chat normalizes empty email metadata to null',async()=>{
  await withFetch(async(url,options)=>{assert.equal(JSON.parse(options.body).email,null);return new Response(JSON.stringify({reply:'Hello'}));},async()=>assert.deepEqual(await requestChatAPI([{role:'user',content:'Hi'}],''),{reply:'Hello'}));
 });
 test('malformed optional email metadata never blocks a route question',async()=>{

@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -14,6 +15,9 @@ class Settings(BaseSettings):
     nebius_base_url: str = 'https://api.tokenfactory.us-central1.nebius.com/v1'
     nebius_model: str = 'nvidia/nemotron-3-super-120b-a12b'
     enable_demo: bool = False
+    ai_enabled: bool = True
+    ai_daily_requests: int = Field(default=100, ge=0, le=10000)
+    ai_user_daily_requests: int = Field(default=10, ge=0, le=1000)
 
 @lru_cache
 def settings():

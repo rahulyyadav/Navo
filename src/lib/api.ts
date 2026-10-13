@@ -1,5 +1,6 @@
+import { firebaseAuth } from './firebase';
 import { networkEnvironment } from './network-environment';
-import { resolveBackendAddress } from '../services/backend-address';
+import { resolveBackendAddress, backendRequestTimeout } from '../services/backend-address';
 import type { TrekChatContext } from '@/services/routing/ai-context';
 export async function withTimeout<T>(task: Promise<T>, milliseconds: number, message: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -15,10 +16,13 @@ export async function requestAPI<T>(getToken: () => Promise<string | null>, path
   return requestJSON<T>(path, body, method, token);
 }
 
-export function requestChatAPI(messages: { role: 'user' | 'assistant'; content: string }[], email: string | null, context?: TrekChatContext) {
+export async function requestChatAPI(messages: { role: 'user' | 'assistant'; content: string }[], email: string | null, context?: TrekChatContext) {
+  const user = firebaseAuth?.currentUser;
+  if (!user) throw new Error('Sign in to use Navo AI. Your route stays available.');
+  const token = await withTimeout(user.getIdToken(), 15000, 'Your sign-in could not reconnect. Please retry.');
   const normalized = email?.trim() ?? '';
   const metadataEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized) ? normalized : null;
-  return requestJSON<{ reply: string }>('/chat', { messages, email: metadataEmail, ...(context ? { context } : {}) }, 'POST', undefined, chatBase);
+  return requestJSON<{ reply: string }>('/chat', { messages, email: metadataEmail, ...(context ? { context } : {}) }, 'POST', token, chatBase);
 }
 
 async function requestJSON<T>(path: string, body: unknown, method: string, token?: string, base = apiBase) {
@@ -26,7 +30,7 @@ async function requestJSON<T>(path: string, body: unknown, method: string, token
   const environment = networkEnvironment();
   base = resolveBackendAddress(base, environment.platform, environment.development, environment.expoHost);
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), path.startsWith('/plans') ? 210000 : path === '/chat' ? 75000 : 20000);
+  const timeout = setTimeout(() => controller.abort(), backendRequestTimeout(path, base));
   try {
     let response: Response;
     try {

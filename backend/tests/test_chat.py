@@ -10,21 +10,12 @@ from app import chat, main
 from app.schemas import ChatRequest
 
 
-def test_chat_accepts_profile_email_without_firebase_verification(monkeypatch):
-    from app.auth import current_user
-    async def answer(value):
-        assert value.email == 'trekker@example.com'
-        return {'reply': 'Hello trekker'}
+def test_chat_rejects_unauthenticated_requests_before_provider(monkeypatch):
+    answer = Mock()
     monkeypatch.setattr(main, 'chat_reply', answer)
-    def must_not_verify():
-        raise AssertionError('Chat must not call Firebase verification')
-    main.app.dependency_overrides[current_user] = must_not_verify
-    try:
-        response = TestClient(main.app).post('/chat', json={'email': 'trekker@example.com', 'messages': [{'role': 'user', 'content': 'Hello'}]})
-        assert response.status_code == 200
-        assert response.json() == {'reply': 'Hello trekker'}
-    finally:
-        main.app.dependency_overrides.clear()
+    response = TestClient(main.app).post('/chat', json={'messages': [{'role': 'user', 'content': 'Hello'}]})
+    assert response.status_code == 401
+    answer.assert_not_called()
 
 
 def test_chat_rejects_system_role_and_oversized_history():
@@ -128,3 +119,30 @@ def test_walking_chat_bounds_mapped_directions():
     assert request.context.directions[0].text == 'Turn left onto Pragya Marg'
     with pytest.raises(ValidationError):
         ChatRequest(messages=[{'role': 'user', 'content': 'Describe the route'}], context={**context, 'directions': context['directions'] * 13})
+
+
+def test_unknown_ascent_timing_does_not_call_model(monkeypatch):
+    monkeypatch.setattr(chat, 'settings', lambda: (_ for _ in ()).throw(AssertionError('Model must not be used')))
+    request = ChatRequest(messages=[{'role': 'user', 'content': 'Is 90 minutes enough for the return hike?'}], context={'destination': 'Phulchowki', 'origin': 'Godawari', 'provider': 'osrm-foot', 'distanceM': 6760, 'durationS': 5400, 'date': '2026-10-13', 'startTime': '07:00'})
+    result = asyncio.run(chat.reply(request))
+    assert 'not available' in result['reply']
+    assert 'Do not double' in result['reply']
+
+
+def test_authenticated_chat_reserves_budget_before_provider(monkeypatch):
+    from app import ai_budget
+    from app.auth import current_user
+    calls = []
+    main.app.dependency_overrides[current_user] = lambda: 'verified-user'
+    monkeypatch.setattr(main, 'database', lambda: 'test-db')
+    monkeypatch.setattr(ai_budget, 'reserve_chat', lambda db, uid: calls.append(('budget', db, uid)))
+    async def answer(value):
+        calls.append(('provider',))
+        return {'reply': 'Ready'}
+    monkeypatch.setattr(main, 'chat_reply', answer)
+    try:
+        response = TestClient(main.app).post('/chat', json={'messages': [{'role': 'user', 'content': 'Packing?'}]})
+        assert response.status_code == 200
+        assert calls == [('budget', 'test-db', 'verified-user'), ('provider',)]
+    finally:
+        main.app.dependency_overrides.clear()

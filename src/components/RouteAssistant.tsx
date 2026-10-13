@@ -36,10 +36,10 @@ export function RouteAssistant({
         context,
       );
       if (alive.current) setReply(result.reply);
-    } catch {
+    } catch (failure) {
       if (alive.current)
         setError(
-          "Navo AI could not answer. Check your server connection and retry.",
+          failure instanceof Error ? failure.message : "Navo AI could not answer. Please retry.",
         );
     } finally {
       lock.current = false;
