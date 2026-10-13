@@ -13,3 +13,11 @@ export function resolveBackendAddress(base: string, platform: string, developmen
   }
   throw new Error('This phone build points to a laptop-only server address. Use Navo on the same Wi-Fi with its development server, or configure a reachable HTTPS backend and rebuild the app.');
 }
+
+/** Free preview hosts may need about a minute to wake before serving JSON. */
+export function backendRequestTimeout(path: string, base: string) {
+  if (path.startsWith('/plans')) return 210000;
+  let preview = false;
+  try { preview = new URL(base).hostname.endsWith('.onrender.com'); } catch { /* URL validation supplies the useful error separately. */ }
+  return preview ? 120000 : path === '/chat' ? 75000 : 20000;
+}

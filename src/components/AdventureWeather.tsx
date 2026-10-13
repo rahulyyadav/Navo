@@ -12,12 +12,14 @@ export function AdventureWeather({
   time,
   durationS,
   onForecast,
+  fullDay = false,
 }: {
   origin: Coordinate;
   destination: Coordinate;
   date: string;
   time: string;
   durationS: number;
+  fullDay?: boolean;
   onForecast?: (value: HourlyForecast) => void;
 }) {
   const [value, setValue] = useState<{
@@ -65,7 +67,7 @@ export function AdventureWeather({
     value?.end.hours.filter(
       (h) =>
         h.time >= `${date}T${time.slice(0, 2)}:00` &&
-        Date.parse(`${h.time}:00+05:45`) <= finish.getTime(),
+        (fullDay || Date.parse(`${h.time}:00+05:45`) <= finish.getTime()),
     ) ?? [];
   return (
     <Card>
@@ -74,6 +76,7 @@ export function AdventureWeather({
         Check your start and destination for {date}. Coordinates go to
         Open-Meteo when you tap below. All times are Nepal time.
       </Text>
+      {fullDay && <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 22 }}>Showing the rest of the day because your hiking duration is unknown. Choose a return time with your crew.</Text>}
       <View style={{ marginTop: space.md }}>
         <Button
           label={value ? "Refresh hourly weather" : "Check hourly weather"}
@@ -93,7 +96,7 @@ export function AdventureWeather({
           <Text
             style={{ color: colors.muted, fontSize: 14, marginVertical: 8 }}
           >
-            Fetched {new Date(value.end.fetchedAt).toLocaleString()}. Point
+            Fetched {new Date(value.end.fetchedAt).toLocaleString("en-GB", { timeZone: "Asia/Kathmandu" })} NPT. Point
             forecasts can differ from mountain conditions.
           </Text>
           {beforeSunrise && (

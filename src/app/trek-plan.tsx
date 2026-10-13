@@ -1,3 +1,4 @@
+import { resolveWalkingOrigin } from '@/services/routing/origin';
 import { PublishedMaps } from "@/components/PublishedMaps";
 import { openLocationSettings } from "@/lib/location-settings";
 import type { HourlyForecast } from "@/services/weather/hourly";
@@ -93,6 +94,10 @@ function Planner({
   const { page } = usePageLayout(),
     gps = useMyLocation();
   const [approach, setApproach] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [details, setDetails] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [crewOpen, setCrewOpen] = useState(false);
   const [forecast, setForecast] = useState<HourlyForecast | null>(null);
   const [destination, setDestination] = useState(initialDestination),
     [origin, setOrigin] = useState<Place | null>(null),
@@ -165,11 +170,12 @@ function Planner({
     invalidate();
   }
   async function calculate() {
-    if (pending.current) return;
+    if (pending.current || gps.state === "locating") return;
     setError("");
     setMessage("");
-    if (!origin || !destination) {
-      setError("Choose your starting point and destination first.");
+    if (!destination) {
+      setError("Choose a destination from the search suggestions first.");
+      setSearchTarget("destination");
       return;
     }
     if (!validHikeDate(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
@@ -180,23 +186,21 @@ function Planner({
     pending.current = controller;
     setBusy(true);
     try {
-      const values = await calculateWalkingRoutes(
-        origin,
-        destination,
-        stops,
-        controller.signal,
-      );
-      if (alive.current) {
+      const start = await resolveWalkingOrigin(origin, gps.locate, controller.signal);
+      if (!alive.current || controller.signal.aborted) return;
+      if (!origin) setOrigin(start);
+      const values = await calculateWalkingRoutes(start, destination, stops, controller.signal);
+      if (alive.current && !controller.signal.aborted) {
+        presented.current = false;
         setRoutes(values);
+        setEditing(false);
+        setSearchTarget(null);
         setSelected(0);
+        scroll.current?.scrollTo({ y: 0, animated: !reduced });
       }
-    } catch (f) {
+    } catch (failure) {
       if (alive.current && !controller.signal.aborted)
-        setError(
-          f instanceof Error
-            ? f.message
-            : "Could not calculate a walking route.",
-        );
+        setError(failure instanceof Error ? failure.message : "Could not calculate a walking route. Please retry.");
     } finally {
       pending.current = null;
       if (alive.current) setBusy(false);
@@ -319,10 +323,11 @@ function Planner({
       >
         <Heading
           title={
-            destination ? `Walk to ${destination.name}` : "Where are you going?"
+            route && !editing ? "Your walking route" : destination ? `Walk to ${destination.name}` : "Where are you going?"
           }
-          subtitle="Search a place, choose an accessible starting point, then compare real walking routes."
+          subtitle={route && !editing ? "Review the mapped path, check the conditions, then start when you are ready." : "Choose your trail. Make a plan. Head out prepared."}
         />
+        <View style={styles.row}><Badge label={destination ? "1 · DESTINATION SET" : "1 · DESTINATION"} /><Badge label={origin ? "2 · START SET" : "2 · START & DATE"} /><Badge label={route ? "3 · REVIEW ROUTE" : "3 · ROUTE"} /></View>
         <Notice message={error} />
         <Notice tone="info" message={message} />
         {!isSignedIn && (
@@ -331,7 +336,30 @@ function Planner({
             message="Explore routes freely. Sign in to save a plan, record a hike and keep private history."
           />
         )}
-        <Card>
+        {route && !editing && <Card><SectionTitle title="Your outing" /><Text style={styles.title}>{origin?.name} → {destination?.name}</Text><Text style={styles.copy}>{date} · {time} NPT · One-way walking route</Text><Button label="Edit places or departure" variant="quiet" onPress={() => setEditing(true)} /></Card>}
+        {(!route || editing) && <>
+        {searchTarget && (
+          <Card>
+            <PlaceSearch
+              key={searchTarget}
+              label={
+                searchTarget === "stop"
+                  ? "Add a stop"
+                  : `Search ${searchTarget}`
+              }
+              recent={recent}
+              near={origin ?? undefined}
+              onSelect={choose}
+              autoFocus
+            />
+            <Button
+              label="Close search"
+              variant="quiet"
+              onPress={() => setSearchTarget(null)}
+            />
+          </Card>
+        )}
+<Card>
           <SectionTitle title="Your destination" />
           <Text style={styles.title}>
             {destination?.name ?? "Choose a place"}
@@ -347,7 +375,7 @@ function Planner({
             disabled={busy}
             onPress={() => setSearchTarget("destination")}
           />
-          {destination && (
+          {destination && isSignedIn && (
             <Button
               label={
                 isSignedIn ? "Save this place" : "Sign in to save this place"
@@ -458,27 +486,6 @@ function Planner({
             </>
           )}
         </Card>
-        {searchTarget && (
-          <Card>
-            <PlaceSearch
-              key={searchTarget}
-              label={
-                searchTarget === "stop"
-                  ? "Add a stop"
-                  : `Search ${searchTarget}`
-              }
-              recent={recent}
-              near={origin ?? undefined}
-              onSelect={choose}
-              autoFocus
-            />
-            <Button
-              label="Close search"
-              variant="quiet"
-              onPress={() => setSearchTarget(null)}
-            />
-          </Card>
-        )}
         {!route && mapBlock}
         {mapTarget && (
           <Notice
@@ -546,25 +553,21 @@ function Planner({
               onPress={() => setSearchTarget("stop")}
             />
           )}
+          {!origin && <Text style={styles.copy}>Tap below to allow location access and find a walking route from where you are. You can also choose a start above.</Text>}
+          <Notice message={error} />
+          {gps.state === "denied" && <Button label="Allow location in settings" variant="outline" onPress={() => void openLocationSettings().then(message => { if (message) setError(message); })} />}
           <Button
-            label="Find walking routes"
+            label={gps.state === "locating" ? "Finding your location…" : busy ? "Finding a walking route…" : "Find walking routes"}
             busy={busy}
-            disabled={busy || saving}
+            disabled={busy || saving || gps.state === "locating"}
             onPress={() => void calculate()}
           />
         </Card>
+        </>}
         {route && (
           <View
             style={{ gap: space.md }}
-            onLayout={(event) => {
-              if (!presented.current) {
-                presented.current = true;
-                scroll.current?.scrollTo({
-                  y: Math.max(0, event.nativeEvent.layout.y - 12),
-                  animated: !reduced,
-                });
-              }
-            }}
+
           >
             {mapBlock}
             <Card>
@@ -586,11 +589,15 @@ function Planner({
                 </View>
               ))}
               <Text style={styles.title}>
-                {(route.distanceM / 1000).toFixed(2)} km ·{" "}
-                {routeDuration(plannedDuration(route, pace))}
+                {(route.distanceM / 1000).toFixed(2)} km · one way
               </Text>
               <Text style={styles.copy}>
-                Arrival {finish} NPT · walking estimate. Confirm access and trail suitability locally. Elevation and difficulty are unavailable.
+                {destination?.type === "peak" || route.ascentM == null
+                  ? "Hiking duration unknown · elevation and trail difficulty have not been verified."
+                  : `Provider arrival estimate ${finish} NPT · allow extra time for terrain and breaks.`}
+              </Text>
+              <Text style={styles.copy}>
+                Routing baseline: {routeDuration(plannedDuration(route, pace))}. This excludes your return journey and is not a confirmed hiking time.
               </Text>
               {(route.startOffsetM > 20 || route.endOffsetM > 20) && (
                 <Notice
@@ -667,8 +674,8 @@ function Planner({
                 />
               </View>
             </Card>
-            <PublishedMaps destination={destination!} />
-            <RouteAssistant
+            <Button label={assistantOpen ? "Close route assistant" : "Ask Navo about this route"} variant="outline" onPress={() => setAssistantOpen(v => !v)} />
+            {assistantOpen && <RouteAssistant
               key={`${route.id}:${date}:${time}:${pace}`}
               email={isSignedIn ? email || null : null}
               context={trekChatContext({
@@ -685,8 +692,9 @@ function Planner({
                 savedAt: route.fetchedAt,
                 weather: forecast,
               })}
-            />
-            <RouteCrew
+            />}
+            <Button label={crewOpen ? "Close crew planning" : "Plan with your crew"} variant="outline" onPress={() => setCrewOpen(v => !v)} />
+            {crewOpen && <RouteCrew
               key={`${destination!.id}:${origin!.id}:${date}:${time}:${route.id}`}
               plan={{
                 version: 1,
@@ -701,7 +709,7 @@ function Planner({
                 route,
                 savedAt: route.fetchedAt,
               }}
-            />
+            />}
             <AdventureWeather
               onForecast={setForecast}
               key={`${origin?.id}:${destination?.id}:${date}:${time}:${pace}:${route.id}`}
@@ -710,8 +718,10 @@ function Planner({
               date={date}
               time={time}
               durationS={plannedDuration(route, pace)}
+              fullDay={destination?.type === "peak" || route.ascentM == null}
             />
-            <Card>
+            <Button label={details ? "Hide directions & map references" : "View directions & map references"} variant="outline" onPress={() => setDetails(v => !v)} />
+            {details && <><PublishedMaps destination={destination!} /><Card>
               <SectionTitle title="Walking instructions" />
               {route.instructions.slice(0, 12).map((i, index) => (
                 <Text key={index} style={styles.copy}>
@@ -723,7 +733,7 @@ function Planner({
                   The complete instruction list is available during navigation.
                 </Text>
               )}
-            </Card>
+            </Card></>}
           </View>
         )}
         <Button

@@ -3,6 +3,7 @@ import { ActivityIndicator, Animated, Linking, PanResponder, Pressable, ScrollVi
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
+import { colors } from '@/theme/tokens';
 import { Text, TextInput } from '@/components/Typography';
 import { TabIcon } from '@/components/TabIcon';
 import { useReducedMotion } from '@/components/ui';
@@ -69,7 +70,7 @@ export function PreparationPage(props: Props) {
   const scrollRef = useRef<ScrollView>(null);
   const reduced = useReducedMotion();
   const focusDeck = useCallback(() => scrollRef.current?.scrollTo({ y: 0, animated: !reduced }), [reduced]);
-  return <View style={styles.page}><LinearGradient colors={['#8AA9C4', '#536D86', '#3C5872']} locations={[0, .4, 1]} style={StyleSheet.absoluteFill} />
+  return <View style={styles.page}><LinearGradient colors={[colors.homeTop, colors.homeMiddle, colors.homeBottom]} locations={[0, .4, 1]} style={StyleSheet.absoluteFill} />
     <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 14, paddingBottom: Math.max(insets.bottom, 20) + 20 }]}>
       <View style={[styles.header, compact && { marginBottom: 16 }]}><Pressable accessibilityRole="button" accessibilityLabel="Back to trek" onPress={props.onBack} style={styles.back}><Text style={styles.backArrow}>←</Text></Pressable><Text style={styles.headerTitle}>TREK PREPARATION</Text><TabIcon name="route" color="white" size={23} /></View>
       <View style={styles.trekHeading}><Text style={styles.overline}>{props.trek.region.toUpperCase()} / YOUR NEXT JOURNEY</Text><Text style={[styles.trekName, compact && { fontSize: 26, lineHeight: 30 }]}>{props.trek.name}</Text><Text style={styles.metadata}>{props.trek.days} · {props.trek.maxElevation.toLocaleString()} m · {props.trek.difficulty}</Text></View>
@@ -130,11 +131,11 @@ function PreparationContent({ deviceOnly, trek, plan, status, error, onChange, o
 }
 function CircleIndicator({ reviewed }: { reviewed: boolean }) { return <Svg width={18} height={18} viewBox="0 0 18 18"><Circle cx={9} cy={9} r={6} fill="none" stroke={reviewed ? '#FFD0BE' : 'rgba(255,255,255,.4)'} strokeWidth={1.5} />{reviewed && <Path d="M6 9h6" stroke="#FFD0BE" />}</Svg>; }
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#536D86' }, scroll: { paddingHorizontal: 22, width: '100%', maxWidth: 540, alignSelf: 'center' },
+  page: { flex: 1, backgroundColor: colors.homeMiddle }, scroll: { paddingHorizontal: 22, width: '100%', maxWidth: 540, alignSelf: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }, back: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(224,236,244,.16)', justifyContent: 'center', alignItems: 'center' }, backArrow: { color: 'white', fontSize: 27, lineHeight: 31 }, headerTitle: { color: 'white', fontSize: 10, letterSpacing: 2.2, fontWeight: '700' },
-  trekHeading: { gap: 7 }, overline: { color: lime, fontSize: 9, letterSpacing: 1.8, fontWeight: '700' }, trekName: { color: 'white', fontSize: 29, lineHeight: 34, fontWeight: '700' }, metadata: { color: 'rgba(255,255,255,.7)', fontSize: 12 },
+  trekHeading: { gap: 7 }, overline: { color: lime, fontSize: 9, letterSpacing: 1.8, fontWeight: '700' }, trekName: { color: 'white', fontSize: 29, lineHeight: 34, fontWeight: '700' }, metadata: { color: colors.muted, fontSize: 12 },
   progressHeader: { marginTop: 21, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }, progressTitle: { color: lime, fontSize: 22, fontWeight: '700' }, progressMuted: { color: 'rgba(255,255,255,.75)', fontSize: 13, fontWeight: '400' }, sync: { flexDirection: 'row', alignItems: 'center', gap: 5 }, syncDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: lime }, syncText: { fontSize: 9, color: 'rgba(255,255,255,.7)' }, progressTrack: { height: 3, backgroundColor: 'rgba(255,255,255,.17)', borderRadius: 2, overflow: 'hidden', marginTop: 10 }, progressFill: { height: '100%', backgroundColor: lime },
-  intro: { marginTop: 22, marginBottom: 20, gap: 4 }, introTitle: { color: 'white', fontSize: 18, fontWeight: '500' }, detail: { color: 'rgba(255,255,255,.65)', fontSize: 12, lineHeight: 19 },
+  intro: { marginTop: 22, marginBottom: 20, gap: 4 }, introTitle: { color: 'white', fontSize: 18, fontWeight: '500' }, detail: { color: colors.muted, fontSize: 12, lineHeight: 19 },
   deck: { marginHorizontal: 3, paddingBottom: 20 }, backCard: { position: 'absolute', top: 14, bottom: 9, left: 12, right: 12, borderRadius: 31, backgroundColor: '#64849E', borderWidth: 1, borderColor: 'rgba(255,255,255,.16)', transform: [{ rotate: '3deg' }] }, backCardFar: { top: 28, bottom: 0, left: 24, right: 24, backgroundColor: '#56728C', transform: [{ rotate: '-3deg' }] },
   card: { minHeight: 365, backgroundColor: '#3F5B74', borderWidth: 1, borderColor: 'rgba(216,234,247,.26)', borderRadius: 30, padding: 23, shadowColor: '#172D40', shadowOffset: { width: 0, height: 12 }, shadowOpacity: .18, shadowRadius: 20, elevation: 5 }, cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 }, eyebrow: { color: 'rgba(255,255,255,.75)', fontSize: 9, letterSpacing: 1.2, fontWeight: '700', flex: 1 }, cardNumber: { color: 'rgba(255,255,255,.5)', fontSize: 10 },
   artwork: { height: 132, alignItems: 'center', justifyContent: 'center', marginVertical: 8 }, orbit: { width: 120, height: 120, borderRadius: 60, borderWidth: 1, borderColor: 'rgba(228,255,137,.15)', position: 'absolute' }, innerOrbit: { width: 92, height: 92, borderRadius: 46, backgroundColor: 'rgba(228,255,137,.06)', position: 'absolute' }, artIcon: { transform: [{ rotate: '-10deg' }] }, star: { position: 'absolute', top: 8, right: '26%' }, starText: { color: lime, fontSize: 25 },
