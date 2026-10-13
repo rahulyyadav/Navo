@@ -321,16 +321,16 @@ function Planner({
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[styles.page, page]}
       >
-        <Heading
+        {route && !editing ? <View><Text accessibilityRole="header" style={styles.title}>Your walking route</Text><Text style={styles.copy}>Review the path and conditions before you start.</Text></View> : <Heading
           title={
             route && !editing ? "Your walking route" : destination ? `Walk to ${destination.name}` : "Where are you going?"
           }
           subtitle={route && !editing ? "Review the mapped path, check the conditions, then start when you are ready." : "Choose your trail. Make a plan. Head out prepared."}
-        />
-        <View style={styles.row}><Badge label={destination ? "1 · DESTINATION SET" : "1 · DESTINATION"} /><Badge label={origin ? "2 · START SET" : "2 · START & DATE"} /><Badge label={route ? "3 · REVIEW ROUTE" : "3 · ROUTE"} /></View>
+        />}
+        {(!route || editing) && <View style={styles.row}><Badge label={destination ? "1 · DESTINATION SET" : "1 · DESTINATION"} /><Badge label={origin ? "2 · START SET" : "2 · START & DATE"} /><Badge label={route ? "3 · REVIEW ROUTE" : "3 · ROUTE"} /></View>}
         <Notice message={error} />
         <Notice tone="info" message={message} />
-        {!isSignedIn && (
+        {!isSignedIn && (!route || editing) && (
           <Notice
             tone="info"
             message="Explore routes freely. Sign in to save a plan, record a hike and keep private history."
