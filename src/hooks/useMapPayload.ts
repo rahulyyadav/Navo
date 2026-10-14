@@ -7,6 +7,7 @@ import {
 /** Keep the large route geometry out of frequent GPS-only bridge messages. */
 export function useMapPayload(props: NepalMapProps) {
   const {
+    focusPoint,
     trailPlaces,
     basemap,
     region,
@@ -22,8 +23,9 @@ export function useMapPayload(props: NepalMapProps) {
     () =>
       scriptJSON({
         ...mapPayload({
+          focusPoint,
           trailPlaces,
-    basemap,
+          basemap,
           region,
           regionNonce,
           selectedId,
@@ -40,8 +42,9 @@ export function useMapPayload(props: NepalMapProps) {
         followUser: undefined,
       }),
     [
+      focusPoint,
       trailPlaces,
-    basemap,
+      basemap,
       region,
       regionNonce,
       selectedId,

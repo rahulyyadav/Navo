@@ -97,7 +97,7 @@ function Planner({
   const { page } = usePageLayout(),
     gps = useMyLocation();
   const [trailPlaces, setTrailPlaces] = useState<TrailPlace[]>([]);
-  const [mapFocus, setMapFocus] = useState<{latitude:number;longitude:number}|null>(null);
+  const [mapFocus, setMapFocus] = useState<{latitude:number;longitude:number;label:string}|null>(null);
   const [expandedMap, setExpandedMap] = useState(false);
   const [basemap, setBasemap] = useState<'terrain'|'streets'>('terrain');
   const [approach, setApproach] = useState(false);
@@ -128,6 +128,7 @@ function Planner({
     [message, setMessage] = useState(""),
     [mapNonce, setMapNonce] = useState(0);
   const scroll = useRef<ScrollView | null>(null);
+  const reviewTop = useRef(0);
   const presented = useRef(false);
   const reduced = useReducedMotion();
   const pending = useRef<AbortController | null>(null),
@@ -310,10 +311,11 @@ function Planner({
         .slice(0, 16)
         .replace("T", " ")
     : "";
-  function focusOnMap(point: {latitude:number;longitude:number}) {
-    setMapFocus(point); setMapNonce(v=>v+1); scroll.current?.scrollTo({y:0,animated:!reduced});
+  function focusOnMap(point: {latitude:number;longitude:number}, label: string) {
+    setMapFocus({...point,label}); setMapNonce(v=>v+1); scroll.current?.scrollTo({y:Math.max(0,reviewTop.current-12),animated:!reduced});
   }
   const mapBlock = (<View style={{gap:8}}>
+    {mapFocus && <Text accessibilityRole="text" style={{color:colors.ink,fontSize:16,lineHeight:23,fontWeight:'600'}}>{mapFocus.label}</Text>}
     <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>
       <Chip label="Terrain" selected={basemap==='terrain'} onPress={()=>setBasemap('terrain')} />
       <Chip label="Streets" selected={basemap==='streets'} onPress={()=>setBasemap('streets')} />
@@ -324,6 +326,7 @@ function Planner({
       <NepalMap
         basemap={basemap}
         trailPlaces={trailPlaces}
+        focusPoint={mapFocus}
         region={mapFocus ? {...mapFocus,latitudeDelta:.006,longitudeDelta:.006}:bounds}
         regionNonce={mapNonce + routes.length}
         selectedId={null}
@@ -609,7 +612,7 @@ function Planner({
         {route && (
           <View
             style={{ gap: space.md }}
-
+            onLayout={event => { reviewTop.current = event.nativeEvent.layout.y; }}
           >
             {mapBlock}
             <Card>
@@ -626,7 +629,7 @@ function Planner({
                   <Button
                     label={`${i === selected ? "Selected · " : ""}${r.name} · ${(r.distanceM / 1000).toFixed(1)} km · ${routeDuration(plannedDuration(r, pace))}`}
                     variant={i === selected ? "primary" : "outline"}
-                    onPress={() => setSelected(i)}
+                    onPress={() => {setSelected(i);setMapFocus(null);setMapNonce(v=>v+1);}}
                   />
                 </View>
               ))}
