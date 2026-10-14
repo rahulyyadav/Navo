@@ -58,3 +58,13 @@ test('removal revokes subsequent access',async()=>{
   await env.withSecurityRulesDisabled(ctx=>deleteDoc(doc(ctx.firestore(),'groups/crew')));
   await assertFails(getDoc(doc(user('alice'),'groups/crew/messages/hello')));
 });
+
+test('an account pending deletion cannot read personal or shared data', async () => {
+  await env.withSecurityRulesDisabled(async ctx => {
+    await setDoc(doc(ctx.firestore(), 'accountDeletions/removed'), { status: 'pending' });
+    await setDoc(doc(ctx.firestore(), 'users/removed'), { displayName: 'Removed' });
+    await setDoc(doc(ctx.firestore(), 'groups/deleting'), { memberIds: ['removed'], ownerId: 'removed' });
+  });
+  await assertFails(getDoc(doc(user('removed'), 'users/removed')));
+  await assertFails(getDoc(doc(user('removed'), 'groups/deleting')));
+});

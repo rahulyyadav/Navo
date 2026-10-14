@@ -1,3 +1,6 @@
+import { TrailGuide } from '@/components/TrailGuide';
+import type { TrailPlace } from '@/services/trail/places';
+import { stageWalkingPlan, pendingWalkingPlan, clearPendingWalkingPlan } from '@/lib/pending-walking-plan';
 import { resolveWalkingOrigin } from '@/services/routing/origin';
 import { PublishedMaps } from "@/components/PublishedMaps";
 import { openLocationSettings } from "@/lib/location-settings";
@@ -93,6 +96,10 @@ function Planner({
   const { email, isSignedIn } = useNavo();
   const { page } = usePageLayout(),
     gps = useMyLocation();
+  const [trailPlaces, setTrailPlaces] = useState<TrailPlace[]>([]);
+  const [mapFocus, setMapFocus] = useState<{latitude:number;longitude:number}|null>(null);
+  const [expandedMap, setExpandedMap] = useState(false);
+  const [basemap, setBasemap] = useState<'terrain'|'streets'>('terrain');
   const [approach, setApproach] = useState(false);
   const [editing, setEditing] = useState(false);
   const [details, setDetails] = useState(false);
@@ -138,7 +145,21 @@ function Planner({
       pending.current?.abort();
     };
   }, [uid]);
+  useEffect(() => {
+    if (!uid) return;
+    let active = true;
+    void pendingWalkingPlan(uid).then(plan => {
+      if (!active || !plan) return;
+      setOrigin(plan.origin); setDestination(plan.destination); setStops(plan.stops);
+      setDate(plan.date); setTime(plan.time); setPace(plan.pace);
+      setRoutes([plan.route]); setSelected(0); setEditing(false); setSearchTarget(null);
+      setMessage('Your route is restored. Review the departure and conditions before saving or starting.');
+      void clearPendingWalkingPlan().catch(() => undefined);
+    }).catch(() => setError('Could not restore your route. Please retry.'));
+    return () => { active = false; };
+  }, [uid]);
   function invalidate() {
+    setTrailPlaces([]); setMapFocus(null);
     presented.current = false;
     setMapNonce((v) => v + 1);
     setForecast(null);
@@ -207,6 +228,16 @@ function Planner({
     }
   }
   const route = routes[selected];
+  async function signInWithPlan() {
+    if (!route || !origin || !destination || saving) return;
+    setSaving(true); setError('');
+    try {
+      await stageWalkingPlan({ version: 1, id: Crypto.randomUUID(), name: destination.name,
+        origin, destination, stops, date, time, pace, route, savedAt: new Date().toISOString() });
+      router.push('/login');
+    } catch { setError('Could not preserve your route. Please retry before signing in.'); }
+    finally { setSaving(false); }
+  }
   async function save(start = false) {
     if (saveLock.current || !route || !origin || !destination) return;
     saveLock.current = true;
@@ -279,14 +310,25 @@ function Planner({
         .slice(0, 16)
         .replace("T", " ")
     : "";
-  const mapBlock = (
-    <View style={styles.map}>
+  function focusOnMap(point: {latitude:number;longitude:number}) {
+    setMapFocus(point); setMapNonce(v=>v+1); scroll.current?.scrollTo({y:0,animated:!reduced});
+  }
+  const mapBlock = (<View style={{gap:8}}>
+    <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>
+      <Chip label="Terrain" selected={basemap==='terrain'} onPress={()=>setBasemap('terrain')} />
+      <Chip label="Streets" selected={basemap==='streets'} onPress={()=>setBasemap('streets')} />
+      <Chip label={expandedMap?'Compact map':'Larger map'} selected={expandedMap} onPress={()=>setExpandedMap(v=>!v)} />
+      <Chip label="Whole route" selected={!mapFocus} onPress={()=>{setMapFocus(null);setMapNonce(v=>v+1);}} />
+    </View>
+    <View style={[styles.map,expandedMap && {height:560}]}>
       <NepalMap
-        region={bounds}
+        basemap={basemap}
+        trailPlaces={trailPlaces}
+        region={mapFocus ? {...mapFocus,latitudeDelta:.006,longitudeDelta:.006}:bounds}
         regionNonce={mapNonce + routes.length}
         selectedId={null}
         onSelectTrek={() => undefined}
-        myCoords={null}
+        myCoords={gps.coords}
         walkingRoutes={routes.map((r) => ({
           id: r.id,
           geometry: r.geometry,
@@ -312,7 +354,7 @@ function Planner({
             : undefined
         }
       />
-    </View>
+    </View></View>
   );
   return (
     <Backdrop>
@@ -658,7 +700,7 @@ function Planner({
                 busy={saving}
                 disabled={saving}
                 onPress={() =>
-                  isSignedIn ? void save() : router.push("/login")
+                  isSignedIn ? void save() : void signInWithPlan()
                 }
               />
               <View style={{ marginTop: space.md }}>
@@ -669,7 +711,7 @@ function Planner({
                   busy={saving}
                   disabled={saving}
                   onPress={() =>
-                    isSignedIn ? void save(true) : router.push("/login")
+                    isSignedIn ? void save(true) : void signInWithPlan()
                   }
                 />
               </View>
@@ -720,20 +762,10 @@ function Planner({
               durationS={plannedDuration(route, pace)}
               fullDay={destination?.type === "peak" || route.ascentM == null}
             />
-            <Button label={details ? "Hide directions & map references" : "View directions & map references"} variant="outline" onPress={() => setDetails(v => !v)} />
-            {details && <><PublishedMaps destination={destination!} /><Card>
-              <SectionTitle title="Walking instructions" />
-              {route.instructions.slice(0, 12).map((i, index) => (
-                <Text key={index} style={styles.copy}>
-                  {index + 1}. {i.text} · {Math.round(i.distanceM)} m
-                </Text>
-              ))}
-              {route.instructions.length > 12 && (
-                <Text style={styles.copy}>
-                  The complete instruction list is available during navigation.
-                </Text>
-              )}
-            </Card></>}
+            <TrailGuide key={route.id} route={route} onPlaces={setTrailPlaces} onFocus={focusOnMap} />
+            <Button label={details ? "Hide published map references" : "Published map references"} variant="outline" onPress={() => setDetails(v => !v)} />
+            {details && <PublishedMaps destination={destination!} />}
+
           </View>
         )}
         <Button

@@ -1,3 +1,4 @@
+import { pendingWalkingPlan } from '@/lib/pending-walking-plan';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Text, satoshiFonts } from '@/components/Typography';
 import { useFonts } from 'expo-font';
@@ -45,7 +46,7 @@ function NotConfigured() {
 }
 
 function Routes() {
-  const { authLoaded, isSignedIn, hydrated, needsOnboarding } = useNavo();
+  const { authLoaded, isSignedIn, hydrated, needsOnboarding, userId } = useNavo();
   const reduced = useReducedMotion();
   const animation = reduced ? 'none' : 'slide_from_right';
   useEffect(() => {
@@ -59,6 +60,15 @@ function Routes() {
     return () => { active = false; };
   }, [isSignedIn, hydrated, needsOnboarding]);
 
+
+  useEffect(() => {
+    if (!userId || !hydrated || needsOnboarding) return;
+    let active = true;
+    void pendingWalkingPlan(userId).then(plan => {
+      if (active && plan) router.push('/trek-plan');
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [userId, hydrated, needsOnboarding]);
 
   if (!authLoaded || (isSignedIn && !hydrated)) {
     return <BootScreen title="Waking Navo up" detail={isSignedIn ? 'Restoring your treks and groups…' : 'Securing your session…'} />;

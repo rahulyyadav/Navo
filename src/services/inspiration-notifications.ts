@@ -4,7 +4,10 @@ import { hikeInspiration, inspirationDates } from './hike-inspiration';
 
 const prefix = 'navo-inspiration-';
 export async function setInspirationNotifications(enabled: boolean) {
-  if (Platform.OS === 'web' || Constants.executionEnvironment === 'storeClient') throw new Error('Use the Navo development app on your phone for hike reminders.');
+  if (Platform.OS === 'web' || Constants.executionEnvironment === 'storeClient') {
+    if (!enabled) return;
+    throw new Error('Use the Navo development app on your phone for hike reminders.');
+  }
   const notifications = await import('expo-notifications');
   if (enabled) {
     if (Platform.OS === 'android') await notifications.setNotificationChannelAsync('hike-inspiration', { name: 'Hike inspiration', importance: notifications.AndroidImportance.DEFAULT });

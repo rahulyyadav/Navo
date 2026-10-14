@@ -2,14 +2,14 @@ import asyncio
 import hashlib
 import secrets
 from datetime import datetime, timezone, timedelta
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 import logging
 from firebase_admin import auth, firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
-from .auth import current_user
+from .auth import current_user, recently_authenticated_user
 from .chat import reply as chat_reply
 from .schemas import ChatRequest, TrekPreparation
 from .boundary import RequestBoundary
@@ -61,7 +61,16 @@ def member_record(uid, person):
 
 @app.get('/health')
 def health():
-    return {'status': 'ok', 'firebaseConfigured': bool(settings().firebase_project_id), 'aiConfigured': ai_configured(), 'demoEnabled': settings().enable_demo}
+    # Liveness must not wait on network credentials or Firestore.
+    return {'status': 'ok', 'readinessPath': '/ready', 'aiConfigured': ai_configured(), 'demoEnabled': settings().enable_demo}
+
+@app.get('/ready')
+def readiness():
+    try:
+        database().collection('_readiness').document('probe').get(timeout=5)
+    except Exception:
+        return JSONResponse(status_code=503, content={'ready': False, 'detail': 'Account storage is unavailable.'})
+    return {'ready': True, 'aiConfigured': ai_configured()}
 
 @app.post('/session')
 def connect_session(uid: str = Depends(current_user)):
@@ -182,7 +191,13 @@ def send_message(gid: str, value: TextMessage, uid: str = Depends(current_user))
     def commit(tx):
         group = ref.get(transaction=tx).to_dict(); exists = message.get(transaction=tx).exists
         require_member(group, uid)
-        if not exists: tx.set(message, {'id': message.id, 'senderId': uid, 'senderName': person['displayName'], 'text': value.text, 'type': 'text', 'createdAt': STAMP})
+        if not exists:
+            tx.set(message, {'id': message.id, 'senderId': uid, 'senderName': person['displayName'], 'text': value.text, 'type': 'text', 'createdAt': STAMP})
+            recipients = [member for member in group['memberIds'] if member != uid]
+            for recipient in recipients:
+                tx.set(database().collection('users').document(recipient).collection('notifications').document(message.id), {'id': message.id, 'type': 'message', 'groupId': gid, 'groupName': group['name'], 'senderId': uid, 'message': 'New group message. Open the conversation to read it.', 'read': False, 'createdAt': STAMP})
+            if recipients:
+                tx.set(database().collection('pushJobs').document(identifier(gid, message.id)), {'groupId': gid, 'messageId': message.id, 'kind': 'message', 'recipients': recipients, 'status': 'pending', 'createdAt': STAMP})
         return {'id': message.id}
     return commit(database().transaction())
 
@@ -309,6 +324,8 @@ async def plan(value: PlanRequest, uid: str = Depends(current_user)):
     existing = reserve(database().transaction())
     if existing: return existing
     try:
+        from .ai_budget import reserve_chat
+        await asyncio.to_thread(reserve_chat, database(), uid)
         result = await generate(value)
     except Exception:
         ref.set({'status': 'failed'})
@@ -433,3 +450,27 @@ def share_live_position(gid: str, value: Position, uid: str = Depends(current_us
         tx.update(member, {'lastLocation': value.model_dump(), 'lastLocationAt': STAMP, 'locationSharingEnabled': True, 'nearbyAlertsEnabled': True})
     commit(database().transaction())
     return {'shared': True}
+
+
+@app.delete('/account', status_code=202)
+def delete_account(tasks: BackgroundTasks, uid: str = Depends(recently_authenticated_user)):
+    from .account_deletion import process
+    ref = database().collection('accountDeletions').document(uid)
+    if not ref.get().exists:
+        ref.set({'status': 'pending', 'requestedAt': STAMP})
+    tasks.add_task(process, uid)
+    return {'status': 'requested', 'message': 'Account deletion requested. Cleanup continues on the server.'}
+
+
+maintenance_slots = asyncio.Semaphore(1)
+
+@app.post('/internal/maintenance')
+async def maintenance(authorization: str = Header(default='')):
+    token = settings().maintenance_token
+    if len(token) < 32 or not secrets.compare_digest(authorization, 'Bearer ' + token):
+        raise HTTPException(401, 'Unauthorized.')
+    if maintenance_slots.locked(): raise HTTPException(409, 'Maintenance is already running.')
+    from .maintenance import run
+    async with maintenance_slots:
+        if not await asyncio.to_thread(run): raise HTTPException(503, 'Maintenance needs another pass.')
+    return {'processed': True}

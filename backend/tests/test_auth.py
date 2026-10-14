@@ -22,7 +22,8 @@ def test_missing_token_is_rejected_before_firebase_initialization(monkeypatch):
 def test_firebase_token_is_verified_with_revocation_check(monkeypatch):
     app = object()
     monkeypatch.setattr(authentication, 'firebase_app', lambda: app)
-    monkeypatch.setattr(authentication, 'database', lambda: None)
+    db = Mock(); db.collection.return_value.document.return_value.get.return_value.exists = False
+    monkeypatch.setattr(authentication, 'database', lambda: db)
     limiter = Mock()
     monkeypatch.setattr(authentication, 'limit_requests', limiter)
     verify = Mock(return_value={'uid': 'firebase-uid', 'email_verified': True})
@@ -30,7 +31,7 @@ def test_firebase_token_is_verified_with_revocation_check(monkeypatch):
     credentials = HTTPAuthorizationCredentials(scheme='Bearer', credentials='id-token')
     assert authentication.current_user(credentials) == 'firebase-uid'
     verify.assert_called_once_with('id-token', app=app, check_revoked=True)
-    limiter.assert_called_once_with(None, 'firebase-uid')
+    limiter.assert_called_once_with(db, 'firebase-uid')
 
 
 @pytest.mark.parametrize('uid', ['', 'bad/id', 'x' * 129, None])

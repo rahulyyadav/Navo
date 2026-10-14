@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '@/components/Typography';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -17,7 +17,7 @@ import { colors, radius } from '@/theme/tokens';
 import type { CloudAlert, CloudMember, CloudMessage } from '@/types/cloud';
 
 export default function GroupScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>(); const gid = typeof id === 'string' ? id : '';
+  const { id, tab: initialTab } = useLocalSearchParams<{ id: string; tab?: string }>(); const gid = typeof id === 'string' ? id : '';
   const cloud = useCloud(); const { userId } = useNavo();
   const group = cloud.groups.find(item => item.id === gid);
   const members = useGroupFeed<CloudMember>(gid, 'members');
@@ -25,8 +25,9 @@ export default function GroupScreen() {
   const alerts = useGroupFeed<CloudAlert>(gid, 'alerts');
   const invitations = useGroupFeed<{ id: string; inviteeName?: string; status: string }>(group?.ownerId === userId ? gid : '', 'invitations');
   const { locate, state: gpsState } = useMyLocation();
-  const [tab, setTab] = useState('Crew'); const [email, setEmail] = useState(''); const [message, setMessage] = useState('');
+  const [tab, setTab] = useState(initialTab === 'Chat' ? 'Chat' : 'Crew'); const [email, setEmail] = useState(''); const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(''); const [error, setError] = useState(''); const [success, setSuccess] = useState('');
+  useEffect(() => { if (initialTab === 'Chat') setTab('Chat'); }, [initialTab, gid]);
   const lock = useRef(false); const pending = useRef({ text: '', id: requestId() }); const list = useRef<ScrollView>(null);
   async function action(name: string, run: () => Promise<void>) {
     if (lock.current) return; lock.current = true; setBusy(name); setError(''); setSuccess('');

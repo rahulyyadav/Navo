@@ -4,6 +4,7 @@ import { treks, type MapRegion } from '@/data/treks';
 import { colorForTrek } from '@/data/map-style';
 
 export type NepalMapProps = {
+  trailPlaces?: { id: string; name: string; kind: string; latitude: number; longitude: number }[];
   basemap?: 'terrain' | 'streets' | 'satellite';
   region: MapRegion;
   regionNonce: number;
@@ -19,7 +20,7 @@ export type NepalMapProps = {
   followUser?: boolean;
   positions?: { id: string; name: string; latitude: number; longitude: number; recordedAt: string; alert?: boolean }[];
 };
-export const mapPayload = ({ basemap, region, regionNonce, selectedId, myCoords, followUser, positions = [], importedSegments = [], walkingRoutes = [], walkingRouteId, endpoints }: NepalMapProps) => ({ basemap, region, regionNonce, selectedId, myCoords, followUser, positions, importedSegments, walkingRoutes, walkingRouteId, endpoints });
+export const mapPayload = ({ trailPlaces = [], basemap, region, regionNonce, selectedId, myCoords, followUser, positions = [], importedSegments = [], walkingRoutes = [], walkingRouteId, endpoints }: NepalMapProps) => ({ trailPlaces, basemap, region, regionNonce, selectedId, myCoords, followUser, positions, importedSegments, walkingRoutes, walkingRouteId, endpoints });
 // Escape script terminators even if future route data comes from a remote source.
 export const scriptJSON = (value: unknown) => JSON.stringify(value).replace(/</g, '\\u003c');
 
@@ -70,6 +71,10 @@ window.updateNavoMap=function(payload){
  for(const point of points){const content=document.createElement('div');content.textContent=trek.name+' · '+point.name+' · approx. '+point.elevation+' m';
  const marker=L.circleMarker([point.latitude,point.longitude],{radius:selected?7:9,color:trek.color,fillColor:trek.color,fillOpacity:.8,weight:2}).addTo(markers).bindPopup(content);
  marker.on('click',()=>notify(trek.id));}
+ }
+ for(const point of (payload.trailPlaces||[])){
+  const label=document.createElement('div');label.textContent=point.name+' · '+point.kind+' · mapped, not live verified';
+  L.circleMarker([point.latitude,point.longitude],{radius:8,color:point.kind==='Mapped caution'?'#FF9D8A':'#FFFFFF',fillColor:'#19293A',fillOpacity:1,weight:3}).addTo(markers).bindPopup(label);
  }
  for(const point of (payload.positions||[])){
   const label=document.createElement('div');label.textContent=point.name+' · last shared '+point.recordedAt+' (not live tracking)';

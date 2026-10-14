@@ -182,3 +182,32 @@ def test_live_position_requires_membership_and_never_moves_back_in_time(crew):
     previous = Position(latitude=27, longitude=83, accuracy=10, capturedAt=(now-timedelta(seconds=30)).isoformat())
     main.share_live_position(gid, previous, 'owner')
     assert db.data[f'groups/{gid}/members/owner']['lastLocation']['latitude'] == 28
+
+def test_message_push_is_private_and_deduplicated(crew):
+    db, gid, _ = crew
+    iid = main.invite(gid, InvitationCreate(email='guest@example.com'), 'owner')['id']
+    main.respond(gid, iid, InvitationResponse(decision='accepted'), 'guest')
+    value = TextMessage(text='Private route discussion', requestId='message-push-test')
+    mid = main.send_message(gid, value, 'owner')['id']
+    main.send_message(gid, value, 'owner')
+    jobs = [v for p, v in db.data.items() if p.startswith('pushJobs/') and v.get('messageId') == mid]
+    assert len(jobs) == 1
+    assert jobs[0]['recipients'] == ['guest']
+    assert 'Private route discussion' not in str(jobs)
+
+
+def test_plan_generation_obeys_shared_ai_pause(crew, monkeypatch):
+    import asyncio
+    from app import ai_budget
+    from app.schemas import PlanRequest
+    db, _, _ = crew
+    monkeypatch.setattr(ai_budget, 'settings', lambda: SimpleNamespace(ai_enabled=False))
+    called = []
+    async def generate(value):
+        called.append(value)
+    monkeypatch.setattr(main, 'generate', generate)
+    request = PlanRequest(trekId='mardi-himal', days=3, experience='seasoned', requestId='budget-plan-test')
+    with pytest.raises(HTTPException) as failure:
+        asyncio.run(main.plan(request, 'owner'))
+    assert failure.value.status_code == 503
+    assert not called

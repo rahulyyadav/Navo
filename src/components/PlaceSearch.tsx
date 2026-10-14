@@ -1,7 +1,8 @@
+import { hikingReferences, nepalHikingPlaces } from '@/services/places/hiking-references';
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, View } from "react-native";
 import { Text } from "@/components/Typography";
-import { Button, Field } from "@/components/ui";
+import { Button, Chip, Field } from "@/components/ui";
 import { searchPlaces } from "@/services/places/search";
 import type { Coordinate, Place } from "@/services/places/types";
 import { colors, radius, space } from "@/theme/tokens";
@@ -18,6 +19,8 @@ export function PlaceSearch({
   recent?: Place[];
   autoFocus?: boolean;
 }) {
+  const [region, setRegion] = useState('Kathmandu Valley');
+  const [browseCount, setBrowseCount] = useState(5);
   const [query, setQuery] = useState(""),
     [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<{
@@ -51,11 +54,12 @@ export function PlaceSearch({
       controller.abort();
     };
   }, [query, attempt, near]);
+  const local = hikingReferences(query, near);
+  const regional = nepalHikingPlaces.filter(p => region === 'Across Nepal' || p.region === region);
   const visible = query.trim()
-    ? result.query === query
-      ? result.items
-      : []
-    : recent;
+    ? result.query === query ? result.items.length ? result.items : local : local
+    : regional.slice(0, browseCount);
+
   return (
     <View style={{ gap: space.sm }}>
       <Field
@@ -73,9 +77,12 @@ export function PlaceSearch({
           color={colors.lime}
         />
       )}
-      {!query.trim() && recent.length > 0 && (
-        <Text style={{ color: colors.muted }}>Recent places</Text>
-      )}
+      {!query.trim() && <>
+        <Text style={{color:colors.ink,fontSize:18,fontWeight:'700'}}>Find your next hike</Text>
+        <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>{['Kathmandu Valley','Pokhara','Across Nepal'].map(name=><Chip key={name} label={name} selected={region===name} onPress={()=>{setRegion(name);setBrowseCount(5);}} />)}</View>
+        <Text style={{color:colors.muted,lineHeight:21}}>Choose a mapped destination, then set your start. Search above for other places across Nepal.</Text>
+        {recent.length>0 && <Button label={`Recent: ${recent[0].name}`} variant="quiet" onPress={()=>onSelect(recent[0])} />}
+      </>}
       {visible.map((p) => (
         <Pressable
           key={p.id}
@@ -114,10 +121,11 @@ export function PlaceSearch({
           </Text>
         </Pressable>
       ))}
+      {!query.trim() && regional.length>browseCount && <Button label="Show more destinations" variant="quiet" onPress={()=>setBrowseCount(v=>v+5)} />}
       {Boolean(query.trim()) &&
         result.query === query &&
         !result.busy &&
-        !result.items.length &&
+        !visible.length &&
         !result.error && (
           <Text style={{ color: colors.muted }}>
             No places found. Try a nearby settlement or a fuller name.

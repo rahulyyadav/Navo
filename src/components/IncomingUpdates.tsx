@@ -56,7 +56,8 @@ export function IncomingUpdates() {
       const handle = (response: import('expo-notifications').NotificationResponse) => {
         if (!active || seen.has(response.notification.request.identifier)) return;
         seen.add(response.notification.request.identifier);
-        const { groupId, alertId, kind } = response.notification.request.content.data ?? {};
+        const { groupId, alertId, messageId, kind } = response.notification.request.content.data ?? {};
+        if (typeof groupId === 'string' && /^[a-zA-Z0-9]{1,80}$/.test(groupId) && typeof messageId === 'string' && /^[a-zA-Z0-9]{1,80}$/.test(messageId)) { router.push({ pathname: '/group/[id]', params: { id: groupId, tab: 'Chat' } }); return; }
         if (kind === 'hike-inspiration') { router.push('/trek-plan'); return; }
         if (typeof groupId === 'string' && /^[a-zA-Z0-9]{1,80}$/.test(groupId) && typeof alertId === 'string' && /^[a-zA-Z0-9]{1,80}$/.test(alertId)) {
           router.push({ pathname: '/alert', params: { groupId, alertId } });

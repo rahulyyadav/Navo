@@ -1,3 +1,7 @@
+import { clearUserData } from '@/services/profile';
+import { requestAPI } from '@/lib/api';
+import { clearPendingWalkingPlan } from '@/lib/pending-walking-plan';
+import { setInspirationNotifications } from '@/services/inspiration-notifications';
 import { Text } from '@/components/Typography';
 import { useState } from 'react';
 import { Linking, ScrollView, StyleSheet } from 'react-native';
@@ -8,13 +12,14 @@ import { clearAdventures } from '@/lib/adventure-store';
 import { clearRoutes } from '@/lib/route-store';
 import { clearInbox } from '@/lib/inbox-cache';
 import { clearLibrary } from '@/lib/trip-library-store';
-import { clearTripDownloads } from '@/lib/storage';
+import { clearTripDownloads, dropRaw } from '@/lib/storage';
 import { colors } from '@/theme/tokens';
 
 const support = process.env.EXPO_PUBLIC_SUPPORT_EMAIL ?? '';
 const privacyURL = process.env.EXPO_PUBLIC_PRIVACY_URL ?? '';
 export default function PrivacyScreen() {
-  const { user } = useFirebaseAuth();
+  const { user, signOut } = useFirebaseAuth();
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -22,6 +27,20 @@ export default function PrivacyScreen() {
     if (!user || busy) return; setBusy(true); setMessage('');
     try { await clearTripDownloads(user.uid); await clearLibrary(user.uid); await clearInbox(user.uid); await clearRoutes(user.uid); await clearAdventures(user.uid); await clearNavigationDrafts(user.uid); setConfirm(false); setMessage('Downloaded packs, local AI drafts, checklists, personal plans, bookmarks, cached notifications, expenses and activity summaries were removed from this device.'); }
     catch { setMessage('Could not clear every download. Please try again.'); }
+    finally { setBusy(false); }
+  }
+  async function deleteAccount() {
+    if (!user || busy) return;
+    setBusy(true); setMessage('');
+    try {
+      await requestAPI(() => user.getIdToken(true), '/account', undefined, 'DELETE');
+      const results = await Promise.allSettled([clearTripDownloads(user.uid), clearLibrary(user.uid),
+        clearInbox(user.uid), clearRoutes(user.uid), clearAdventures(user.uid),
+        clearNavigationDrafts(user.uid), clearUserData(user.uid), clearPendingWalkingPlan(), dropRaw(`push-device:${user.uid}`), setInspirationNotifications(false)]);
+      setDeleteConfirm(false);
+      setMessage('Account deletion requested. Server cleanup continues.' + (results.some(r => r.status === 'rejected') ? ' Some device data could not be cleared; remove the app’s stored data in phone settings.' : ' Local trip data was cleared.'));
+      await signOut();
+    } catch (failure) { setMessage(failure instanceof Error ? failure.message : 'Could not request deletion. Please retry.'); }
     finally { setBusy(false); }
   }
   async function open(url: string) { try { await Linking.openURL(url); } catch { setMessage('Could not open this link. Check your device’s browser or email setup.'); } }
@@ -36,6 +55,13 @@ export default function PrivacyScreen() {
     <Card><SectionTitle title="DIRECTIONS & WEATHER" /><Text style={styles.copy}>Global searches send your search words and a rounded location bias to Photon. Calculating or recalculating a walking route sends your selected start, destination and stops to the configured walking provider. Opening road or bus directions sends the starting place and destination you chose to Google Maps. A weather check sends the trailhead coordinates and date to Open-Meteo. Your GPS is not sent to these services automatically. Invitation links remain on this device while you complete sign-in, and are cleared after you submit or close the invitation.</Text></Card>
     <Card><SectionTitle title="OPTIONAL HIKE REMINDERS" /><Text style={styles.copy}>You can schedule four Saturday inspiration prompts from notification settings. They use this phone’s timezone and contain no account, location or weather data. They stay scheduled after sign-out; cancel them in notification settings or disable Navo notifications in phone settings.</Text></Card>
     <Card><SectionTitle title="AI PLANNING" /><Text style={styles.copy}>When you generate an itinerary, your trek preferences and goals are sent to the Navo backend and its Nebius model service. Avoid entering private medical or identity information. Plans are saved to your account and need review by a qualified guide.</Text></Card>
+    {user && <Card><SectionTitle title="DELETE YOUR ACCOUNT" /><Text style={styles.copy}>Permanently remove your account, personal plans, messages and shared locations. A remaining member becomes leader of shared groups; groups with no members are removed. Server cleanup may take time. Copies other people already exported cannot be recalled. A minimal deletion-status record is retained to prevent access while cleanup is retried.</Text>
+      <Button label="Delete my account" variant="danger" disabled={busy} onPress={() => setDeleteConfirm(true)} />
+      {deleteConfirm && <><Text style={styles.copy}>This cannot be undone. Sign-in must be from the last five minutes. Keep any trip information you need before confirming.</Text>
+        <Button label="Permanently delete my account" variant="danger" busy={busy} disabled={busy} onPress={() => void deleteAccount()} />
+        <Button label="Keep my account" variant="outline" disabled={busy} onPress={() => setDeleteConfirm(false)} />
+        <Button label="Sign out to sign in again" variant="quiet" disabled={busy} onPress={() => void signOut()} /></>}
+    </Card>}
     <Notice tone="info" message={message} />
     {/^https:\/\//.test(privacyURL) && <Button label="Read the privacy policy" variant="outline" onPress={() => void open(privacyURL)} />}
     {/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(support) && <Button label="Contact support about my data" variant="outline" onPress={() => void open(`mailto:${support}?subject=Navo%20data%20request`)} />}

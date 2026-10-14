@@ -29,3 +29,20 @@ def test_api_responses_are_not_shared_cached():
     response = client.get('/health')
     assert response.headers['cache-control'] == 'no-store'
     assert response.headers['x-content-type-options'] == 'nosniff'
+
+def test_health_does_not_claim_missing_admin_is_ready(monkeypatch):
+    from app import main
+    def missing(): raise RuntimeError('private diagnostic')
+    assert client.get('/health').json()['readinessPath'] == '/ready'
+    monkeypatch.setattr(main, 'database', missing)
+    result = client.get('/ready')
+    assert result.status_code == 503
+    assert 'private diagnostic' not in result.text
+
+def test_maintenance_is_not_public(monkeypatch):
+    from types import SimpleNamespace
+    from app import main
+    monkeypatch.setattr(main, 'settings', lambda: SimpleNamespace(maintenance_token=''))
+    assert client.post('/internal/maintenance').status_code == 401
+    monkeypatch.setattr(main, 'settings', lambda: SimpleNamespace(maintenance_token='x' * 32))
+    assert client.post('/internal/maintenance', headers={'Authorization': 'Bearer wrong'}).status_code == 401

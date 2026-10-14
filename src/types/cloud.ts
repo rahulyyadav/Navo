@@ -1,5 +1,5 @@
 import type { OnboardingAnswers } from './navo';
-export type CloudNotification = { id: string; type: 'invitation' | 'alert'; groupId: string; groupName: string; inviterName?: string; status?: string; read: boolean; senderName?: string; message?: string; kind?: string; createdAt?: string };
+export type CloudNotification = { id: string; type: 'invitation' | 'alert' | 'message'; groupId: string; groupName: string; inviterName?: string; status?: string; read: boolean; senderName?: string; message?: string; kind?: string; createdAt?: string };
 export type CloudProfile = { id: string; displayName: string; email: string; onboarding?: OnboardingAnswers };
 export type MemberPosition = { latitude: number; longitude: number; accuracy: number; capturedAt: string; createdAt?: string };
 export type CloudMember = { id: string; userId: string; name: string; displayName: string; role: string; status: string; lastLocation?: MemberPosition; lastLocationAt?: string; locationSharingEnabled?: boolean; checkInStatus?: string };

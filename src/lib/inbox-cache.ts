@@ -6,7 +6,7 @@ export function decodeInbox(raw: string, now = Date.now()): InboxCache {
   const value = JSON.parse(raw);
   if (value?.version !== 1 || typeof value.savedAt !== 'string' || !Number.isFinite(Date.parse(value.savedAt)) || Date.parse(value.savedAt) > now + 60000 || now - Date.parse(value.savedAt) > 7 * 86400000 || !Array.isArray(value.items) || value.items.length > 50) throw new Error('Inbox cache unavailable');
   for (const item of value.items) {
-    if (!item || typeof item !== 'object' || !['invitation', 'alert'].includes(item.type) || typeof item.read !== 'boolean' || !['id','groupId'].every(field => typeof item[field] === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(item[field])) || typeof item.groupName !== 'string' || item.groupName.length > 200 || !['message','kind','status','inviterName','senderName','createdAt'].every(field => item[field] === undefined || (typeof item[field] === 'string' && item[field].length <= 2000))) throw new Error('Inbox cache unavailable');
+    if (!item || typeof item !== 'object' || !['invitation', 'alert', 'message'].includes(item.type) || typeof item.read !== 'boolean' || !['id','groupId'].every(field => typeof item[field] === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(item[field])) || typeof item.groupName !== 'string' || item.groupName.length > 200 || !['message','kind','status','inviterName','senderName','createdAt'].every(field => item[field] === undefined || (typeof item[field] === 'string' && item[field].length <= 2000))) throw new Error('Inbox cache unavailable');
   }
   return { savedAt: value.savedAt, items: value.items };
 }

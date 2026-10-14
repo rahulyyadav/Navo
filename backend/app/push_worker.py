@@ -53,7 +53,11 @@ def run():
         if not job: continue
         try:
             group = db.collection('groups').document(job['groupId']).get().to_dict() or {}
-            alert = db.collection('groups').document(job['groupId']).collection('alerts').document(job['alertId']).get().to_dict() or {}
+            is_message = job.get('kind') == 'message'
+            source_id = job.get('messageId') if is_message else job.get('alertId')
+            alert = db.collection('groups').document(job['groupId']).collection('messages' if is_message else 'alerts').document(source_id).get().to_dict() or {}
+            if not alert:
+                snapshot.reference.update({'status': 'source-removed'}); continue
             if alert.get('resolvedAt'):
                 snapshot.reference.update({'status': 'resolved-before-send'}); continue
             messages = []; device_paths = []
@@ -63,7 +67,7 @@ def run():
                     owner = db.collection('deviceOwners').document(device.id).get().to_dict() or {}
                     if owner.get('uid') != uid: continue
                     device_paths.append(device.reference.path)
-                    messages.append({'to': device.to_dict()['token'], 'title': 'Navo · group update', 'body': 'Open Navo to view a new group alert.', 'data': {'groupId': job['groupId'], 'alertId': job['alertId']}, 'channelId': 'trek-alerts', 'sound': 'default'})
+                    messages.append({'to': device.to_dict()['token'], 'title': 'Navo · group update', 'body': 'Open Navo to read a new group message.' if is_message else 'Open Navo to view a new group alert.', 'data': {'groupId': job['groupId'], **({'messageId': source_id} if is_message else {'alertId': source_id})}, 'channelId': 'trek-alerts', 'sound': 'default'})
             tickets = []
             for offset in range(0, len(messages), 100):
                 response = httpx.post('https://exp.host/--/api/v2/push/send', json=messages[offset:offset + 100], headers=headers(), timeout=20)
