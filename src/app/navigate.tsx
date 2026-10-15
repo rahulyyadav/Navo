@@ -1,3 +1,4 @@
+import { FullRouteMap } from '@/components/FullRouteMap';
 import { openLocationSettings } from "@/lib/location-settings";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -9,6 +10,7 @@ import {
   View,
 } from "react-native";
 import {
+  Stack,
   router,
   useFocusEffect,
   useLocalSearchParams,
@@ -139,6 +141,7 @@ function LiveNavigation({
   initial: RoutePlan;
   draft: NavigationDraft | null;
 }) {
+  const { map: mapMode } = useLocalSearchParams<{map?:string}>();
   const { email } = useNavo();
   const cloud = useCloud();
   const [sharingCrew, setSharingCrew] = useState("");
@@ -391,6 +394,7 @@ function LiveNavigation({
     since.current = null;
     setOffRoute(false);
     setPhase("active");
+    router.setParams({map:"full"});
   }
   function finish() {
     pending.current?.abort();
@@ -525,9 +529,12 @@ function LiveNavigation({
       if (alive.current) setBusy(false);
     }
   }
+  if(mapMode==='full' && phase!=='ended' && !leavePrompt && !offline && !sketch) return <><Stack.Screen options={{headerShown:false}} /><FullRouteMap route={plan.route} title={plan.name} subtitle={phase==='active'?(progress?.matched&&progress.next?progress.next.text:'Live GPS · keep this screen open'):`GPS ${phase}`}  status={error || (offRoute?'Off route. Open trek controls to recalculate.':fresh?`${progress?.remainingM==null?'Distance unavailable':`${(progress.remainingM/1000).toFixed(2)} km remaining`} · GPS ±${Math.round(location.fix?.accuracy??0)} m`:'Waiting for a fresh GPS position.')} actionLabel="Trek controls & trip information" onAction={()=>router.setParams({map:''})} onClose={()=>router.setParams({map:''})} map={{region:mapRegion,regionNonce:mapNonce,selectedId:null,onSelectTrek:()=>undefined,myCoords:fresh?location.fix:null,followUser:follow&&fresh,walkingRoutes:mapRoutes,walkingRouteId:plan.route.id,endpoints:mapEndpoints}} /></>;
   return (
     <Backdrop>
+      <Stack.Screen options={{headerShown:true}} />
       <ScrollView contentContainerStyle={[styles.page, page]}>
+        {phase!=="ended" && !offline && !sketch && <Button label="Open full-screen navigation" onPress={()=>router.setParams({map:"full"})} />}
         <Heading
           title={phase === "ended" ? "Your hike summary" : plan.name}
           subtitle={

@@ -1,3 +1,4 @@
+import { FullRouteMap } from '@/components/FullRouteMap';
 import { TrailGuide } from '@/components/TrailGuide';
 import type { TrailPlace } from '@/services/trail/places';
 import { stageWalkingPlan, pendingWalkingPlan, clearPendingWalkingPlan } from '@/lib/pending-walking-plan';
@@ -7,7 +8,7 @@ import { openLocationSettings } from "@/lib/location-settings";
 import type { HourlyForecast } from "@/services/weather/hourly";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Linking, ScrollView, StyleSheet, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { Stack, router, useLocalSearchParams } from "expo-router";
 import * as Crypto from "expo-crypto";
 import { Text } from "@/components/Typography";
 import {
@@ -73,7 +74,7 @@ function selectedPlace(raw: unknown): Place | null {
 }
 export default function TrekPlanScreen() {
   const { userId } = useNavo();
-  const params = useLocalSearchParams<{ destination?: string }>();
+  const params = useLocalSearchParams<{ destination?: string; map?: string }>();
   const destination = useMemo(
     () => selectedPlace(params.destination),
     [params.destination],
@@ -97,6 +98,7 @@ function Planner({
   const { page } = usePageLayout(),
     gps = useMyLocation();
   const [trailPlaces, setTrailPlaces] = useState<TrailPlace[]>([]);
+  const {map:mapMode}=useLocalSearchParams<{map?:string}>();
   const [mapFocus, setMapFocus] = useState<{latitude:number;longitude:number;label:string}|null>(null);
   const [expandedMap, setExpandedMap] = useState(false);
   const [basemap, setBasemap] = useState<'terrain'|'streets'>('terrain');
@@ -215,6 +217,7 @@ function Planner({
       if (alive.current && !controller.signal.aborted) {
         presented.current = false;
         setRoutes(values);
+        router.setParams({map:"full"});
         setEditing(false);
         setSearchTarget(null);
         setSelected(0);
@@ -319,7 +322,7 @@ function Planner({
     <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>
       <Chip label="Terrain" selected={basemap==='terrain'} onPress={()=>setBasemap('terrain')} />
       <Chip label="Streets" selected={basemap==='streets'} onPress={()=>setBasemap('streets')} />
-      <Chip label={expandedMap?'Compact map':'Larger map'} selected={expandedMap} onPress={()=>setExpandedMap(v=>!v)} />
+      {route ? <Chip selected={false} label="Full-screen map" onPress={()=>router.setParams({map:'full'})} /> : <Chip label={expandedMap?'Compact map':'Larger map'} selected={expandedMap} onPress={()=>setExpandedMap(v=>!v)} />}
       <Chip label="Whole route" selected={!mapFocus} onPress={()=>{setMapFocus(null);setMapNonce(v=>v+1);}} />
     </View>
     <View style={[styles.map,expandedMap && {height:560}]}>
@@ -359,8 +362,10 @@ function Planner({
       />
     </View></View>
   );
+  if(mapMode==='full' && route && destination) return <><Stack.Screen options={{headerShown:false}} /><FullRouteMap route={route} title={destination.name} subtitle="Walking route preview" status="One-way route · hiking time and return journey need separate planning." actionLabel="Trip details & start trek" onAction={()=>router.setParams({map:''})} onClose={()=>router.setParams({map:''})} map={{region:bounds,regionNonce:mapNonce,selectedId:null,onSelectTrek:()=>undefined,myCoords:gps.coords,trailPlaces,walkingRoutes:[{id:route.id,geometry:route.geometry}],walkingRouteId:route.id,endpoints:{start:route.snappedStart,end:route.snappedEnd}}} /></>;
   return (
     <Backdrop>
+      <Stack.Screen options={{headerShown:true}} />
       <ScrollView
         ref={scroll}
         keyboardShouldPersistTaps="handled"
