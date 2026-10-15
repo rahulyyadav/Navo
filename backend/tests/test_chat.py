@@ -48,12 +48,13 @@ def test_chat_sends_grounded_context_and_returns_reply(monkeypatch):
             captured.update(kwargs)
             return httpx.Response(200, request=httpx.Request('POST', url), json={'choices': [{'message': {'content': 'Ask a qualified guide about current trail conditions.'}}]})
     monkeypatch.setattr(chat.httpx, 'AsyncClient', lambda **kwargs: Client())
-    result = asyncio.run(chat.reply(ChatRequest(messages=[{'role': 'user', 'content': 'How is Langtang?'}])))
+    result = asyncio.run(chat.reply(ChatRequest(messages=[{'role': 'user', 'content': 'Explain this route to a first-time hiker'}], context={'destination':'Shivapuri','origin':'Budhanilkantha','provider':'osrm-foot','distanceM':6050,'durationS':4860,'date':'2026-10-15','startTime':'07:00'})))
     assert result['reply'].startswith('Ask a qualified guide')
+    assert result['source'] == 'nemotron'
     assert captured['json']['model'] == 'nvidia/nemotron-3-super-120b-a12b'
     assert captured['json']['messages'][0]['role'] == 'system'
     assert 'approximate demonstration data' in captured['json']['messages'][0]['content']
-    assert captured['json']['messages'][-1]['content'] == 'How is Langtang?'
+    assert captured['json']['messages'][-1]['content'] == 'Explain this route to a first-time hiker'
     assert 'test-key' not in result['reply']
 
 
@@ -127,6 +128,7 @@ def test_unknown_ascent_timing_does_not_call_model(monkeypatch):
     result = asyncio.run(chat.reply(request))
     assert 'not available' in result['reply']
     assert 'Do not double' in result['reply']
+    assert result['source'] == 'safety-rule'
 
 
 def test_authenticated_chat_reserves_budget_before_provider(monkeypatch):
@@ -146,3 +148,22 @@ def test_authenticated_chat_reserves_budget_before_provider(monkeypatch):
         assert calls == [('budget', 'test-db', 'verified-user'), ('provider',)]
     finally:
         main.app.dependency_overrides.clear()
+
+
+def test_weather_evidence_expires_and_does_not_leak_stale_values():
+    from datetime import datetime, timezone, timedelta
+    from app.schemas import TrekChatContext
+    now = datetime(2026, 10, 15, 6, tzinfo=timezone.utc)
+    base = {'destination':'Shivapuri', 'origin':'Budhanilkantha', 'provider':'osrm-foot', 'distanceM':6050, 'durationS':4800, 'date':'2026-10-15', 'startTime':'07:00', 'weatherAvailable':True, 'sunset':'2026-10-15T17:35'}
+    for delta, expected in [(timedelta(hours=1), True), (timedelta(hours=7), False), (timedelta(minutes=-1), False)]:
+        value = TrekChatContext(**base, weather={'source':'Open-Meteo','scope':'destination whole-day','date':base['date'],'fetchedAt':now-delta,'sunset':base['sunset'],'temperatureMin':10,'temperatureMax':20,'rainChanceMax':30,'windMax':12})
+        grounded = chat.grounded_context(value, now)
+        assert grounded['weatherAvailable'] is expected
+        assert 'durationS' not in grounded
+        assert grounded['eta'] is None
+        if not expected:
+            assert grounded['weather'] is None
+            assert grounded['sunset'] is None
+    # Old clients may send a timestamp without an offset; it must not appear fresh.
+    value.weather.fetchedAt = now.replace(tzinfo=None)
+    assert chat.grounded_context(value, now)['weatherAvailable'] is False

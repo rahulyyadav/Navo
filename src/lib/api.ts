@@ -22,7 +22,7 @@ export async function requestChatAPI(messages: { role: 'user' | 'assistant'; con
   const token = await withTimeout(user.getIdToken(), 15000, 'Your sign-in could not reconnect. Please retry.');
   const normalized = email?.trim() ?? '';
   const metadataEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized) ? normalized : null;
-  return requestJSON<{ reply: string }>('/chat', { messages, email: metadataEmail, ...(context ? { context } : {}) }, 'POST', token, chatBase);
+  return requestJSON<{ reply: string; source?: 'nemotron' | 'safety-rule'; model?: string }>('/chat', { messages, email: metadataEmail, ...(context ? { context } : {}) }, 'POST', token, chatBase);
 }
 
 async function requestJSON<T>(path: string, body: unknown, method: string, token?: string, base = apiBase) {
