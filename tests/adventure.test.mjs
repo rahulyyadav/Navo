@@ -84,3 +84,18 @@ test('Phulchowki spelling aliases identify the hill rather than Pulchowk neighbo
  }
  assert.deepEqual(references.hikingReferences('Pulchowk'), []); assert.deepEqual(references.hikingReferences('Everest'), []);
 });
+
+test('regional multiword queries keep landmark aliases and reject unrelated words', () => {
+ for (const [query, name] of [['Shivapuri Kathmandu', 'Shivapuri Peak'], ['Dhap dham Kathmandu valley', 'Dhap Dam'], ['Pokhara Australian camp trek', 'Australian Camp'], ['Shanti stupa Pokhara', 'World Peace Pagoda']]) {
+  assert.ok(references.hikingReferences(query).some(p => p.name === name), query);
+ }
+ assert.ok(references.hikingReferences('Kathmandu valley treks').length >= 8);
+ assert.deepEqual(references.hikingReferences('Shivapuri Pokhara'), []);
+ assert.deepEqual(references.hikingReferences('Pulchowk'), []);
+});
+test('partial provider directions and missing via legs cannot be presented as complete navigation', () => {
+ for (const change of [r => r.legs = [], r => r.legs[0].steps = [], r => r.legs[0].steps[0].distance = null, r => r.legs[0].steps[0].maneuver.location = [999,999]]) {
+  const bad = structuredClone(response); change(bad.routes[0]);
+  assert.throws(() => walking.decodeWalkingRoutes(bad, endpoints));
+ }
+});

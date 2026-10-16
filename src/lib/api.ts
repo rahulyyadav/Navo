@@ -1,3 +1,4 @@
+import { serverErrorMessage } from '../services/server-errors';
 import { firebaseAuth } from './firebase';
 import { networkEnvironment } from './network-environment';
 import { resolveBackendAddress, backendRequestTimeout } from '../services/backend-address';
@@ -22,7 +23,11 @@ export async function requestChatAPI(messages: { role: 'user' | 'assistant'; con
   const token = await withTimeout(user.getIdToken(), 15000, 'Your sign-in could not reconnect. Please retry.');
   const normalized = email?.trim() ?? '';
   const metadataEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized) ? normalized : null;
-  return requestJSON<{ reply: string; source?: 'nemotron' | 'safety-rule'; model?: string }>('/chat', { messages, email: metadataEmail, ...(context ? { context } : {}) }, 'POST', token, chatBase);
+  const result = await requestJSON<{ reply: string; source?: 'nemotron' | 'safety-rule'; model?: string }>('/chat', { messages, email: metadataEmail, ...(context ? { context } : {}) }, 'POST', token, chatBase);
+  if (!result || typeof result.reply !== 'string' || !result.reply.trim()) {
+    throw new Error('Navo AI did not return an answer. Your question is still available to retry.');
+  }
+  return result;
 }
 
 async function requestJSON<T>(path: string, body: unknown, method: string, token?: string, base = apiBase) {
@@ -41,8 +46,8 @@ async function requestJSON<T>(path: string, body: unknown, method: string, token
     }
     let result;
     try { result = await response.json(); }
-    catch { throw new Error('Navo received an unexpected server reply. Please try again.'); }
-    if (!response.ok) throw new Error(typeof result?.detail === 'string' ? result.detail : 'The server rejected this request. Check your inputs and try again.');
+    catch { throw new Error(response.ok ? 'Navo received an unexpected server reply. Please try again.' : serverErrorMessage(response.status)); }
+    if (!response.ok) throw new Error(serverErrorMessage(response.status, result?.detail));
     return result as T;
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') throw new Error('The request timed out. Check your connection and retry.');

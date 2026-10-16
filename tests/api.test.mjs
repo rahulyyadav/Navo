@@ -2,10 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import ts from 'typescript';
+const errorsSource = ts.transpileModule(await readFile(new URL('../src/services/server-errors.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText;
+const errorsURL = `data:text/javascript;base64,${Buffer.from(errorsSource).toString('base64')}`;
 const originalSource = await readFile(new URL('../src/lib/api.ts', import.meta.url), 'utf8');
 const addressSource = ts.transpileModule(await readFile(new URL('../src/services/backend-address.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText;
 const addressURL = `data:text/javascript;base64,${Buffer.from(addressSource).toString('base64')}`;
-const source = originalSource.replace("import { firebaseAuth } from './firebase';", "const firebaseAuth = { currentUser: { getIdToken: async () => 'chat-test-token' } };").replace("import { networkEnvironment } from './network-environment';", "const networkEnvironment = () => ({ platform: 'web', development: false });").replace("'../services/backend-address'", JSON.stringify(addressURL));
+const source = originalSource.replace("'../services/server-errors'", JSON.stringify(errorsURL)).replace("import { firebaseAuth } from './firebase';", "const firebaseAuth = { currentUser: { getIdToken: async () => 'chat-test-token' } };").replace("import { networkEnvironment } from './network-environment';", "const networkEnvironment = () => ({ platform: 'web', development: false });").replace("'../services/backend-address'", JSON.stringify(addressURL));
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
 const oldBase = process.env.EXPO_PUBLIC_API_BASE_URL;
 process.env.EXPO_PUBLIC_API_BASE_URL = 'http://test.local:8000';
@@ -23,13 +25,13 @@ test('token refresh failures have an actionable message', async () => {
 });
 test('server errors and malformed JSON do not become raw parsing exceptions', async () => {
   await withFetch(async () => new Response(JSON.stringify({ detail: 'Server Firebase credentials are unavailable.' }), { status: 503 }), async () => {
-    await assert.rejects(requestAPI(async () => 'token', '/chat', {}), { message: 'Server Firebase credentials are unavailable.' });
+    await assert.rejects(requestAPI(async () => 'token', '/chat', {}), { message: 'Navo’s online service is temporarily unavailable. Retry shortly. Your saved trips and route overview remain available.' });
   });
   await withFetch(async () => new Response('<html>proxy error</html>', { status: 502 }), async () => {
-    await assert.rejects(requestAPI(async () => 'token', '/chat', {}), { message: 'Navo received an unexpected server reply. Please try again.' });
+    await assert.rejects(requestAPI(async () => 'token', '/chat', {}), { message: 'Navo’s online service is temporarily unavailable. Retry shortly. Your saved trips and route overview remain available.' });
   });
   await withFetch(async () => new Response('null', { status: 500 }), async () => {
-    await assert.rejects(requestAPI(async () => 'token', '/chat', {}), { message: 'The server rejected this request. Check your inputs and try again.' });
+    await assert.rejects(requestAPI(async () => 'token', '/chat', {}), { message: 'Navo’s online service is temporarily unavailable. Retry shortly. Your saved trips and route overview remain available.' });
   });
 });
 test('working requests preserve authenticated route and payload', async () => {
@@ -61,4 +63,22 @@ test('signed-in chat normalizes empty email metadata to null',async()=>{
 });
 test('malformed optional email metadata never blocks a route question',async()=>{
  await withFetch(async(url,options)=>{assert.equal(JSON.parse(options.body).email,null);return new Response(JSON.stringify({reply:'Hello'}));},async()=>assert.deepEqual(await requestChatAPI([{role:'user',content:'Hi'}],'No email shared'),{reply:'Hello'}));
+});
+
+test('expired sessions and request limits offer specific recovery without retrying mutations', async () => {
+ for (const [status, pattern] of [[401,/Sign in again/], [429,/request limit/]]) {
+  let calls = 0;
+  await withFetch(async () => { calls++; return new Response('<html>proxy response</html>', {status}); }, async () => {
+   await assert.rejects(requestAPI(async () => 'token', '/groups', {}), pattern);
+   assert.equal(calls, 1);
+  });
+ }
+});
+
+test('an empty successful AI response is an actionable failure, not an empty assistant bubble', async () => {
+ for (const result of [null, {}, {reply:''}, {reply:'   '}, {reply:42}]) {
+  await withFetch(async () => new Response(JSON.stringify(result)), async () => {
+   await assert.rejects(requestChatAPI([{role:'user', content:'Where can I hike?'}], null), /did not return an answer/);
+  });
+ }
 });

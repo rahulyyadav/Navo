@@ -68,7 +68,7 @@ export function decodeWalkingRoutes(
       !object(r) ||
       !numeric(r.distance, 500000) ||
       !numeric(r.duration, 604800) ||
-      !Array.isArray(r.legs)
+      !Array.isArray(r.legs) || r.legs.length !== points.length - 1
     )
       throw new Error("The route distance or duration is incomplete.");
     const line = geometry(r.geometry);
@@ -79,7 +79,8 @@ export function decodeWalkingRoutes(
       throw new Error("The route line does not match the selected endpoints.");
     const instructions: RouteInstruction[] = [];
     for (const leg of r.legs) {
-      if (!object(leg) || !Array.isArray(leg.steps)) continue;
+      if (!object(leg) || !Array.isArray(leg.steps) || !leg.steps.length)
+        throw new Error("The route directions are incomplete. Please request another route.");
       for (const step of leg.steps) {
         if (
           !object(step) ||
@@ -88,12 +89,12 @@ export function decodeWalkingRoutes(
           !numeric(step.distance, 500000) ||
           !numeric(step.duration, 604800)
         )
-          continue;
+          throw new Error("The route directions are incomplete. Please request another route.");
         const coordinate = {
           longitude: step.maneuver.location[0],
           latitude: step.maneuver.location[1],
         };
-        if (!isCoordinate(coordinate)) continue;
+        if (!isCoordinate(coordinate)) throw new Error("The route directions contain an invalid location.");
         const type = String(step.maneuver.type),
           modifier =
             typeof step.maneuver.modifier === "string"

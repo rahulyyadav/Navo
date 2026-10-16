@@ -28,3 +28,34 @@ Use the existing Render Free preview and Firebase no-cost project for a small, e
 
 ## Completion criteria
 A release is ready only when the configuration gate, automated checks, deployed integration checks and physical-device acceptance tests all pass. Until then, distribute as a preview and state the remaining limitations. Do not mark blocked external services as completed by changing button text or substituting fabricated data.
+
+## Detailed execution prompt: functional hardening
+
+Work within the existing application, preserving routes, saved data, account boundaries and completed features. Follow each user journey through success, slow network, missing permission, expired authentication, invalid provider data and interrupted execution. Fix the cause of each failure and add a regression check for behavior that could mislead a hiker.
+
+### Search and discovery acceptance
+- Initial letters should return matching known landmarks promptly.
+- Accept a landmark plus its region in either order, including saved spelling variants: “Shivapuri Kathmandu”, “Dhap dham Kathmandu valley”, “Pokhara Australian camp trek”.
+- Require all meaningful search words to match the same place. Do not return Shivapuri as a Pokhara landmark or conflate Pulchowk with Phulchowki.
+- Continue remote autocomplete for locations outside the reference catalogue. Offline references are a limited collection, not all Nepal destinations.
+
+### Route acceptance
+- Require valid coordinates, matching route endpoints and a leg for every requested stage.
+- Missing or invalid turn instructions must be a visible calculation failure, never silently removed from an apparently complete navigation route.
+- Keep the selected origin, destination and date available after failure so the user can correct or retry them.
+- Preserve the existing distinction between provider estimates and verified hiking information.
+
+### AI and online-service acceptance
+- A successful HTTP response with an empty or malformed answer must produce a recoverable error.
+- Preserve the user's question after failure. Never replace failed inference with fabricated AI output.
+- Expired authentication should direct users to sign in. Rate limits should explain that waiting is required. Server/proxy failures should explain temporary online-service unavailability without exposing HTML or internal credential errors.
+- Do not automatically retry group creation or other mutations: a response can fail after the server has already accepted the action.
+- Keep model credentials server-side and verify authenticated inference from the deployed mobile build separately from local provider testing.
+
+### Changes implemented in this pass
+- Multiword landmark/region search and alias regression coverage.
+- Reject missing routing legs, empty directions and invalid step locations or distances.
+- Specific session/rate-limit/outage messages, including non-JSON proxy errors.
+- Reject empty successful AI responses with a retry message.
+
+These are code improvements, not evidence that the outstanding deployment and physical-device gates above have passed.
