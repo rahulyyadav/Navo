@@ -529,12 +529,12 @@ function LiveNavigation({
       if (alive.current) setBusy(false);
     }
   }
-  if(mapMode==='full' && phase!=='ended' && !leavePrompt && !offline && !sketch) return <><Stack.Screen options={{headerShown:false}} /><FullRouteMap route={plan.route} title={plan.name} subtitle={phase==='active'?(progress?.matched&&progress.next?progress.next.text:'Live GPS · keep this screen open'):`GPS ${phase}`}  status={error || (offRoute?'Off route. Open trek controls to recalculate.':fresh?`${progress?.remainingM==null?'Distance unavailable':`${(progress.remainingM/1000).toFixed(2)} km remaining`} · GPS ±${Math.round(location.fix?.accuracy??0)} m`:'Waiting for a fresh GPS position.')} actionLabel="Trek controls & trip information" onAction={()=>router.setParams({map:''})} onClose={()=>router.setParams({map:''})} map={{region:mapRegion,regionNonce:mapNonce,selectedId:null,onSelectTrek:()=>undefined,myCoords:fresh?location.fix:null,followUser:follow&&fresh,walkingRoutes:mapRoutes,walkingRouteId:plan.route.id,endpoints:mapEndpoints}} /></>;
+  if(mapMode==='full' && phase!=='ended' && !leavePrompt) return <><Stack.Screen options={{headerShown:false}} /><FullRouteMap offline={offline || sketch} route={plan.route} title={plan.name} subtitle={phase==='active'?(progress?.matched&&progress.next?progress.next.text:'Live GPS · keep this screen open'):`GPS ${phase}`}  status={error || (offRoute?'Off route. Open trek controls to recalculate.':fresh?`${progress?.remainingM==null?'Distance unavailable':`${(progress.remainingM/1000).toFixed(2)} km remaining`} · GPS ±${Math.round(location.fix?.accuracy??0)} m`:'Waiting for a fresh GPS position.')} actionLabel="Trek controls & trip information" onAction={()=>router.setParams({map:''})} onClose={()=>router.setParams({map:''})} map={{region:mapRegion,regionNonce:mapNonce,selectedId:null,onSelectTrek:()=>undefined,myCoords:fresh?location.fix:null,followUser:follow&&fresh,walkingRoutes:mapRoutes,walkingRouteId:plan.route.id,endpoints:mapEndpoints}} /></>;
   return (
     <Backdrop>
       <Stack.Screen options={{headerShown:true}} />
       <ScrollView contentContainerStyle={[styles.page, page]}>
-        {phase!=="ended" && !offline && !sketch && <Button label="Open full-screen navigation" onPress={()=>router.setParams({map:"full"})} />}
+        {phase!=="ended" && <Button label="Open full-screen navigation" onPress={()=>router.setParams({map:"full"})} />}
         <Heading
           title={phase === "ended" ? "Your hike summary" : plan.name}
           subtitle={
