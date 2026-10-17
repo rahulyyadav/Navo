@@ -72,3 +72,26 @@ test('web GPX picker cancellation settles and cleans up instead of leaving impor
   const invalid=files.pickGPX();input.files=[{name:'notes.txt',size:100,text:async()=>''}];input.onchange();await assert.rejects(invalid,/ending in .gpx/);
  }finally{globalThis.document=oldDocument;globalThis.window=oldWindow;}
 });
+
+const {elevationProfile}=compile('../src/services/routes/elevation-profile.ts',{'../trekking/navigation':navigation});
+const library=compile('../src/services/routes/library.ts',{'./gpx':{routeStats}});
+test('elevation profile keeps segment gaps disconnected and refuses missing heights',()=>{
+ const route=parseGPX(xml([point(27,85,'<ele>100</ele>')+point(27.001,85,'<ele>120</ele>'),point(28,85,'<ele>130</ele>')+point(28.001,85,'<ele>140</ele>')]),'profile');
+ const profile=elevationProfile(route);assert.equal(profile.segments.length,2);assert.equal(profile.lowM,100);assert.equal(profile.highM,140);assert.ok(profile.distanceM<230);
+ assert.equal(profile.segments[0].at(-1).distanceM,profile.segments[1][0].distanceM);
+ route.segments[0][0].elevation=null;assert.equal(elevationProfile(route),null);
+});
+test('large elevation profiles are bounded without losing route endpoints',()=>{
+ const route={segments:[Array.from({length:20000},(_,i)=>({latitude:27+i*.000001,longitude:85,elevation:100+i%20}))]};
+ const profile=elevationProfile(route);assert.ok(profile.sampled);assert.ok(profile.segments.flat().length<=401);assert.equal(profile.segments[0][0].distanceM,0);assert.equal(profile.segments[0].at(-1).distanceM,profile.distanceM);
+ assert.equal(elevationProfile({segments:[[{latitude:27,longitude:85,elevation:100},{latitude:27,longitude:85,elevation:100}]]}),null);
+});
+test('saved GPX search and length ordering do not mutate the private library',()=>{
+ const short=parseGPX(xml([point(27,85)+point(27.001,85)]),'short','2026-10-16T00:00:00Z');short.name='Shivapuri Forest';
+ const long=parseGPX(xml([point(27,85)+point(27.01,85)]),'long','2026-10-17T00:00:00Z');long.name='Dhap Dam';
+ const index=library.indexRouteLibrary([short,long]);
+ assert.deepEqual(library.searchRouteLibrary(index,'  FOREST shiva ','recent').map(e=>e.route.id),['short']);
+ assert.deepEqual(library.searchRouteLibrary(index,'','longest').map(e=>e.route.id),['long','short']);
+ assert.deepEqual(library.searchRouteLibrary(index,'','recent').map(e=>e.route.id),['long','short']);
+ assert.deepEqual(index.map(e=>e.route.id),['short','long']);assert.equal(library.searchRouteLibrary(index,'everest','recent').length,0);
+});
