@@ -44,10 +44,18 @@ export function matchRoute(route: RouteModel, fix: Fix, previousProgress?: numbe
     const progress = route.distances[segment] + (route.distances[segment + 1] - route.distances[segment]) * t;
     const continuity = previousProgress === undefined ? 0 : Math.min(Math.abs(progress - previousProgress) * 0.05, 100);
     return { progress, crossTrack, score: crossTrack + continuity };
-  }).sort((a, b) => a.score - b.score);
-  const best = candidates[0];
+  });
+  // Linear selection avoids sorting every segment on each location update.
+  let best = candidates[0];
+  for (const candidate of candidates) if (candidate.score < best.score) best = candidate;
+  // Adjacent segments can tie at a vertex and hide another, distant part of
+  // a loop. Check every plausible match, not only the second closest segment.
+  const ambiguous = candidates.some(candidate =>
+    Math.abs(candidate.progress - best.progress) >= 100 &&
+    candidate.crossTrack <= best.crossTrack + 8,
+  );
   const tolerance = Math.max(25, Math.min(fix.accuracy ?? 100, 60) * 1.5);
-  return { ...sampleRoute(route, best.progress), crossTrack: best.crossTrack, confident: fix.accuracy !== null && fix.accuracy <= 60 && best.crossTrack <= tolerance && (!candidates[1] || candidates[1].crossTrack - best.crossTrack > 8 || Math.abs(candidates[1].progress - best.progress) < 100) };
+  return { ...sampleRoute(route, best.progress), crossTrack: best.crossTrack, confident: fix.accuracy !== null && Number.isFinite(fix.accuracy) && fix.accuracy >= 0 && fix.accuracy <= 60 && best.crossTrack <= tolerance && !ambiguous };
 }
 export function acceptFix(next: Fix, previous: Fix | null, now: number) {
   if (!Number.isFinite(next.latitude) || Math.abs(next.latitude) > 90 || !Number.isFinite(next.longitude) || Math.abs(next.longitude) > 180 || !Number.isFinite(next.timestamp) || next.timestamp > now + 5000 || now - next.timestamp > 30000 || next.accuracy === null || !Number.isFinite(next.accuracy) || next.accuracy < 0 || next.accuracy > 100) return false;

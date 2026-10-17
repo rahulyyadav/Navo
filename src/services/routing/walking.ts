@@ -218,3 +218,11 @@ export function routeDuration(seconds: number) {
   const hours = Math.floor(minutes / 60);
   return hours ? `${hours}h ${minutes % 60}m` : `${minutes} min`;
 }
+
+/** A provider baseline is not a terrain-aware hiking arrival estimate. */
+export function remainingHikingDuration(route: WalkingRoute, pace: "relaxed" | "normal" | "brisk", ratio: number | null) {
+  if (ratio === null || !Number.isFinite(ratio) || ratio < 0 || ratio > 1 ||
+      route.ascentM === null || !Number.isFinite(route.ascentM) || route.ascentM < 0 ||
+      route.durationBasis === "4kmh-assumption" || !Number.isFinite(route.durationS) || route.durationS <= 0) return null;
+  return plannedDuration(route, pace) * (1 - ratio);
+}

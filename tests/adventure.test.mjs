@@ -99,3 +99,26 @@ test('partial provider directions and missing via legs cannot be presented as co
   assert.throws(() => walking.decodeWalkingRoutes(bad, endpoints));
  }
 });
+
+test('upcoming maneuver distance follows the current instruction span',()=>{
+ const geometry=[{latitude:27,longitude:85},{latitude:27.001,longitude:85},{latitude:27.002,longitude:85}];
+ const route={...routes[0],geometry,distanceM:200,instructions:[{text:'Start north',distanceM:100},{text:'Continue at junction',distanceM:100},{text:'Arrive',distanceM:0}]};
+ const fix={...geometry[0],latitude:27.0005,accuracy:5};
+ const value=progress.navigationProgress(route,fix,true);
+ assert.equal(value.current.text,'Start north');assert.equal(value.next.text,'Continue at junction');assert.ok(Math.abs(value.nextDistanceM-50)<.1);
+ const end=progress.navigationProgress(route,{...fix,latitude:27.002},true);
+ assert.equal(end.next.text,'Arrive');assert.ok(end.nextDistanceM<.1);
+});
+test('corrupted saved geometry and invalid fixes cannot crash or claim route progress',()=>{
+ const point={latitude:27,longitude:85};
+ assert.equal(progress.navigationProgress({...routes[0],geometry:[point,point]},{...point,accuracy:5},true),null);
+ assert.equal(progress.navigationProgress(routes[0],{...point,accuracy:-1},true),null);
+ assert.equal(progress.navigationProgress(routes[0],{...point,latitude:NaN,accuracy:5},true),null);
+});
+test('arrival estimates are withheld without terrain data or with assumed GPX speed',()=>{
+ assert.equal(walking.remainingHikingDuration(routes[0],'normal',.5),null);
+ const route={...routes[0],ascentM:100,durationBasis:'provider'};
+ assert.equal(walking.remainingHikingDuration(route,'normal',.5),route.durationS/2);
+ assert.equal(walking.remainingHikingDuration({...route,durationBasis:'4kmh-assumption'},'normal',.5),null);
+ for(const ratio of [null,NaN,-1,2]) assert.equal(walking.remainingHikingDuration(route,'normal',ratio),null);
+});

@@ -9,9 +9,10 @@ import { RouteSketch } from './trekking/RouteSketch';
 import { colors, radius } from '@/theme/tokens';
 
 /** Map gets the remaining screen height; details never consume the entire map. */
-export function FullRouteMap({map, route, title, subtitle, status, offline = false, onClose, actionLabel, onAction}: {
+export function FullRouteMap({map, route, title, subtitle, status, offline = false, onClose, actionLabel, onAction, sessionAction, onEnd}: {
   map:NepalMapProps;route:WalkingRoute;title:string;subtitle:string;status?:string;offline?:boolean;
   onClose:()=>void;actionLabel:string;onAction:()=>void;
+  sessionAction?:{label:string;onPress:()=>void};onEnd?:()=>void;
 }) {
   const inset=useSafeAreaInsets();
   const [expanded,setExpanded]=useState(false),[index,setIndex]=useState<number|null>(null),[layer,setLayer]=useState<'terrain'|'streets'>('terrain'),[nonce,setNonce]=useState(0),[following,setFollowing]=useState(Boolean(map.followUser));
@@ -27,10 +28,12 @@ export function FullRouteMap({map, route, title, subtitle, status, offline = fal
       <Pressable accessibilityRole="button" accessibilityLabel={expanded?'Collapse route directions':'Expand route directions'} accessibilityState={{expanded}} onPress={()=>setExpanded(v=>!v)} style={styles.panelHeading}><View style={styles.heading}><Text style={styles.title}>{(route.distanceM/1000).toFixed(2)} km · {route.instructions.length} steps</Text><Text style={styles.caption}>{step?`Step ${index!+1} · ${step.text}`:'Route directions & trip details'}</Text></View><Text style={styles.backText}>{expanded?'⌄':'⌃'}</Text></Pressable>
       {expanded&&<ScrollView style={styles.details} contentContainerStyle={{gap:8,paddingBottom:12}}><Notice message={status ?? ""} tone="info" />{route.instructions.map((item,i)=><Pressable key={i} accessibilityRole="button" accessibilityLabel={`${offline ? "Read" : "Show"} step ${i+1}: ${item.text}`} onPress={()=>{setFollowing(false);setIndex(i);setNonce(v=>v+1);setExpanded(false);}} style={[styles.step,index===i&&styles.selected]}><Text style={styles.number}>{i+1}</Text><View style={styles.heading}><Text style={styles.direction}>{item.text}</Text><Text style={styles.caption}>{item.distanceM>=1000?`${(item.distanceM/1000).toFixed(1)} km`:`${Math.round(item.distanceM)} m`}</Text></View></Pressable>)}{!route.instructions.length&&<Text style={styles.caption}>No turn instructions are available for this route.</Text>}<Text style={styles.caption}>Mapped directions may differ from actual trail conditions. Check local signs and access.</Text></ScrollView>}
       {!expanded&&status&&<Text numberOfLines={2} style={styles.caption}>{status}</Text>}
-      <Button label={actionLabel} onPress={onAction} />
+      {sessionAction && <View style={styles.sessionControls}><View style={styles.heading}><Button label={sessionAction.label} onPress={sessionAction.onPress} /></View>{onEnd && <View style={styles.heading}><Button label="End trek" variant="outline" onPress={onEnd} /></View>}</View>}
+      <Button label={actionLabel} variant={sessionAction ? "quiet" : "primary"} onPress={onAction} />
     </View>
   </View>;
 }
 const styles=StyleSheet.create({
+ sessionControls:{flexDirection:'row',gap:10},
  page:{flex:1,backgroundColor:colors.navy},header:{flexDirection:'row',gap:12,alignItems:'center',padding:12},heading:{flex:1,gap:4},back:{height:44,width:44,borderRadius:22,backgroundColor:colors.surfaceSoft,alignItems:'center',justifyContent:'center'},backText:{color:colors.lime,fontSize:26},title:{color:colors.ink,fontSize:17,lineHeight:23,fontWeight:'700'},caption:{color:colors.muted,fontSize:13,lineHeight:19},map:{flex:1,minHeight:120},controls:{position:'absolute',top:12,left:12,right:60,flexDirection:'row',flexWrap:'wrap',gap:8,padding:6,borderRadius:radius.md,backgroundColor:colors.navy},panel:{padding:16,gap:10,borderTopLeftRadius:radius.lg,borderTopRightRadius:radius.lg,backgroundColor:colors.navy},expanded:{maxHeight:'48%'},panelHeading:{minHeight:48,flexDirection:'row',alignItems:'center',gap:10},details:{flexShrink:1},step:{minHeight:64,padding:12,flexDirection:'row',gap:12,alignItems:'center',backgroundColor:colors.surfaceSoft,borderRadius:radius.md,borderWidth:1,borderColor:colors.line},selected:{borderColor:colors.lime},number:{color:colors.lime,fontWeight:'700',fontSize:18},direction:{color:colors.ink,fontSize:15,lineHeight:21},
 });
