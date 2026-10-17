@@ -11,6 +11,7 @@ import { readJSON, writeJSON } from '@/lib/storage';
 import { essentials, preparationFromStorage, type Preparation } from '@/services/preparation';
 import type { AIPlan, CloudMember } from '@/types/cloud';
 import type { EmergencyContact, TrekGroup } from '@/types/navo';
+import { validOfflinePack, snapshotFreshness } from '@/services/offline-pack';
 import { colors } from '@/theme/tokens';
 
 type Pack = { startDate?: string; outing?: TrekGroup['outing']; version: 1; savedAt: string; trekId: string; trekName: string; waypoints: { name: string; latitude: number; longitude: number; elevation: number }[]; members: CloudMember[]; contact: EmergencyContact | null; plan: AIPlan | null; preparation: Preparation | null };
@@ -23,21 +24,29 @@ export default function OfflineScreen() {
   const [stored, setStored] = useState<{ key: string; value: Pack | null }>({ key: '', value: null }); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
   const key = `offline-pack:${userId}:${params.group ?? 'solo'}:${trek.id}`;
   const pack = stored.key === key ? stored.value : null;
-  useEffect(() => { let active = true; readJSON<Pack>(key).then(value => { if (value && (value.version !== 1 || value.trekId !== trek.id || !Array.isArray(value.waypoints) || !Array.isArray(value.members))) throw new Error('Invalid pack'); if (active) setStored({ key, value }); }).catch(() => { if (active) setError('Could not read your saved trip pack.'); }); return () => { active = false; }; }, [key, trek.id]);
+  useEffect(() => { let active = true; readJSON<Pack>(key).then(value => { if (value && !validOfflinePack(value, trek.id)) throw new Error('Invalid pack'); if (active) setStored({ key, value }); }).catch(() => { if (active) { setStored({ key, value: null }); setError('Could not read this saved trip pack. Reconnect and save a fresh copy.'); } }); return () => { active = false; }; }, [key, trek.id]);
   async function save() {
-    if (busy) return; setBusy(true); setError('');
+    if (busy || stored.key !== key) return; setBusy(true); setError('');
     try {
       if (params.group && (!cloud.ready || members.loading || members.cached || members.error)) throw new Error('Wait for a fresh group roster before saving. Your existing pack is unchanged.');
       const [plan, accountPreparation, devicePreparation] = await Promise.all([readJSON<AIPlan>(`ai-plan:${userId}:${trek.id}`), readJSON<unknown>(`preparation:${userId}:${trek.id}`), readJSON<unknown>(`device-preparation:${userId}:${trek.id}`)]);
       const preparation = preparationFromStorage(devicePreparation ?? accountPreparation);
       if (custom && !group?.outing) throw new Error('Reconnect to your hike group before saving its meeting plan.');
       const next: Pack = { startDate: group?.startDate, outing: group?.outing ?? null, version: 1, savedAt: new Date().toISOString(), trekId: trek.id, trekName: trek.name, waypoints: trek.route, members: params.group ? members.items : pack?.members ?? [], contact: answers.emergencyContact, plan, preparation };
+      if (!validOfflinePack(next, trek.id)) throw new Error('Some trip information is incomplete. Refresh it before saving. Your existing snapshot is unchanged.');
       await writeJSON(key, next); setStored({ key, value: next });
     } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not save trip pack.'); }
     finally { setBusy(false); }
   }
   return <Backdrop><ScrollView contentContainerStyle={styles.scroll}><Heading title="Beyond the last signal." subtitle="Save a snapshot you can read on this device. Re-download before departure to update it." /><Notice message={error} /><Button label="Import & manage GPX routes" variant="outline" onPress={() => router.push('/routes')} />
-    <Button label={pack ? 'Update saved trip pack' : 'Save trip pack on this device'} busy={busy} disabled={busy} onPress={() => void save()} />
+    <Button label={pack ? 'Update saved trip pack' : 'Save trip pack on this device'} busy={busy} disabled={busy || stored.key !== key} onPress={() => void save()} />
+    <Card><SectionTitle title="Your offline essentials" />
+      <Text style={styles.copy}>{stored.key !== key ? 'Checking this device…' : pack ? '✓ Trip snapshot saved on this device' : '○ Trip snapshot not saved yet'}</Text>
+      {pack && <Text style={styles.copy}>{snapshotFreshness(pack.savedAt)}</Text>}
+      <Text style={styles.copy}>○ Offline terrain map not included</Text>
+      <Text style={styles.copy}>○ New walking routes, weather and messages need internet</Text>
+      <Text style={styles.copy}>Saved waypoints describe the itinerary; they are not a verified navigation track. Before leaving, open your saved route and an offline map in airplane mode to check what is available.</Text>
+    </Card>
     {pack && <><Badge label="SAVED ON THIS DEVICE" tone="lime" /><Text style={styles.copy}>Saved {new Date(pack.savedAt).toLocaleString()}. Group information is a snapshot, not live.</Text><Heading title={pack.trekName} /><SectionTitle title={pack.outing ? "MEETUP PLAN" : "APPROXIMATE WAYPOINTS"} />{pack.outing && <Card><Text style={styles.title}>{pack.outing.meetingPoint}</Text><Text style={styles.copy}>{pack.startDate ?? 'Date not saved'} · depart {pack.outing.startTime} NPT · {pack.outing.walkingHours} planned walking hours · {pack.outing.expectedPeople} expected people. No verified trail track is included.</Text></Card>}{pack.waypoints.map(point => <Card key={point.name}><Text style={styles.title}>{point.name} · {point.elevation} m</Text><Text style={styles.copy}>{point.latitude.toFixed(5)}, {point.longitude.toFixed(5)}</Text></Card>)}
       <SectionTitle title="EMERGENCY CONTACT" /><Text style={styles.copy}>{pack.contact ? `${pack.contact.name} · ${pack.contact.phone}` : 'No emergency contact saved. Add one in your profile.'}</Text>
       <SectionTitle title="LAST SAVED CREW" />{pack.members.map(member => <Text key={member.id} style={styles.copy}>{member.name}{member.lastLocation ? ` · ${member.lastLocation.latitude.toFixed(4)}, ${member.lastLocation.longitude.toFixed(4)} · recorded ${member.lastLocation.capturedAt}` : ' · no shared position'}</Text>)}

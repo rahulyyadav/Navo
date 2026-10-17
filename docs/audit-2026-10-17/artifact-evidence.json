@@ -49,5 +49,46 @@
       "Static paths and relationships may remain unresolved when expressions are dynamic or obfuscated.",
       "Webpack/Rspack factories were recovered from AST literals; REA did not invoke push handlers or bundle bootstrap code."
     ]
+  },
+  {
+    "target": "JamNepal offline module, focused follow-up",
+    "tool": "rea-agents 6.5.0 analyze-javascript-application --source-path vendor-offline-DERGHL6x.js",
+    "evidence_id": "ev_2643f722f34f6318fa5a3aa5a5e1c26048c55d76e2c15a808534bd3d7c308a31",
+    "root_artifact_sha256": "233590465f2588f4c76a0a73c914d9aaec595dc5fa020d8c27aae118222651e0",
+    "statistics": {
+      "relevant_files": 3,
+      "nested_asar_containers": 0,
+      "text_bytes_read": 94765,
+      "invalid_utf8_files": 0,
+      "parsed_javascript_files": 1,
+      "visited_ast_nodes": 31666,
+      "findings": 7,
+      "modules": 0,
+      "parse_failures": 0
+    },
+    "limitations": [
+      "Caller-selected source analysis leaves 2 inventoried files outside analysis scope. Inventory identity covers the complete artifact; relationships through unselected sources remain unknown.",
+      "CommonJS and ESM binding relationships were recovered from inert syntax and resolved only within the inventoried artifact container.",
+      "Graph coverage is incomplete; unavailable facts remain explicit and must not be read as absence.",
+      "JavaScript and HTML were parsed as inert text; bundle bootstrap code was never executed.",
+      "Static imports, entrypoints, workers, endpoints, and storage relationships do not prove runtime execution.",
+      "Static paths and relationships may remain unresolved when expressions are dynamic or obfuscated.",
+      "Webpack/Rspack factories were recovered from AST literals; REA did not invoke push handlers or bundle bootstrap code."
+    ],
+    "semantic_coverage": {
+      "status": "partial",
+      "limits": [
+        {
+          "name": "semantic_graph_file_node_ceiling",
+          "value": 8000,
+          "unit": "items"
+        },
+        {
+          "name": "semantic_graph_node_ceiling",
+          "value": 8000,
+          "unit": "items"
+        }
+      ]
+    }
   }
 ]
