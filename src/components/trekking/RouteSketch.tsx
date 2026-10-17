@@ -8,9 +8,11 @@ import { colors } from "@/theme/tokens";
 export function RouteSketch({
   segments,
   position,
+  fill = false,
 }: {
   segments: Coordinate[][];
   position: Coordinate | null;
+  fill?: boolean;
 }) {
   const geometry = useMemo(() => {
     const points = segments.flat();
@@ -28,6 +30,8 @@ export function RouteSketch({
     });
     return {
       project,
+      start: points.length ? project(points[0]) : null,
+      end: points.length ? project(points[points.length - 1]) : null,
       lines: segments.map((segment) =>
         segment
           .map((p) => {
@@ -46,8 +50,8 @@ export function RouteSketch({
       marker.y >= 0 &&
       marker.y <= 320;
   return (
-    <View accessibilityLabel="Offline north-up route geometry overview. Segment gaps remain disconnected.">
-      <Svg viewBox="0 0 320 320" width="100%" height={280}>
+    <View style={fill ? { flex: 1, padding: 16 } : undefined} accessibilityLabel="Offline north-up route geometry overview. Segment gaps remain disconnected.">
+      <View style={fill ? { flex: 1 } : { height: 280 }}><Svg viewBox="0 0 320 320" width="100%" height="100%">
         {geometry.lines.map((line, i) => (
           <Polyline
             key={i}
@@ -57,6 +61,8 @@ export function RouteSketch({
             strokeWidth={3}
           />
         ))}
+        {geometry.start && <Circle cx={geometry.start.x} cy={geometry.start.y} r={5} fill={colors.lime} stroke={colors.navy} strokeWidth={2} />}
+        {geometry.end && <Circle cx={geometry.end.x} cy={geometry.end.y} r={5} fill={colors.white} stroke={colors.navy} strokeWidth={2} />}
         {visible && marker && (
           <Circle
             cx={marker.x}
@@ -67,9 +73,9 @@ export function RouteSketch({
             strokeWidth={2}
           />
         )}
-      </Svg>
+      </Svg></View>
       <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 21 }}>
-        North is up · saved geometry, without terrain or road context.
+        North is up · lime start, white finish, blue GPS. Saved geometry without terrain or road context.
         {position && !visible
           ? " Your GPS position is outside this overview."
           : ""}

@@ -1,3 +1,4 @@
+import { FullRouteMap } from '@/components/FullRouteMap';
 import { TrailGuide } from '@/components/TrailGuide';
 import type { TrailPlace } from '@/services/trail/places';
 import { stageWalkingPlan, pendingWalkingPlan, clearPendingWalkingPlan } from '@/lib/pending-walking-plan';
@@ -7,7 +8,7 @@ import { openLocationSettings } from "@/lib/location-settings";
 import type { HourlyForecast } from "@/services/weather/hourly";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Linking, ScrollView, StyleSheet, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { Stack, router, useLocalSearchParams } from "expo-router";
 import * as Crypto from "expo-crypto";
 import { Text } from "@/components/Typography";
 import {
@@ -73,7 +74,7 @@ function selectedPlace(raw: unknown): Place | null {
 }
 export default function TrekPlanScreen() {
   const { userId } = useNavo();
-  const params = useLocalSearchParams<{ destination?: string }>();
+  const params = useLocalSearchParams<{ destination?: string; map?: string }>();
   const destination = useMemo(
     () => selectedPlace(params.destination),
     [params.destination],
@@ -97,7 +98,8 @@ function Planner({
   const { page } = usePageLayout(),
     gps = useMyLocation();
   const [trailPlaces, setTrailPlaces] = useState<TrailPlace[]>([]);
-  const [mapFocus, setMapFocus] = useState<{latitude:number;longitude:number}|null>(null);
+  const {map:mapMode}=useLocalSearchParams<{map?:string}>();
+  const [mapFocus, setMapFocus] = useState<{latitude:number;longitude:number;label:string}|null>(null);
   const [expandedMap, setExpandedMap] = useState(false);
   const [basemap, setBasemap] = useState<'terrain'|'streets'>('terrain');
   const [approach, setApproach] = useState(false);
@@ -128,6 +130,7 @@ function Planner({
     [message, setMessage] = useState(""),
     [mapNonce, setMapNonce] = useState(0);
   const scroll = useRef<ScrollView | null>(null);
+  const reviewTop = useRef(0);
   const presented = useRef(false);
   const reduced = useReducedMotion();
   const pending = useRef<AbortController | null>(null),
@@ -214,6 +217,7 @@ function Planner({
       if (alive.current && !controller.signal.aborted) {
         presented.current = false;
         setRoutes(values);
+        router.setParams({map:"full"});
         setEditing(false);
         setSearchTarget(null);
         setSelected(0);
@@ -310,20 +314,22 @@ function Planner({
         .slice(0, 16)
         .replace("T", " ")
     : "";
-  function focusOnMap(point: {latitude:number;longitude:number}) {
-    setMapFocus(point); setMapNonce(v=>v+1); scroll.current?.scrollTo({y:0,animated:!reduced});
+  function focusOnMap(point: {latitude:number;longitude:number}, label: string) {
+    setMapFocus({...point,label}); setMapNonce(v=>v+1); scroll.current?.scrollTo({y:Math.max(0,reviewTop.current-12),animated:!reduced});
   }
   const mapBlock = (<View style={{gap:8}}>
+    {mapFocus && <Text accessibilityRole="text" style={{color:colors.ink,fontSize:16,lineHeight:23,fontWeight:'600'}}>{mapFocus.label}</Text>}
     <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>
       <Chip label="Terrain" selected={basemap==='terrain'} onPress={()=>setBasemap('terrain')} />
       <Chip label="Streets" selected={basemap==='streets'} onPress={()=>setBasemap('streets')} />
-      <Chip label={expandedMap?'Compact map':'Larger map'} selected={expandedMap} onPress={()=>setExpandedMap(v=>!v)} />
+      {route ? <Chip selected={false} label="Full-screen map" onPress={()=>router.setParams({map:'full'})} /> : <Chip label={expandedMap?'Compact map':'Larger map'} selected={expandedMap} onPress={()=>setExpandedMap(v=>!v)} />}
       <Chip label="Whole route" selected={!mapFocus} onPress={()=>{setMapFocus(null);setMapNonce(v=>v+1);}} />
     </View>
     <View style={[styles.map,expandedMap && {height:560}]}>
       <NepalMap
         basemap={basemap}
         trailPlaces={trailPlaces}
+        focusPoint={mapFocus}
         region={mapFocus ? {...mapFocus,latitudeDelta:.006,longitudeDelta:.006}:bounds}
         regionNonce={mapNonce + routes.length}
         selectedId={null}
@@ -356,8 +362,10 @@ function Planner({
       />
     </View></View>
   );
+  if(mapMode==='full' && route && destination) return <><Stack.Screen options={{headerShown:false}} /><FullRouteMap route={route} title={destination.name} subtitle="Walking route preview" status="One-way route · hiking time and return journey need separate planning." actionLabel="Trip details & start trek" onAction={()=>router.setParams({map:''})} onClose={()=>router.setParams({map:''})} map={{region:bounds,regionNonce:mapNonce,selectedId:null,onSelectTrek:()=>undefined,myCoords:gps.coords,trailPlaces,walkingRoutes:[{id:route.id,geometry:route.geometry}],walkingRouteId:route.id,endpoints:{start:route.snappedStart,end:route.snappedEnd}}} /></>;
   return (
     <Backdrop>
+      <Stack.Screen options={{headerShown:true}} />
       <ScrollView
         ref={scroll}
         keyboardShouldPersistTaps="handled"
@@ -609,7 +617,7 @@ function Planner({
         {route && (
           <View
             style={{ gap: space.md }}
-
+            onLayout={event => { reviewTop.current = event.nativeEvent.layout.y; }}
           >
             {mapBlock}
             <Card>
@@ -626,7 +634,7 @@ function Planner({
                   <Button
                     label={`${i === selected ? "Selected · " : ""}${r.name} · ${(r.distanceM / 1000).toFixed(1)} km · ${routeDuration(plannedDuration(r, pace))}`}
                     variant={i === selected ? "primary" : "outline"}
-                    onPress={() => setSelected(i)}
+                    onPress={() => {setSelected(i);setMapFocus(null);setMapNonce(v=>v+1);}}
                   />
                 </View>
               ))}

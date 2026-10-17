@@ -4,7 +4,7 @@ import { Text } from "@/components/Typography";
 import { Button, Card, Notice, SectionTitle } from "@/components/ui";
 import { fetchHourly, type HourlyForecast } from "@/services/weather/hourly";
 import type { Coordinate } from "@/services/places/types";
-import { colors, space } from "@/theme/tokens";
+import { colors, radius, space } from "@/theme/tokens";
 export function AdventureWeather({
   origin,
   destination,
@@ -116,12 +116,12 @@ export function AdventureWeather({
               {hours.map((h) => (
                 <View
                   key={h.time}
-                  style={{ minWidth: 120, paddingVertical: 12 }}
+                  style={{ width: 148, padding: 16, borderRadius: radius.md, backgroundColor: colors.surfaceSoft, borderWidth: 1, borderColor: colors.line }}
                 >
                   <Text style={{ color: colors.ink, fontWeight: "700" }}>
                     {h.time.slice(11)} NPT
                   </Text>
-                  <Text style={{ color: colors.ink, marginTop: 8 }}>
+                  <Text style={{ color: colors.lime, fontSize: 26, fontWeight: "600", marginVertical: 8 }}>
                     {h.temperature.toFixed(1)}°C
                   </Text>
                   <Text style={{ color: colors.muted, lineHeight: 22 }}>

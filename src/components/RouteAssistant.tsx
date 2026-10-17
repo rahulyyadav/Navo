@@ -14,6 +14,7 @@ export function RouteAssistant({
 }) {
   const [question, setQuestion] = useState(""),
     [reply, setReply] = useState(""),
+    [source, setSource] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const alive = useRef(true),
@@ -35,7 +36,7 @@ export function RouteAssistant({
         email,
         context,
       );
-      if (alive.current) setReply(result.reply);
+      if (alive.current) {setReply(result.reply);setSource(result.source === "nemotron" ? "Nemotron · based on supplied route data" : result.source === "safety-rule" ? "Navo safety guidance · not an AI completion" : "Navo response");}
     } catch (failure) {
       if (alive.current)
         setError(
@@ -79,6 +80,7 @@ export function RouteAssistant({
         </>
       )}
       <Notice message={error} />
+      {Boolean(reply) && <Text style={{color:colors.lime,fontSize:13,marginTop:12}}>{source}</Text>}
       {Boolean(reply) && (
         <AIReply content={reply} style={{ color: colors.ink, fontSize: 16, lineHeight: 25, marginTop: 8 }} />
       )}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 import { planGPXSegment } from "@/services/routes/gpx-plan";
@@ -12,8 +12,11 @@ import {
   Button,
   Card,
   Heading,
+  Field,
+  Chip,
   Notice,
 } from "@/components/ui";
+import { RouteElevationProfile } from '@/components/trekking/RouteElevationProfile';
 import { ImportedRoutePreview } from "@/components/trekking/ImportedRoutePreview";
 import { NepalMap } from "@/components/NepalMap";
 import { useNavo } from "@/context/NavoContext";
@@ -26,6 +29,7 @@ import {
   routeStats,
   type ImportedRoute,
 } from "@/services/routes/gpx";
+import { indexRouteLibrary, searchRouteLibrary, type RouteLibraryOrder } from '@/services/routes/library';
 import { colors } from "@/theme/tokens";
 
 export default function RoutesScreen() {
@@ -34,10 +38,15 @@ export default function RoutesScreen() {
 }
 function RouteLibrary({ uid }: { uid: string }) {
   const { page } = usePageLayout();
+  const scroll = useRef<ScrollView>(null);
   const [routes, setRoutes] = useState<ImportedRoute[]>([]);
   const [selected, setSelected] = useState<ImportedRoute | null>(null);
   const [busy, setBusy] = useState(false),
     [loaded, setLoaded] = useState(false);
+  const [query, setQuery] = useState('');
+  const [order, setOrder] = useState<RouteLibraryOrder>('recent');
+  const index = useMemo(() => indexRouteLibrary(routes), [routes]);
+  const matching = useMemo(() => searchRouteLibrary(index, query, order), [index, query, order]);
   const [error, setError] = useState(""),
     [confirm, setConfirm] = useState(false);
   const alive = useRef(true),
@@ -80,6 +89,7 @@ function RouteLibrary({ uid }: { uid: string }) {
       if (alive.current) setBusy(false);
     }
   }
+  useEffect(() => { if (selected) scroll.current?.scrollTo({y:0,animated:false}); }, [selected]);
   const stats = selected ? routeStats(selected) : null;
   const points = selected?.segments.flat() ?? [];
   const minLat = Math.min(...points.map((p) => p.latitude)),
@@ -89,7 +99,7 @@ function RouteLibrary({ uid }: { uid: string }) {
   const saved = selected && routes.some((r) => r.id === selected.id);
   return (
     <Backdrop>
-      <ScrollView contentContainerStyle={[styles.page, page]}>
+      <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={[styles.page, page]}>
         <Heading
           title="Your trail library"
           subtitle="Bring a GPX track from a source you trust. Review its geometry before you head out."
@@ -138,6 +148,7 @@ function RouteLibrary({ uid }: { uid: string }) {
                 />
               )}
             </Card>
+            <RouteElevationProfile route={selected} />
             <ImportedRoutePreview key={selected.id} route={selected} />
             <View style={styles.map}>
               <NepalMap
@@ -274,17 +285,21 @@ function RouteLibrary({ uid }: { uid: string }) {
             </Text>
           </Card>
         )}
-        {routes.map((route) => (
-          <Button
-            key={route.id}
-            label={route.name}
-            variant="outline"
-            disabled={busy}
-            onPress={() => {
-              setSelected(route);
-              setConfirm(false);
-            }}
-          />
+        {routes.length > 0 && <>
+          <Field label="Search saved GPX routes" value={query} onChangeText={setQuery} placeholder="Route name…" autoCorrect={false} />
+          <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>
+            {([['recent','Newest'],['shortest','Shortest'],['longest','Longest']] as const).map(([value,label]) => <Chip key={value} label={label} selected={order===value} onPress={() => setOrder(value)} />)}
+          </View>
+          <Text accessibilityLiveRegion="polite" style={styles.copy}>{matching.length} of {routes.length} saved routes</Text>
+          {!matching.length && <Card><Text style={styles.copy}>No saved route matches this search.</Text><Button label="Clear search" variant="outline" onPress={() => setQuery('')} /></Card>}
+        </>}
+        {matching.map(({route,stats:summary}) => (
+          <Card key={route.id}>
+            <Text style={{color:colors.ink,fontSize:18,fontWeight:'700'}}>{route.name}</Text>
+            <Text style={styles.copy}>{(summary.metres/1000).toFixed(2)} km · {summary.ascent === null ? 'Elevation incomplete' : `${Math.round(summary.ascent)} m raw ascent`} · {route.segments.length} segment{route.segments.length===1?'':'s'}</Text>
+            <Badge label="YOUR GPX · NOT VERIFIED" tone="warning" />
+            <Button label={`Review ${route.name}`} variant="outline" disabled={busy} onPress={() => { setSelected(route); setConfirm(false); scroll.current?.scrollTo({y:0,animated:false}); }} />
+          </Card>
         ))}
       </ScrollView>
     </Backdrop>

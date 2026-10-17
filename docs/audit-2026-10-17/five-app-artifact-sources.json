@@ -1,0 +1,51 @@
+[
+  {
+    "target": "alltrails",
+    "url": "https://d27scpai1jcyi9.cloudfront.net/7454ca94ed332d519ef5b7580cbdcdac98d1934d/_next/static/chunks/1231-61fe81a58c88d5e9.js",
+    "file": "1231-61fe81a58c88d5e9.js",
+    "downloaded": true,
+    "error": ""
+  },
+  {
+    "target": "alltrails",
+    "url": "https://d27scpai1jcyi9.cloudfront.net/7454ca94ed332d519ef5b7580cbdcdac98d1934d/_next/static/chunks/app/global-error-80d3dac69d1b97c2.js",
+    "file": "global-error-80d3dac69d1b97c2.js",
+    "downloaded": true,
+    "error": ""
+  },
+  {
+    "target": "komoot",
+    "url": "https://www.komoot.com/assets/main.d2042b4cd1a20ff9.js",
+    "file": "main.d2042b4cd1a20ff9.js",
+    "downloaded": true,
+    "error": ""
+  },
+  {
+    "target": "gaia",
+    "url": "https://www-static.gaiagps.com/assets/29868367-39eee2dd/PlanComparison-Dt0C_-uN.js",
+    "file": "PlanComparison-Dt0C_-uN.js",
+    "downloaded": true,
+    "error": ""
+  },
+  {
+    "target": "gaia",
+    "url": "https://www-static.gaiagps.com/assets/29868367-39eee2dd/ssr_Homepage-akkCGHoV.js",
+    "file": "ssr_Homepage-akkCGHoV.js",
+    "downloaded": true,
+    "error": ""
+  },
+  {
+    "target": "wikiloc",
+    "url": "https://sc.wklcdn.com/wikiloc/assets/scripts/searchCommon.min.3265bc5a.js",
+    "file": "searchCommon.min.3265bc5a.js",
+    "downloaded": true,
+    "discovery": "script src in public browser DOM"
+  },
+  {
+    "target": "wikiloc",
+    "url": "https://sc.wklcdn.com/wikiloc/assets/scripts/vue/components/search-box.min.3f602c70.js",
+    "file": "search-box.min.3f602c70.js",
+    "downloaded": true,
+    "discovery": "script src in public browser DOM"
+  }
+]
