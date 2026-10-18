@@ -1,3 +1,6 @@
+import { destinationForTrek } from '@/services/trail-discovery';
+import { useNavo } from '@/context/NavoContext';
+import { TrailReviews } from '@/components/TrailReviews';
 import { useTripLibrary } from '@/hooks/useTripLibrary';
 import { galleryForTrek } from '@/data/trek-photos';
 import { useRef, useState } from 'react';
@@ -9,7 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { Backdrop, Button, Card, Reveal, Row, SectionTitle, useReducedMotion } from '@/components/ui';
+import { Backdrop, Button, Card, Chip, Reveal, Row, SectionTitle, useReducedMotion } from '@/components/ui';
 import { NepalMap } from '@/components/NepalMap';
 import { TabIcon } from '@/components/TabIcon';
 import { colorForTrek } from '@/data/map-style';
@@ -46,12 +49,14 @@ export default function TrekScreen() {
 
 export function TrekDetail({ id }: { id: string }) {
   const library = useTripLibrary();
+  const { isSignedIn } = useNavo();
   const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const scroll = useRef<ScrollView>(null);
   const detailsY = useRef(0);
+  const reviewsY = useRef(0);
   const [selectedView, setSelectedView] = useState(0);
   const reduced = useReducedMotion();
   const trek = trekById(id);
@@ -62,8 +67,8 @@ export function TrekDetail({ id }: { id: string }) {
         <View style={styles.missing}>
           <TabIcon color={colors.lime} name="route" size={34} />
           <Text style={styles.missingTitle}>That route isn’t on Navo yet</Text>
-          <Text style={styles.missingDetail}>We only map four Nepali routes for now. Pick one from the Discover tab.</Text>
-          <Button label="Back to Discover" onPress={() => router.replace('/(tabs)/discover')} style={styles.missingButton} />
+          <Text style={styles.missingDetail}>Browse the available trek overviews, or search another destination in the walking planner.</Text>
+          <Button label="Back to Discover" onPress={() => router.replace('/trails')} style={styles.missingButton} />
         </View>
       </Backdrop>
     );
@@ -76,6 +81,10 @@ export function TrekDetail({ id }: { id: string }) {
   const accent = colorForTrek(trek.id);
   const start = trek.route[0];
   const summit = trek.route[trek.route.length - 1];
+  function planWalkingRoute() {
+    const destination = destinationForTrek(trek!);
+    router.push({pathname:'/trek-plan',params:destination?{destination:JSON.stringify(destination)}:{}});
+  }
 
   return (
     <View style={styles.screen}>
@@ -86,11 +95,11 @@ export function TrekDetail({ id }: { id: string }) {
       <ScrollView ref={scroll} contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 118 }]} showsVerticalScrollIndicator={false}>
         <View style={[styles.hero, { minHeight: Math.max(420, height * 0.54), paddingTop: insets.top + 14 }]}>
           <View style={styles.toolbar}>
-            <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/discover')} style={({ pressed }) => [styles.roundControl, pressed && styles.pressed]}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => router.canGoBack() ? router.back() : router.replace('/trails')} style={({ pressed }) => [styles.roundControl, pressed && styles.pressed]}>
               <Svg width={25} height={25} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><Path d="M20 12H4m7-7-7 7 7 7" /></Svg>
             </Pressable>
             <View style={styles.toolbarRight}>
-              <Pressable accessibilityRole="button" accessibilityLabel="View trek on map" onPress={() => router.push({ pathname: '/(tabs)/map', params: { trek: trek.id } })} style={({ pressed }) => [styles.roundControl, pressed && styles.pressed]}><TabIcon name="map" color="white" size={23} /></Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="View trek on map" onPress={() => isSignedIn ? router.push({ pathname: '/(tabs)/map', params: { trek: trek.id } }) : router.push('/login')} style={({ pressed }) => [styles.roundControl, pressed && styles.pressed]}><TabIcon name="map" color="white" size={23} /></Pressable>
               <Pressable accessibilityRole="button" accessibilityLabel="View route details" onPress={() => scroll.current?.scrollTo({ y: detailsY.current, animated: !reduced })} style={({ pressed }) => [styles.roundControl, pressed && styles.pressed]}><Svg width={25} height={25} viewBox="0 0 24 24" fill="white"><SvgCircle cx={5} cy={12} r={1.7} /><SvgCircle cx={12} cy={12} r={1.7} /><SvgCircle cx={19} cy={12} r={1.7} /></Svg></Pressable>
             </View>
           </View>
@@ -102,6 +111,7 @@ export function TrekDetail({ id }: { id: string }) {
           </Reveal>
         </View>
         <View style={styles.overview}>
+          <View style={{flexDirection:'row',flexWrap:'wrap',gap:8,paddingHorizontal:20,marginBottom:12}}><Chip label="About this trek" selected={false} onPress={()=>scroll.current?.scrollTo({y:detailsY.current,animated:!reduced})} /><Chip label="Reviews & conditions" selected={false} onPress={()=>scroll.current?.scrollTo({y:reviewsY.current,animated:!reduced})} /></View>
           <Reveal delay={80}><View style={styles.statsRow}>
             <OverviewStat symbol="◷" value={trek.days} label="Duration" />
             <OverviewStat symbol="△" value={`${trek.maxElevation.toLocaleString()} m`} label="High point" />
@@ -118,13 +128,14 @@ export function TrekDetail({ id }: { id: string }) {
         <View onLayout={event => { detailsY.current = event.nativeEvent.layout.y; }}>
           <View style={styles.section}>
             <Text accessibilityLiveRegion="polite" style={styles.caveat}>{saveError || library.error}</Text>
-            <Button label={library.data.savedTrekIds.includes(trek.id) ? 'Saved · remove from shortlist' : 'Save trek to shortlist'} variant="outline" busy={saving} disabled={!library.loaded || saving} onPress={() => { setSaving(true); setSaveError(''); void library.update(data => ({ ...data, savedTrekIds: data.savedTrekIds.includes(trek.id) ? data.savedTrekIds.filter(id => id !== trek.id) : [...data.savedTrekIds, trek.id] })).catch(() => setSaveError('Could not update saved treks. Please retry.')).finally(() => setSaving(false)); }} />
-            <Button label="View my saved treks" variant="quiet" onPress={() => router.push({ pathname: '/trips', params: { section: 'saved' } })} />
+            <Button label={!isSignedIn ? 'Sign in to save this trek' : library.data.savedTrekIds.includes(trek.id) ? 'Saved · remove from shortlist' : 'Save trek to shortlist'} variant="outline" busy={saving} disabled={(isSignedIn && !library.loaded) || saving} onPress={() => { if (!isSignedIn) { router.push('/login'); return; } setSaving(true); setSaveError(''); void library.update(data => ({ ...data, savedTrekIds: data.savedTrekIds.includes(trek.id) ? data.savedTrekIds.filter(id => id !== trek.id) : [...data.savedTrekIds, trek.id] })).catch(() => setSaveError('Could not update saved treks. Please retry.')).finally(() => setSaving(false)); }} />
+            <Button label="View my saved treks" variant="quiet" onPress={() => isSignedIn ? router.push({ pathname: '/trips', params: { section: 'saved' } }) : router.push('/login')} />
             <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(activePhoto.source).catch(() => setSaveError('Could not open the photo source.'))}><Text style={styles.caveat}>Photo: {activePhoto.author} · {activePhoto.license} ↗</Text></Pressable><Pressable accessibilityRole="link" onPress={() => void Linking.openURL(activePhoto.licenseURL).catch(() => setSaveError('Could not open the license.'))}><Text style={styles.caveat}>Photo reuse license · display cropped to fit</Text></Pressable>
           </View>
 
         <Reveal delay={70}>
-          <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: "/journey", params: { trek: trek.id } })} style={[styles.detailLink, { marginTop: 20 }]}><Text style={styles.detailLinkText}>Start Trek</Text><TabIcon name="route" color="#E4FF89" size={22} /></Pressable>
+          <Pressable accessibilityRole="button" onPress={planWalkingRoute} style={[styles.detailLink, { marginTop: 20 }]}><Text style={styles.detailLinkText}>Find a walking route</Text><TabIcon name="route" color="#E4FF89" size={22} /></Pressable>
+          {isSignedIn && <Button label="Preview the approximate journey" variant="quiet" onPress={()=>router.push({pathname:'/journey',params:{trek:trek.id}})} />}
           <Text style={styles.summary}>{trek.summary}</Text>
           <Text style={[styles.caveat, { paddingHorizontal: 20 }]}>Planning overview only. Waypoints and durations are approximate, not a verified trail or an acclimatisation schedule.</Text>
         </Reveal>
@@ -204,14 +215,14 @@ export function TrekDetail({ id }: { id: string }) {
           <View style={styles.section}>
             <SectionTitle
               action={
-                <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/(tabs)/map', params: { trek: trek.id } })}>
+                <Pressable accessibilityRole="button" onPress={() => isSignedIn ? router.push({ pathname: '/(tabs)/map', params: { trek: trek.id } }) : router.push('/login')}>
                   <Text style={styles.linkText}>Open on map</Text>
                 </Pressable>
               }
               title="WHERE IT SITS"
             />
             <View style={styles.mapFrame}>
-              <NepalMap interactive={false} myCoords={null} onSelectTrek={() => router.push({ pathname: '/(tabs)/map', params: { trek: trek.id } })} region={regionForTrek(trek)} regionNonce={0} selectedId={trek.id} />
+              <NepalMap interactive={false} myCoords={null} onSelectTrek={() => isSignedIn ? router.push({ pathname: '/(tabs)/map', params: { trek: trek.id } }) : router.push('/login')} region={regionForTrek(trek)} regionNonce={0} selectedId={trek.id} />
             </View>
           </View>
         </Reveal>
@@ -230,10 +241,11 @@ export function TrekDetail({ id }: { id: string }) {
         </Reveal>
 
 
+        <View onLayout={event=>{reviewsY.current=event.nativeEvent.layout.y;}} style={styles.section}><TrailReviews trekId={trek.id} /></View>
       </ScrollView>
       <LinearGradient colors={['rgba(48,76,102,0)', 'rgba(48,76,102,0.95)', '#304C66']} style={[styles.dock, { paddingBottom: Math.max(insets.bottom, 18) }]}>
-        <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/plan', params: { trek: trek.id } })} style={({ pressed }) => [styles.prepareButton, pressed && styles.pressed]}><Text style={styles.prepareText}>Prepare for this trek</Text></Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel="Create a group" accessibilityHint={`Start a group for ${trek.name}`} onPress={() => router.push({ pathname: '/group/new', params: { trek: trek.id } })} style={({ pressed }) => [styles.groupButton, pressed && styles.pressed]}><TabIcon name="group" color="white" size={26} /></Pressable>
+        <Pressable accessibilityRole="button" onPress={() => isSignedIn ? router.push({ pathname: '/plan', params: { trek: trek.id } }) : router.push('/login')} style={({ pressed }) => [styles.prepareButton, pressed && styles.pressed]}><Text style={styles.prepareText}>{isSignedIn ? "Prepare for this trek" : "Sign in to prepare"}</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Create a group" accessibilityHint={`Start a group for ${trek.name}`} onPress={() => isSignedIn ? router.push({ pathname: '/group/new', params: { trek: trek.id } }) : router.push('/login')} style={({ pressed }) => [styles.groupButton, pressed && styles.pressed]}><TabIcon name="group" color="white" size={26} /></Pressable>
       </LinearGradient>
     </View>
   );

@@ -16,7 +16,7 @@ def current_user(credentials: HTTPAuthorizationCredentials | None = Depends(bear
         if not isinstance(uid, str) or not uid or '/' in uid or len(uid) > 128:
             raise ValueError('Invalid subject')
         if not claims.get('email_verified'):
-            raise HTTPException(403, 'Verify your email before using cloud groups and preparation. Check your inbox, then retry the connection.')
+            raise HTTPException(403, 'Verify your email before using shared groups, reviews and preparation. Check your inbox, then retry the connection.')
     except HTTPException:
         raise
     except Exception:

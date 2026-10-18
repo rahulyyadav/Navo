@@ -20,7 +20,10 @@ from .token_factory import configured as ai_configured
 from .planner import ROUTES, generate, route_by_id
 from .schemas import GroupCreate, InvitationCreate, InvitationResponse, TextMessage, Position, AlertCreate, AlertAction, Onboarding, PlanRequest, DeviceToken, JoinLink, JoinDecision
 
+from .reviews import router as reviews_router
+
 app = FastAPI(title='Navo API', version='1.0.0')
+app.include_router(reviews_router)
 app.add_middleware(RequestBoundary)
 app.add_middleware(CORSMiddleware, allow_origins=[v.strip() for v in settings().cors_origins.split(',') if v.strip()], allow_credentials=False, allow_methods=['GET','POST','PUT','DELETE'], allow_headers=['Authorization','Content-Type'])
 @app.exception_handler(Exception)
@@ -62,7 +65,7 @@ def member_record(uid, person):
 @app.get('/health')
 def health():
     # Liveness must not wait on network credentials or Firestore.
-    return {'status': 'ok', 'readinessPath': '/ready', 'aiConfigured': ai_configured(), 'demoEnabled': settings().enable_demo}
+    return {'status': 'ok', 'readinessPath': '/ready', 'trailReviewsEnabled': True, 'aiConfigured': ai_configured(), 'demoEnabled': settings().enable_demo}
 
 @app.get('/ready')
 def readiness():

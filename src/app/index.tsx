@@ -177,6 +177,7 @@ export default function OnboardingScreen() {
           </View>
         </View>
         <Button label="Explore & plan without signing in" variant="quiet" onPress={() => router.push('/trek-plan')} />
+          <Button label="Browse Nepal trek overviews" variant="quiet" onPress={() => router.push('/trails')} />
       </SafeAreaView>
     </ImageBackground>
     </Animated.View>

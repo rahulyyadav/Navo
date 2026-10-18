@@ -10,7 +10,7 @@ export function useTripLibrary() {
   const sequence = useRef(0);
   const reload = useCallback(async () => {
     const version = ++sequence.current;
-    try { const data = await readLibrary(userId); if (sequence.current === version) setState({ owner: userId, data, loaded: true, error: '' }); }
+    try { const data = userId ? await readLibrary(userId) : emptyLibrary(); if (sequence.current === version) setState({ owner: userId, data, loaded: true, error: '' }); }
     catch { if (sequence.current === version) setState({ owner: userId, data: emptyLibrary(), loaded: false, error: 'Could not open saved trips. Your existing data is unchanged. Retry when device storage is available.' }); }
   }, [userId]);
   useFocusEffect(useCallback(() => { void reload(); return () => { sequence.current++; }; }, [reload]));
