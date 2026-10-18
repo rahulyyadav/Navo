@@ -56,3 +56,15 @@ test('elevation noise, uncertain altitude and stationary fixes do not invent a c
   assert.equal(elevationTrend(climbing.map(f => ({ ...f, altitudeAccuracy: 60 }))),0);
   assert.equal(elevationTrend(climbing.map(f => ({ ...f, altitude: null }))),0);
 });
+
+test('adjacent vertex ties cannot hide an overlapping return leg', () => {
+  const loop = buildRoute([p(28,84), p(28.005,84), p(28.01,84), p(28.01,84.01), p(28,84), p(28.01,84)]);
+  assert.equal(matchRoute(loop, fix(28.005,84)).confident, false);
+  assert.equal(matchRoute(loop, fix(28.005,84), 550).confident, false);
+  assert.equal(matchRoute(route, fix(28.01,84)).confident, true);
+});
+test('matching never considers invalid accuracy trustworthy', () => {
+  for (const accuracy of [-1, NaN, Infinity, null]) {
+    assert.equal(matchRoute(route, { ...fix(28.005,84), accuracy }).confident, false);
+  }
+});

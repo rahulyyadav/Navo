@@ -1,0 +1,179 @@
+[
+  {
+    "target": "alltrails",
+    "scope": "Public website HTML and selected referenced JavaScript; not native mobile application",
+    "evidence_id": "ev_b5961e115722c40ad2a03b6d5fd8ea29122b122faeae1c1339de5d12aa9b9738",
+    "root_artifact_sha256": "7dd68152aa8fb0c09ccc7301a79b05a0e04a779f178abbd43bf488aab3387390",
+    "statistics": {
+      "relevant_files": 3,
+      "nested_asar_containers": 0,
+      "text_bytes_read": 535585,
+      "invalid_utf8_files": 0,
+      "parsed_javascript_files": 2,
+      "visited_ast_nodes": 15045,
+      "findings": 51,
+      "modules": 18,
+      "parse_failures": 0
+    },
+    "limitations": [
+      "CommonJS and ESM binding relationships were recovered from inert syntax and resolved only within the inventoried artifact container.",
+      "Graph coverage is incomplete; unavailable facts remain explicit and must not be read as absence.",
+      "JavaScript and HTML were parsed as inert text; bundle bootstrap code was never executed.",
+      "Static imports, entrypoints, workers, endpoints, and storage relationships do not prove runtime execution.",
+      "Static paths and relationships may remain unresolved when expressions are dynamic or obfuscated.",
+      "Webpack/Rspack factories were recovered from AST literals; REA did not invoke push handlers or bundle bootstrap code.",
+      "index.html has 10 inline JavaScript bodies starting at lines 1, 1, 1, 1, 1, 1, 2, 2, 2, 2 that were not analyzed; endpoints, storage, imports and other facts in them are absent from the evidence."
+    ],
+    "semantic_coverage": {
+      "status": "partial",
+      "limits": [
+        {
+          "name": "semantic_graph_file_node_ceiling",
+          "value": 1500,
+          "unit": "items"
+        },
+        {
+          "name": "semantic_graph_node_ceiling",
+          "value": 3000,
+          "unit": "items"
+        }
+      ]
+    }
+  },
+  {
+    "target": "komoot",
+    "scope": "Public website HTML and selected referenced JavaScript; not native mobile application",
+    "evidence_id": "ev_a5c7f5e163c1c519de864889dff9b0e3724bcea1b3df79de0cdbf9d496ae604c",
+    "root_artifact_sha256": "a15f78e5a22eb80a4d807b628222957e923f3b7f41cce25a467dce0afa526a66",
+    "statistics": {
+      "relevant_files": 2,
+      "nested_asar_containers": 0,
+      "text_bytes_read": 2990769,
+      "invalid_utf8_files": 0,
+      "parsed_javascript_files": 1,
+      "visited_ast_nodes": 615697,
+      "findings": 6079,
+      "modules": 1812,
+      "parse_failures": 0
+    },
+    "limitations": [
+      "CommonJS and ESM binding relationships were recovered from inert syntax and resolved only within the inventoried artifact container.",
+      "Graph coverage is incomplete; unavailable facts remain explicit and must not be read as absence.",
+      "JavaScript and HTML were parsed as inert text; bundle bootstrap code was never executed.",
+      "Resource constraint during analyze_javascript_application: Expanded application relationships for main.d2042b4cd1a20ff9.js exceed the parent's result budget; complete static facts were retained on the file node",
+      "Static imports, entrypoints, workers, endpoints, and storage relationships do not prove runtime execution.",
+      "Static paths and relationships may remain unresolved when expressions are dynamic or obfuscated.",
+      "Webpack/Rspack factories were recovered from AST literals; REA did not invoke push handlers or bundle bootstrap code.",
+      "index.html has 3 inline JavaScript bodies starting at lines 27, 32, 37 that were not analyzed; endpoints, storage, imports and other facts in them are absent from the evidence."
+    ],
+    "semantic_coverage": {
+      "status": "partial",
+      "limits": [
+        {
+          "name": "semantic_graph_file_node_ceiling",
+          "value": 1500,
+          "unit": "items"
+        },
+        {
+          "name": "semantic_graph_node_ceiling",
+          "value": 3000,
+          "unit": "items"
+        }
+      ]
+    }
+  },
+  {
+    "target": "gaia",
+    "scope": "Public website HTML and selected referenced JavaScript; not native mobile application",
+    "evidence_id": "ev_5480d84df7d41928da75a2c70e6c62e42ef2f8b520ef5ca8028f35e770d0d1ea",
+    "root_artifact_sha256": "08b2f994ea11f6e53e459999fcda79985a90bcf170967e0dab062d6b8d5553d3",
+    "statistics": {
+      "relevant_files": 3,
+      "nested_asar_containers": 0,
+      "text_bytes_read": 54356,
+      "invalid_utf8_files": 0,
+      "parsed_javascript_files": 2,
+      "visited_ast_nodes": 4916,
+      "findings": 240,
+      "modules": 0,
+      "parse_failures": 0
+    },
+    "limitations": [
+      "CommonJS and ESM binding relationships were recovered from inert syntax and resolved only within the inventoried artifact container.",
+      "Graph coverage is incomplete; unavailable facts remain explicit and must not be read as absence.",
+      "JavaScript and HTML were parsed as inert text; bundle bootstrap code was never executed.",
+      "Static imports, entrypoints, workers, endpoints, and storage relationships do not prove runtime execution.",
+      "Static paths and relationships may remain unresolved when expressions are dynamic or obfuscated.",
+      "Webpack/Rspack factories were recovered from AST literals; REA did not invoke push handlers or bundle bootstrap code.",
+      "index.html has 9 inline JavaScript bodies starting at lines 13, 14, 34, 42, 69, 232, 289, 328, 410 that were not analyzed; endpoints, storage, imports and other facts in them are absent from the evidence."
+    ],
+    "semantic_coverage": {
+      "status": "partial",
+      "limits": [
+        {
+          "name": "semantic_graph_file_node_ceiling",
+          "value": 1500,
+          "unit": "items"
+        },
+        {
+          "name": "semantic_graph_node_ceiling",
+          "value": 3000,
+          "unit": "items"
+        }
+      ]
+    }
+  },
+  {
+    "target": "organicmaps",
+    "scope": "Public website HTML and selected referenced JavaScript; not native mobile application",
+    "evidence_id": "ev_31de83aa40220ca3feb608bbcf2e8ba157ef0432e3e1fa73868f4a46c172fe40",
+    "root_artifact_sha256": "cb5bbad004bcb2a149b4477e212517773b66a1290465a6d7ecee3ee01ef792cf",
+    "statistics": {
+      "relevant_files": 1,
+      "nested_asar_containers": 0,
+      "text_bytes_read": 41964,
+      "invalid_utf8_files": 0,
+      "parsed_javascript_files": 0,
+      "visited_ast_nodes": 0,
+      "findings": 4,
+      "modules": 0,
+      "parse_failures": 0
+    },
+    "limitations": [
+      "CommonJS and ESM binding relationships were recovered from inert syntax and resolved only within the inventoried artifact container.",
+      "JavaScript and HTML were parsed as inert text; bundle bootstrap code was never executed.",
+      "Static imports, entrypoints, workers, endpoints, and storage relationships do not prove runtime execution.",
+      "Static paths and relationships may remain unresolved when expressions are dynamic or obfuscated.",
+      "Webpack/Rspack factories were recovered from AST literals; REA did not invoke push handlers or bundle bootstrap code."
+    ],
+    "semantic_coverage": {
+      "status": "unknown",
+      "limits": []
+    }
+  },
+  {
+    "target": "wikiloc",
+    "scope": "Two public search JavaScript files discovered in normally loaded browser page. Initial command-line homepage request returned HTTP 403.",
+    "evidence_id": "ev_bf704b5e5dfff9649b5ff31f20560f3f585319542547307932553fdf09291c76",
+    "root_artifact_sha256": "b324f46c8b96c7aac45dcd1d932328e9c6162db2cabed5c0942abf91128b0fbf",
+    "statistics": {
+      "relevant_files": 2,
+      "nested_asar_containers": 0,
+      "text_bytes_read": 31103,
+      "invalid_utf8_files": 0,
+      "parsed_javascript_files": 2,
+      "visited_ast_nodes": 4504,
+      "findings": 6,
+      "modules": 0,
+      "parse_failures": 0
+    },
+    "limitations": [
+      "CommonJS and ESM binding relationships were recovered from inert syntax and resolved only within the inventoried artifact container.",
+      "Graph coverage is incomplete; unavailable facts remain explicit and must not be read as absence.",
+      "JavaScript and HTML were parsed as inert text; bundle bootstrap code was never executed.",
+      "Static imports, entrypoints, workers, endpoints, and storage relationships do not prove runtime execution.",
+      "Static paths and relationships may remain unresolved when expressions are dynamic or obfuscated.",
+      "Webpack/Rspack factories were recovered from AST literals; REA did not invoke push handlers or bundle bootstrap code."
+    ]
+  }
+]

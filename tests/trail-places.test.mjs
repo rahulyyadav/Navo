@@ -21,7 +21,7 @@ test('trail facilities are near the actual route and private facilities are excl
  assert.ok(points.every(p=>p.source.startsWith('https://www.openstreetmap.org/node/')));
 });
 test('missing map data does not invent facilities or imply safety',()=>{
- assert.throws(()=>decodeTrailPlaces({},route));assert.deepEqual(decodeTrailPlaces({elements:[]},route),[]);
+ assert.throws(()=>decodeTrailPlaces({},route));assert.throws(()=>decodeTrailPlaces({elements:[],remark:'runtime error: Query timed out'},route));assert.deepEqual(decodeTrailPlaces({elements:[]},route),[]);
 });
 const navigation=compile('../src/services/trekking/navigation.ts');
 const {hikingReferences,nepalHikingPlaces}=compile('../src/services/places/hiking-references.ts',{'../trekking/navigation':navigation});

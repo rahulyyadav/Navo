@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '@/components/Typography';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -25,9 +25,11 @@ export default function GroupScreen() {
   const alerts = useGroupFeed<CloudAlert>(gid, 'alerts');
   const invitations = useGroupFeed<{ id: string; inviteeName?: string; status: string }>(group?.ownerId === userId ? gid : '', 'invitations');
   const { locate, state: gpsState } = useMyLocation();
-  const [tab, setTab] = useState(initialTab === 'Chat' ? 'Chat' : 'Crew'); const [email, setEmail] = useState(''); const [message, setMessage] = useState('');
+  const tabKey = `${gid}:${initialTab ?? ''}`;
+  const [selection, setSelection] = useState({key:tabKey, tab:initialTab === 'Chat' ? 'Chat' : 'Crew'});
+  const tab = selection.key === tabKey ? selection.tab : initialTab === 'Chat' ? 'Chat' : 'Crew';
+  const setTab = (name:string) => setSelection({key:tabKey,tab:name}); const [email, setEmail] = useState(''); const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(''); const [error, setError] = useState(''); const [success, setSuccess] = useState('');
-  useEffect(() => { if (initialTab === 'Chat') setTab('Chat'); }, [initialTab, gid]);
   const lock = useRef(false); const pending = useRef({ text: '', id: requestId() }); const list = useRef<ScrollView>(null);
   async function action(name: string, run: () => Promise<void>) {
     if (lock.current) return; lock.current = true; setBusy(name); setError(''); setSuccess('');

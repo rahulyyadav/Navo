@@ -231,11 +231,19 @@ export const nepalHikingPlaces: (Place & {aliases:string[]})[] = [
     ]
   }
 ];
-const normalize = (q:string) => q.toLowerCase().replace(/\b(hikes?|hiking|treks?|trekking|hills?|mountains?|to|at|in|of|nepal)\b/g, '').replace(/[^a-z\u0900-\u097f]/g, '');
+const words = (q: string) => q.normalize('NFKC').toLowerCase()
+  .replace(/\b(hikes?|hiking|treks?|trekking|hills?|mountains?|to|at|in|of|nepal)\b/g, ' ')
+  .replace(/[^a-z\u0900-\u097f]+/g, ' ').trim().split(/\s+/).filter(Boolean);
+const normalize = (q: string) => words(q).join('');
 export function hikingReferences(query: string, near?: Coordinate): Place[] {
-  const q=normalize(query);
-  if(q.length<2 || q==='pulchowk')return [];
-  const regional = ['kathmandu','kathmanduvalley','ktm','pokhara','annapurna'].includes(q);
-  return nepalHikingPlaces.filter(p=>regional ? normalize(p.region ?? '').includes(q==='ktm'?'kathmandu':q) : p.aliases.some(alias=>normalize(alias).startsWith(q)))
-    .map(p=>({...p,...(near?{distanceM:distance(near,p)}:{})}));
+  const q = normalize(query);
+  if (q.length < 2 || q === 'pulchowk') return [];
+  const tokens = words(query).map(token => token === 'ktm' ? 'kathmandu' : token);
+  return nepalHikingPlaces.filter(p => {
+    // An alias prefix supports autocomplete and spelling variants. For longer
+    // queries, require every word to match the same landmark or its region.
+    if (p.aliases.some(alias => normalize(alias).startsWith(q))) return true;
+    const candidate = [...words(p.name), ...words(p.region ?? ''), ...p.aliases.flatMap(words)];
+    return tokens.every(token => candidate.some(word => word.startsWith(token)));
+  }).map(p => ({...p, ...(near ? {distanceM: distance(near, p)} : {})}));
 }

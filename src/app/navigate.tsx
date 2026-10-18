@@ -1,3 +1,4 @@
+import { FullRouteMap } from '@/components/FullRouteMap';
 import { openLocationSettings } from "@/lib/location-settings";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -9,6 +10,7 @@ import {
   View,
 } from "react-native";
 import {
+  Stack,
   router,
   useFocusEffect,
   useLocalSearchParams,
@@ -61,7 +63,7 @@ import {
 } from "@/services/routing/progress";
 import {
   calculateWalkingRoutes,
-  plannedDuration,
+  remainingHikingDuration,
   routeDuration,
 } from "@/services/routing/walking";
 import { recordedSegments } from "@/services/routing/recorded-path";
@@ -139,6 +141,7 @@ function LiveNavigation({
   initial: RoutePlan;
   draft: NavigationDraft | null;
 }) {
+  const { map: mapMode } = useLocalSearchParams<{map?:string}>();
   const { email } = useNavo();
   const cloud = useCloud();
   const [sharingCrew, setSharingCrew] = useState("");
@@ -336,7 +339,7 @@ function LiveNavigation({
     [plan.route, location.fix, fresh],
   );
   const remainingS = progress?.matched
-    ? plannedDuration(plan.route, plan.pace) * (1 - (progress.ratio ?? 0))
+    ? remainingHikingDuration(plan.route, plan.pace, progress.ratio)
     : null;
   const eta =
     remainingS === null
@@ -391,6 +394,12 @@ function LiveNavigation({
     since.current = null;
     setOffRoute(false);
     setPhase("active");
+    router.setParams({map:"full"});
+  }
+  function pause() {
+    checkpoint();
+    setPhase("paused");
+    track.current = { ...track.current, last: null };
   }
   function finish() {
     pending.current?.abort();
@@ -525,9 +534,39 @@ function LiveNavigation({
       if (alive.current) setBusy(false);
     }
   }
+  if (mapMode === 'full' && phase !== 'ended' && !leavePrompt && !endConfirm) {
+    const instruction = progress?.matched && progress.next
+      ? `In ${Math.round(progress.nextDistanceM ?? 0)} m · ${progress.next.text}`
+      : 'Route position uncertain · check the mapped line and local signs';
+    const mapStatus = phase === 'paused'
+      ? 'Tracking paused. Resume when ready; paused gaps are excluded.'
+      : offRoute
+        ? 'Off route. Open trek controls to recalculate.'
+        : fresh
+          ? `${progress?.remainingM == null ? 'Distance unavailable' : `${(progress.remainingM / 1000).toFixed(2)} km remaining`} · GPS ±${Math.round(location.fix?.accuracy ?? 0)} m`
+          : 'Waiting for a fresh GPS position. Keep this screen open.';
+    return <>
+      <Stack.Screen options={{headerShown:false}} />
+      <FullRouteMap
+        sessionAction={phase === 'active' ? {label:'Pause trek',onPress:pause} : phase === 'paused' ? {label:'Resume trek',onPress:start} : undefined}
+        onEnd={phase === 'active' || phase === 'paused' ? () => setEndConfirm(true) : undefined}
+        offline={offline || sketch}
+        route={plan.route}
+        title={plan.name}
+        subtitle={phase === 'active' ? instruction : `GPS ${phase}`}
+        status={error || mapStatus}
+        actionLabel="Trek controls & trip information"
+        onAction={() => router.setParams({map:''})}
+        onClose={() => router.setParams({map:''})}
+        map={{region:mapRegion,regionNonce:mapNonce,selectedId:null,onSelectTrek:()=>undefined,myCoords:fresh?location.fix:null,followUser:follow&&fresh,walkingRoutes:mapRoutes,walkingRouteId:plan.route.id,endpoints:mapEndpoints}}
+      />
+    </>;
+  }
   return (
     <Backdrop>
+      <Stack.Screen options={{headerShown:true}} />
       <ScrollView contentContainerStyle={[styles.page, page]}>
+        {phase!=="ended" && <Button label="Open full-screen navigation" onPress={()=>router.setParams({map:"full"})} />}
         <Heading
           title={phase === "ended" ? "Your hike summary" : plan.name}
           subtitle={
@@ -667,10 +706,10 @@ function LiveNavigation({
                 {measured.samples} usable samples
               </Text>
               <Text style={styles.copy}>
-                Elapsed {activeTime(seconds)} · estimated arrival {eta}
+                Elapsed {activeTime(seconds)}
                 {remainingS === null
-                  ? ""
-                  : ` · ${routeDuration(remainingS)} remaining`}
+                  ? " · Hiking arrival estimate unavailable: usable progress and terrain data are required."
+                  : ` · Estimated arrival ${eta} · ${routeDuration(remainingS)} remaining (excludes breaks)`}
               </Text>
               <Text style={styles.copy}>
                 {fresh
@@ -708,7 +747,7 @@ function LiveNavigation({
                   </Text>
                 )}
               {progress?.matched && progress.next && (
-                <Text style={styles.title}>{progress.next.text}</Text>
+                <Text style={styles.title}>In {Math.round(progress.nextDistanceM ?? 0)} m · {progress.next.text}</Text>
               )}
               {progress?.ratio !== null && progress?.ratio !== undefined && (
                 <Text style={styles.copy}>
@@ -815,11 +854,7 @@ function LiveNavigation({
             <Button
               label="Pause Trek"
               variant="outline"
-              onPress={() => {
-                checkpoint();
-                setPhase("paused");
-                track.current = { ...track.current, last: null };
-              }}
+              onPress={pause}
             />
           </>
         )}
@@ -851,17 +886,16 @@ function LiveNavigation({
           />
         )}
         {endConfirm && (
-          <Card>
-            <Text style={styles.copy}>
-              End this session and review your measured summary?
-            </Text>
-            <Button label="End & review" onPress={finish} />
-            <Button
-              label="Keep trekking"
-              variant="quiet"
-              onPress={() => setEndConfirm(false)}
-            />
-          </Card>
+          <Modal visible transparent animationType="fade" onRequestClose={() => setEndConfirm(false)}>
+            <View style={{flex:1,backgroundColor:"rgba(13,20,26,.8)",justifyContent:"center",padding:24}}>
+              <Card>
+                <Text accessibilityRole="header" style={styles.title}>End this trek?</Text>
+                <Text style={styles.copy}>Review your measured summary before saving. Your recorded progress is retained.</Text>
+                <Button label="End & review" onPress={finish} />
+                <Button label="Keep trekking" variant="quiet" onPress={() => setEndConfirm(false)} />
+              </Card>
+            </View>
+          </Modal>
         )}
         {summary && (
           <Card>
