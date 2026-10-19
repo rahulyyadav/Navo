@@ -155,12 +155,12 @@ export default function MapScreen() {
               <Text style={styles.statLabel}>MAX M</Text>
             </View>
             <View style={styles.statCell}>
-              <Text style={styles.statValue}>+{Math.round(stats.ascent / 100) / 10}k</Text>
-              <Text style={styles.statLabel}>APPROX. GAIN</Text>
+              <Text style={styles.statValue}>{stats.km}</Text>
+              <Text style={styles.statLabel}>APPROX. KM</Text>
             </View>
             <View style={styles.statCell}>
-              <Text style={styles.statValue}>{stats.stops}</Text>
-              <Text style={styles.statLabel}>STOPS</Text>
+              <Text style={styles.statValue}>+{Math.round(stats.ascent / 100) / 10}k</Text>
+              <Text style={styles.statLabel}>APPROX. GAIN</Text>
             </View>
           </View>
 

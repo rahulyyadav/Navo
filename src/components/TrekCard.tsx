@@ -5,7 +5,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-na
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useReducedMotion } from './ui';
-import type { Trek } from '@/data/treks';
+import { trekStats, type Trek } from '@/data/treks';
 import { colors, radius } from '@/theme/tokens';
 
 const tone = {
@@ -42,11 +42,11 @@ export function TrekCard({ trek, onPress, compact = false }: { trek: Trek; onPre
           {imageFailed && <Text style={styles.stat}>Photo unavailable · trek details below</Text>}
           <Text style={styles.name} numberOfLines={2}>{trek.name}</Text>
           <View style={styles.stats}>
+            <Text style={styles.stat}>{trekStats(trek.route).km} km</Text>
+            <View style={styles.statDot} />
             <Text style={styles.stat}>{trek.days}</Text>
             <View style={styles.statDot} />
             <Text style={styles.stat}>{trek.maxElevation.toLocaleString()} m</Text>
-            <View style={styles.statDot} />
-            <Text style={styles.stat}>{trek.route.length} stops</Text>
           </View>
           <Text style={{ color: colors.lime, fontWeight: '700', marginTop: 10 }}>View trek →</Text>
         </View>

@@ -15,7 +15,7 @@ import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 import { Reveal, useReducedMotion } from '@/components/ui';
 import { TabIcon } from '@/components/TabIcon';
-import { treks, type Trek } from '@/data/treks';
+import { treks, trekStats, type Trek } from '@/data/treks';
 
 type Props = { name: string; unread: number; onInbox: () => void; onGroups: () => void; onPlan: () => void; onTrek: (trek: Trek) => void; onCopilot: () => void; onOffline: () => void };
 function Icon({ name }: { name: 'bell' | 'grid' | 'search' | 'filter' }) {
@@ -112,7 +112,7 @@ export function HomeScreen({ name, unread, onInbox, onGroups, onPlan, onTrek, on
           </Animated.View>
         </View>
       </Reveal> : <View style={styles.empty}><Text style={styles.sectionTitle}>No treks found</Text><Text style={styles.noticeText}>Try a different region or search.</Text></View>}
-      {seeAll && <Animated.View layout={reduced ? undefined : LinearTransition.duration(220)} style={styles.results}>{list.map(trek => <Pressable key={trek.id} accessibilityRole="button" onPress={() => onTrek(trek)} style={({ pressed }) => [styles.result, pressed && styles.pressed]}><Image source={trek.image} style={styles.thumbnail} /><View style={styles.resultCopy}><Text style={styles.resultTitle}>{trek.name}</Text><Text style={styles.noticeText}>{trek.days} · {trek.region}</Text></View><Text style={styles.openArrow}>↗</Text></Pressable>)}</Animated.View>}
+      {seeAll && <Animated.View layout={reduced ? undefined : LinearTransition.duration(220)} style={styles.results}>{list.map(trek => <Pressable key={trek.id} accessibilityRole="button" onPress={() => onTrek(trek)} style={({ pressed }) => [styles.result, pressed && styles.pressed]}><Image source={trek.image} style={styles.thumbnail} /><View style={styles.resultCopy}><Text style={styles.resultTitle}>{trek.name}</Text><Text style={styles.noticeText}>{trekStats(trek.route).km} km · {trek.days} · {trek.region}</Text></View><Text style={styles.openArrow}>↗</Text></Pressable>)}</Animated.View>}
       <View style={[styles.bottomActions, { flexWrap: 'wrap', marginTop: 24 }]}>{[['Browse trek overviews', '/trails'], ['Plan any destination', '/trek-plan'], ['Plan a day hike', '/day-hike'], ['Your trips', '/trips'], ['Record a hike', '/record-hike'], ['AI itinerary', '/copilot']].map(([label, path]) => <Pressable key={path} accessibilityRole="button" onPress={() => router.push(path as '/trails' | '/trek-plan' | '/day-hike' | '/trips' | '/record-hike' | '/copilot')} style={[styles.bottomLink, { flexBasis: '45%' }]}><Text style={styles.readyText}>{label} ↗</Text></Pressable>)}</View>
       <View style={styles.bottomActions}><Pressable accessibilityRole="button" onPress={onCopilot} style={styles.bottomLink}><Text style={styles.readyText}>AI trek copilot ↗</Text></Pressable><Pressable accessibilityRole="button" onPress={onOffline} style={styles.bottomLink}><Text style={styles.readyText}>Offline essentials ↗</Text></Pressable></View>
     </ScrollView>

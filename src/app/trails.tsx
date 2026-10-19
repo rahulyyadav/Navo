@@ -3,7 +3,7 @@ import { Image, ScrollView, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { Text } from '@/components/Typography';
 import { Backdrop, Badge, Button, Card, Chip, Field, Heading } from '@/components/ui';
-import { treks } from '@/data/treks';
+import { treks, trekMeta } from '@/data/treks';
 import { discoverTreks } from '@/services/trail-discovery';
 import { usePageLayout } from '@/hooks/usePageLayout';
 import { colors } from '@/theme/tokens';
@@ -25,7 +25,7 @@ export default function TrailDiscoveryScreen() {
     {results.map(trek=><Card key={trek.id}>
       <Image source={trek.image} accessibilityLabel={`${trek.name}, ${trek.region}`} style={styles.photo} resizeMode="cover" />
       <View style={styles.filters}><Badge label={trek.region} tone="info" /><Badge label={trek.difficulty} tone="lime" /></View>
-      <Text style={styles.title}>{trek.name}</Text><Text style={styles.copy}>{trek.days} · {trek.maxElevation.toLocaleString()} m high point</Text><Text style={styles.copy}>{trek.summary}</Text>
+      <Text style={styles.title}>{trek.name}</Text><Text style={styles.copy}>{trekMeta(trek)} · {trek.maxElevation.toLocaleString()} m high point</Text><Text style={styles.copy}>{trek.summary}</Text>
       <Button label={`Explore ${trek.name}`} variant="outline" onPress={()=>router.push({pathname:'/trek/[id]',params:{id:trek.id}})} />
     </Card>)}
   </ScrollView></Backdrop>;

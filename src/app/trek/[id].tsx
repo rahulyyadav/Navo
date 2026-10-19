@@ -106,7 +106,7 @@ export function TrekDetail({ id }: { id: string }) {
           <Reveal delay={40}>
             <View style={styles.heroCopy}>
               <View style={styles.nameRow}><Text style={styles.heroName}>{trek.name}</Text><Text style={styles.difficulty}>{trek.difficulty}</Text></View>
-              <Row gap={5}><TabIcon name="pin" color="white" size={17} /><Text style={styles.location}>{trek.region}, Nepal</Text></Row>
+              <Row gap={5}><TabIcon name="pin" color="white" size={17} /><Text style={styles.location}>{trek.region}, Nepal · {trek.routeType}</Text></Row>
             </View>
           </Reveal>
         </View>
@@ -114,8 +114,8 @@ export function TrekDetail({ id }: { id: string }) {
           <View style={{flexDirection:'row',flexWrap:'wrap',gap:8,paddingHorizontal:20,marginBottom:12}}><Chip label="About this trek" selected={false} onPress={()=>scroll.current?.scrollTo({y:detailsY.current,animated:!reduced})} /><Chip label="Reviews & conditions" selected={false} onPress={()=>scroll.current?.scrollTo({y:reviewsY.current,animated:!reduced})} /></View>
           <Reveal delay={80}><View style={styles.statsRow}>
             <OverviewStat symbol="◷" value={trek.days} label="Duration" />
+            <OverviewStat symbol="↔" value={`${stats.km} km`} label="Approx. length" />
             <OverviewStat symbol="△" value={`${trek.maxElevation.toLocaleString()} m`} label="High point" />
-            <OverviewStat symbol="⌁" value={`${stats.stops} stops`} label="Route" />
           </View></Reveal>
           <Reveal delay={120}><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gallery}>
             {gallery.map((photo, index) => <Pressable key={photo.source} accessibilityRole="button" accessibilityLabel={photo.label} accessibilityState={{ selected: selectedView === index }} onPress={() => setSelectedView(index)} style={({ pressed }) => [styles.photoCard, selectedView === index && styles.photoSelected, pressed && styles.pressed]}>
@@ -137,6 +137,9 @@ export function TrekDetail({ id }: { id: string }) {
           <Pressable accessibilityRole="button" onPress={planWalkingRoute} style={[styles.detailLink, { marginTop: 20 }]}><Text style={styles.detailLinkText}>Find a walking route</Text><TabIcon name="route" color="#E4FF89" size={22} /></Pressable>
           {isSignedIn && <Button label="Preview the approximate journey" variant="quiet" onPress={()=>router.push({pathname:'/journey',params:{trek:trek.id}})} />}
           <Text style={styles.summary}>{trek.summary}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 20, marginTop: 14 }}>
+            {trek.highlights.map(item => <Chip key={item} label={item} selected={false} onPress={() => scroll.current?.scrollTo({ y: detailsY.current, animated: !reduced })} />)}
+          </ScrollView>
           <Text style={[styles.caveat, { paddingHorizontal: 20 }]}>Planning overview only. Waypoints and durations are approximate, not a verified trail or an acclimatisation schedule.</Text>
         </Reveal>
 
