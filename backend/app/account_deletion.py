@@ -6,6 +6,7 @@ from .database import database
 
 # Every field containing an account identity in shared history.
 ERASURE_FIELDS = {
+    'trailReviews': ['authorId'], 'reviewReports': ['authorId'],
     'messages': ['senderId'], 'alerts': ['senderId'], 'checkins': ['userId'],
     'invitations': ['inviterId', 'inviteeUserId'],
     'notifications': ['senderId', 'inviterId', 'inviteeUserId'],
@@ -53,7 +54,8 @@ def process(uid):
         for collection, fields in ERASURE_FIELDS.items():
             for field in fields:
                 for snap in db.collection_group(collection).where(filter=FieldFilter(field, '==', uid)).stream():
-                    snap.reference.delete()
+                    if collection == 'trailReviews': db.recursive_delete(snap.reference)
+                    else: snap.reference.delete()
         for snap in db.collection_group('alerts').where(filter=FieldFilter('acknowledgedBy', 'array_contains', uid)).stream():
             snap.reference.update({'acknowledgedBy': firestore.ArrayRemove([uid])})
         for snap in db.collection('deviceOwners').where(filter=FieldFilter('uid', '==', uid)).stream(): snap.reference.delete()

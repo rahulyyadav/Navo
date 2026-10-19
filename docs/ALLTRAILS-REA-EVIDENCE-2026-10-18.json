@@ -1,0 +1,118 @@
+{
+  "date": "2026-10-18",
+  "target": "AllTrails public Phulchowki trail detail",
+  "publicPage": "https://www.alltrails.com/trail/nepal/bagmati-province--3/phulchowki",
+  "scriptUrl": "https://d27scpai1jcyi9.cloudfront.net/7454ca94ed332d519ef5b7580cbdcdac98d1934d/_next/static/chunks/app/%5Blocale%5D/trail/%5B%5B...slug%5D%5D/page-fce25c344cd39cf4.js",
+  "rea": {
+    "evidence_id": "ev_84a2dba177b5066fa2037235bcf86c4c05d48797e0c19591518461eb524af1f4",
+    "parent_evidence_id": "ev_119804eb9449f56e509d283810ca755d4804b857ff781879eac6bd0923a728a5",
+    "artifact": {
+      "path": "/private/tmp/navo-alltrails-detail",
+      "sha256": "843d0ebbc28c814ec93cd4228239f6e59310fc2204ae2a14db5b1e8767cead80"
+    },
+    "statistics": {
+      "relevant_files": 2,
+      "nested_asar_containers": 0,
+      "text_bytes_read": 930430,
+      "invalid_utf8_files": 0,
+      "parsed_javascript_files": 1,
+      "visited_ast_nodes": 205023,
+      "findings": 3211,
+      "modules": 709,
+      "parse_failures": 0
+    },
+    "limits": [
+      {
+        "name": "semantic_graph_file_node_ceiling",
+        "value": 6000,
+        "unit": "items"
+      },
+      {
+        "name": "semantic_graph_node_ceiling",
+        "value": 6000,
+        "unit": "items"
+      }
+    ],
+    "limitations": [
+      "Boundary extraction covers unshadowed JSON/global coercions plus parse and validation method candidates.",
+      "Caller-selected source analysis leaves 1 inventoried files outside analysis scope. Inventory identity covers the complete artifact; relationships through unselected sources remain unknown.",
+      "Child-process extraction covers asynchronous node:child_process creation, literal argv/env/stdio options, exit/error listeners, and kill signals.",
+      "CommonJS and ESM binding relationships were recovered from inert syntax and resolved only within the inventoried artifact container.",
+      "Configuration extraction covers process.env, process.argv, node:fs reads, and direct logical defaults.",
+      "Event extraction covers EventEmitter-style literal registrations, removals, and dispatch candidates; dynamic names remain unknown.",
+      "Function fingerprints are static candidates; equal digests can remain ambiguous and do not prove behavioral equivalence.",
+      "Graph coverage is incomplete; unavailable facts remain explicit and must not be read as absence.",
+      "JavaScript and HTML were parsed as inert text; bundle bootstrap code was never executed.",
+      "Local data flow does not claim control-flow-sensitive reaching definitions or arbitrary dynamic property resolution.",
+      "Promise ownership covers explicit unshadowed Promise construction, static factories, aggregation, chaining, and await syntax only.",
+      "Request extraction covers fetch, WebSocket, node:http/node:https construction, direct option fields, and exact local response consumers.",
+      "Resource extraction covers built-in filesystem/network acquisition and exact local close/destroy/end handles.",
+      "Static imports, entrypoints, workers, endpoints, and storage relationships do not prove runtime execution.",
+      "Static paths and relationships may remain unresolved when expressions are dynamic or obfuscated.",
+      "The semantic graph contains static syntax observations and conservative relationship candidates; it does not claim runtime execution.",
+      "Timer extraction covers global or node:timers scheduling and exact local-handle cancellation.",
+      "Webpack/Rspack factories were recovered from AST literals; REA did not invoke push handlers or bundle bootstrap code."
+    ]
+  },
+  "reviewTrace": {
+    "evidence_id": "ev_6ecd4061b0464a6de669ca76a4849a48e148dc8c4f41e934d2c61ce9e1fa5dc0",
+    "summary": {
+      "matched_seeds": 0,
+      "traced_nodes": 0,
+      "traced_edges": 0,
+      "terminal_paths": 0,
+      "native_handoffs": 0,
+      "observed_facts": 0,
+      "inferred_facts": 0,
+      "unknown_facts": 0,
+      "unavailable_facts": 0
+    },
+    "coverage": {
+      "status": "no-match",
+      "source_graph_status": "partial",
+      "total_seed_matches": 0
+    },
+    "limitations": [
+      "Artifact identity is unavailable for this observation.",
+      "No graph entity matched the literal seed; this is not evidence that the feature is absent.",
+      "The source application graph is incomplete; unmatched seeds and frontiers remain unknown."
+    ]
+  },
+  "internationalizationModule": {
+    "evidence_id": "ev_0955be43747381feee1bb0a2f1fb5deb965c38d84a08426cb130a4d6b87c51b6",
+    "nodeId": "jag_node_1de56b3fd56fb54afc5f36fd7049810a1389f36e90585b1461bc843a47bd4156",
+    "exports": [
+      "FormattedDate",
+      "FormattedDateParts",
+      "FormattedDateTimeRange",
+      "FormattedDisplayName",
+      "FormattedDuration",
+      "FormattedDurationParts",
+      "FormattedList",
+      "FormattedListParts",
+      "FormattedMessage",
+      "FormattedNumber",
+      "FormattedNumberParts",
+      "FormattedPlural",
+      "FormattedRelativeTime",
+      "FormattedTime",
+      "FormattedTimeParts",
+      "IntlContext",
+      "IntlProvider",
+      "InvalidConfigError",
+      "MessageFormatError",
+      "MissingDataError",
+      "MissingTranslationError",
+      "RawIntlProvider",
+      "ReactIntlError",
+      "ReactIntlErrorCode",
+      "UnsupportedFormatterError",
+      "createIntl",
+      "createIntlCache",
+      "defineMessage",
+      "defineMessages",
+      "useIntl"
+    ]
+  },
+  "scope": "Public page observation and static JavaScript only. No authenticated API or native mobile execution."
+}

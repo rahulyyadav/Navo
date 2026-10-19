@@ -96,7 +96,6 @@ function Routes() {
     <Stack.Protected guard={isSignedIn && !needsOnboarding}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: reduced ? 'none' : 'fade' }} />
       <Stack.Screen name="journey" options={{ headerShown: false, gestureEnabled: false }} />
-      <Stack.Screen name="trek/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="group/[id]" options={{ title: 'Group', headerBackTitle: 'Back' }} />
       <Stack.Screen name="group/new" options={{ title: 'New group', presentation: 'modal' }} />
       <Stack.Screen name="alert" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
@@ -113,6 +112,8 @@ function Routes() {
       <Stack.Screen name="day-hike" options={{ title: "Plan a day hike" }} />
       <Stack.Screen name="safety" options={{ title: 'Offline essentials', headerBackTitle: 'Back' }} />
     </Stack.Protected>
+    <Stack.Screen name="trails" options={{ title: "Explore Nepal" }} />
+    <Stack.Screen name="trek/[id]" options={{ headerShown: false }} />
     <Stack.Screen name="trek-plan" options={{ title: 'Plan your trek' }} />
     <Stack.Screen name="join" options={{ title: "Join a trek group" }} />
     <Stack.Screen name="privacy" options={{ title: "Privacy & data" }} />

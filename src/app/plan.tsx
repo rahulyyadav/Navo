@@ -1,3 +1,4 @@
+import { destinationForTrek } from '@/services/trail-discovery';
 import { router, useLocalSearchParams } from 'expo-router';
 import { PreparationPage } from '@/components/preparation/PreparationPage';
 import { Backdrop, Button, Heading } from '@/components/ui';
@@ -15,5 +16,5 @@ export default function PlanScreen() {
 function SelectedPreparation({ trek }: { trek: Trek }) {
   const { userId } = useNavo();
   const preparation = usePreparation(userId, trek.id);
-  return <PreparationPage {...preparation} trek={trek} onChange={preparation.change} onRetry={() => void preparation.retry()} onBack={() => router.back()} onStart={() => router.push({ pathname: '/journey', params: { trek: trek.id } })} />;
+  return <PreparationPage {...preparation} trek={trek} onChange={preparation.change} onRetry={() => void preparation.retry()} onBack={() => router.back()} onStart={() => {const destination=destinationForTrek(trek);router.push({pathname:'/trek-plan',params:destination?{destination:JSON.stringify(destination)}:{}});}} />;
 }
