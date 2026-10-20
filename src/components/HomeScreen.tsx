@@ -1,21 +1,17 @@
-import { PlaceSearch } from '@/components/PlaceSearch';
-import { useNavo } from '@/context/NavoContext';
-import { readAdventures, rememberPlace } from '@/lib/adventure-store';
-import type { Place } from '@/services/places/types';
 import { colors } from '@/theme/tokens';
 import { useTripLibrary } from '@/hooks/useTripLibrary';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { AppState, Image, PanResponder, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Text } from '@/components/Typography';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 import { Reveal, useReducedMotion } from '@/components/ui';
 import { TabIcon } from '@/components/TabIcon';
-import { treks, trekStats, type Trek } from '@/data/treks';
+import { treks, type Trek } from '@/data/treks';
 
 type Props = { name: string; unread: number; onInbox: () => void; onGroups: () => void; onPlan: () => void; onTrek: (trek: Trek) => void; onCopilot: () => void; onOffline: () => void };
 function Icon({ name }: { name: 'bell' | 'grid' | 'search' | 'filter' }) {
@@ -27,31 +23,26 @@ export function HomeScreen({ name, unread, onInbox, onGroups, onPlan, onTrek, on
   const library = useTripLibrary();
   const [difficulty, setDifficulty] = useState('Any pace');
   const [savedOnly, setSavedOnly] = useState(false);
-  const { userId } = useNavo();
-  const [recent, setRecent] = useState<Place[]>([]);
-  useEffect(() => { let alive = true; if (userId) void readAdventures(userId).then(v => { if (alive) setRecent(v.recent); }).catch(() => undefined); return () => { alive = false; }; }, [userId]);
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const reduced = useReducedMotion();
-  const [searchOpen, setSearchOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [search, setSearch] = useState('');
   const [region, setRegion] = useState('All Nepal');
   const [mode, setMode] = useState<'treks' | 'groups'>('treks');
   const [selected, setSelected] = useState(0);
   const [seeAll, setSeeAll] = useState(false);
   const [rotating, setRotating] = useState(true);
   const [failedImageId, setFailedImageId] = useState('');
-  const list = treks.filter(trek => (region === 'All Nepal' || trek.region === region) && (difficulty === 'Any pace' || trek.difficulty === difficulty) && (!savedOnly || library.data.savedTrekIds.includes(trek.id)) && `${trek.name} ${trek.region} ${trek.difficulty}`.toLowerCase().includes(search.toLowerCase().trim()));
+  const list = treks.filter(trek => (region === 'All Nepal' || trek.region === region) && (difficulty === 'Any pace' || trek.difficulty === difficulty) && (!savedOnly || library.data.savedTrekIds.includes(trek.id)));
   const featured = list[selected % Math.max(list.length, 1)];
   useFocusEffect(useCallback(() => {
-    if (reduced || !rotating || searchOpen || filterOpen || seeAll || list.length < 2) return;
+    if (reduced || !rotating || filterOpen || seeAll || list.length < 2) return;
     let timer: ReturnType<typeof setInterval> | undefined;
     const stop = () => { if (timer) clearInterval(timer); timer = undefined; };
     const start = () => { stop(); if (AppState.currentState === 'active') timer = setInterval(() => setSelected(value => (value + 1) % list.length), 8000); };
     start(); const subscription = AppState.addEventListener('change', start);
     return () => { stop(); subscription.remove(); };
-  }, [reduced, rotating, searchOpen, filterOpen, seeAll, list.length]));
+  }, [reduced, rotating, filterOpen, seeAll, list.length]));
   const swipe = useMemo(() => PanResponder.create({
     onMoveShouldSetPanResponder: (_, gesture) => list.length > 1 && Math.abs(gesture.dx) > 18 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.5,
     onPanResponderRelease: (_, gesture) => {
@@ -76,7 +67,7 @@ export function HomeScreen({ name, unread, onInbox, onGroups, onPlan, onTrek, on
           <Pressable accessibilityRole="button" accessibilityLabel="Open trek groups" onPress={onGroups} style={({ pressed }) => [styles.circle, pressed && styles.pressed]}><Icon name="grid" /></Pressable>
         </View>
       </Reveal>
-      <Reveal delay={50} distance={10}><Pressable accessibilityRole="button" accessibilityLabel="Search any hike, hill or destination" accessibilityState={{ expanded: searchOpen }} onPress={() => { setSearchOpen(value => !value); setSearch(''); }} style={({ pressed }) => [styles.placeSearchButton, pressed && styles.pressed]}><Icon name="search" /><Text style={styles.placeSearchLabel}>{searchOpen ? 'Close destination search' : 'Search hikes, hills & places'}</Text><Text style={styles.placeSearchLabel}>↗</Text></Pressable></Reveal>
+      <Reveal delay={50} distance={10}><Pressable accessibilityRole="button" accessibilityLabel="Search any hike, hill or destination" onPress={() => router.push('/trails')} style={({ pressed }) => [styles.placeSearchButton, pressed && styles.pressed]}><Icon name="search" /><Text style={styles.placeSearchLabel}>Search hikes, hills & places</Text><Text style={styles.placeSearchLabel}>↗</Text></Pressable></Reveal>
       <Reveal delay={70} distance={12}>
         <View style={styles.controls}>
 
@@ -87,7 +78,6 @@ export function HomeScreen({ name, unread, onInbox, onGroups, onPlan, onTrek, on
           </View>
         </View>
       </Reveal>
-      {searchOpen && <Animated.View entering={reduced ? undefined : FadeInDown.duration(180)} exiting={reduced ? undefined : FadeOut.duration(120)} style={{ marginTop: 16 }}><PlaceSearch autoFocus recent={recent} onSelect={place => { setSearchOpen(false); if(userId) void rememberPlace(userId,place).catch(()=>undefined); router.push({ pathname: '/trek-plan', params: { destination: JSON.stringify(place) } }); }} /></Animated.View>}
       {filterOpen && <Animated.View entering={reduced ? undefined : FadeInDown.duration(180)}><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>{regions.map(item => <Pressable key={item} accessibilityRole="button" accessibilityState={{ selected: region === item }} onPress={() => { setRegion(item); setSelected(0); }} style={[styles.filter, region === item && styles.segmentActive]}><Text style={[styles.segmentText, region === item && styles.segmentTextActive]}>{item}</Text></Pressable>)}</ScrollView></Animated.View>}
       {filterOpen && <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>{['Any pace', 'Moderate', 'Challenging', 'Strenuous'].map(value => <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: difficulty === value }} style={[styles.filter, difficulty === value && styles.segmentActive]} onPress={() => { setDifficulty(value); setSelected(0); }}><Text style={[styles.segmentText, difficulty === value && styles.segmentTextActive]}>{value}</Text></Pressable>)}<Pressable accessibilityRole="button" accessibilityState={{ selected: savedOnly }} style={[styles.filter, savedOnly && styles.segmentActive]} onPress={() => { setSavedOnly(!savedOnly); setSelected(0); }}><Text style={[styles.segmentText, savedOnly && styles.segmentTextActive]}>Saved only</Text></Pressable></ScrollView>}
       <Reveal delay={120} distance={12}>
@@ -112,7 +102,7 @@ export function HomeScreen({ name, unread, onInbox, onGroups, onPlan, onTrek, on
           </Animated.View>
         </View>
       </Reveal> : <View style={styles.empty}><Text style={styles.sectionTitle}>No treks found</Text><Text style={styles.noticeText}>Try a different region or search.</Text></View>}
-      {seeAll && <Animated.View layout={reduced ? undefined : LinearTransition.duration(220)} style={styles.results}>{list.map(trek => <Pressable key={trek.id} accessibilityRole="button" onPress={() => onTrek(trek)} style={({ pressed }) => [styles.result, pressed && styles.pressed]}><Image source={trek.image} style={styles.thumbnail} /><View style={styles.resultCopy}><Text style={styles.resultTitle}>{trek.name}</Text><Text style={styles.noticeText}>{trekStats(trek.route).km} km · {trek.days} · {trek.region}</Text></View><Text style={styles.openArrow}>↗</Text></Pressable>)}</Animated.View>}
+      {seeAll && <Animated.View layout={reduced ? undefined : LinearTransition.duration(220)} style={styles.results}>{list.map(trek => <Pressable key={trek.id} accessibilityRole="button" onPress={() => onTrek(trek)} style={({ pressed }) => [styles.result, pressed && styles.pressed]}><Image source={trek.image} style={styles.thumbnail} /><View style={styles.resultCopy}><Text style={styles.resultTitle}>{trek.name}</Text><Text style={styles.noticeText}>{trek.days} suggested · {trek.region} · distance unverified</Text></View><Text style={styles.openArrow}>↗</Text></Pressable>)}</Animated.View>}
       <View style={[styles.bottomActions, { flexWrap: 'wrap', marginTop: 24 }]}>{[['Browse trek overviews', '/trails'], ['Plan any destination', '/trek-plan'], ['Plan a day hike', '/day-hike'], ['Your trips', '/trips'], ['Record a hike', '/record-hike'], ['AI itinerary', '/copilot']].map(([label, path]) => <Pressable key={path} accessibilityRole="button" onPress={() => router.push(path as '/trails' | '/trek-plan' | '/day-hike' | '/trips' | '/record-hike' | '/copilot')} style={[styles.bottomLink, { flexBasis: '45%' }]}><Text style={styles.readyText}>{label} ↗</Text></Pressable>)}</View>
       <View style={styles.bottomActions}><Pressable accessibilityRole="button" onPress={onCopilot} style={styles.bottomLink}><Text style={styles.readyText}>AI trek copilot ↗</Text></Pressable><Pressable accessibilityRole="button" onPress={onOffline} style={styles.bottomLink}><Text style={styles.readyText}>Offline essentials ↗</Text></Pressable></View>
     </ScrollView>

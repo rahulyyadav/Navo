@@ -18,9 +18,11 @@ const suggestions = [
   { text: 'Plan a gentle first trek', hint: 'Lower altitude, shorter walking days' },
 ];
 const badgeTone: Record<AiStatus, 'neutral' | 'lime' | 'warning' | 'danger'> = {
+  'storage-unavailable': 'danger',
   checking: 'neutral', online: 'lime', 'model-missing': 'warning', unreachable: 'danger', unconfigured: 'danger',
 };
 const noticeTone: Record<AiStatus, 'info' | 'success' | 'warning' | 'danger'> = {
+  'storage-unavailable': 'danger',
   checking: 'info', online: 'success', 'model-missing': 'warning', unreachable: 'danger', unconfigured: 'danger',
 };
 const development = typeof __DEV__ !== 'undefined' && __DEV__;
@@ -72,9 +74,9 @@ export function AIChatPage({ status, retry, request }: Props) {
         <View style={styles.headerCopy}>
           <Text style={styles.title}>Navo AI</Text>
           <Text style={styles.subtitle}>Your mountain companion</Text>
+          <View style={{alignSelf:'flex-start',marginTop:8,maxWidth:'100%'}}><Badge label={copy.label.toUpperCase()} tone={badgeTone[status]} /></View>
         </View>
         <View style={styles.headerControls}>
-          <Badge label={copy.label.toUpperCase()} tone={badgeTone[status]} />
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Start a new chat"
@@ -101,7 +103,7 @@ export function AIChatPage({ status, retry, request }: Props) {
         </Card>
       </View>}
 
-      <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.conversation} onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: !reduced })}>
+      <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.conversation} onContentSizeChange={() => { if (messages.length || pending) scroll.current?.scrollToEnd({ animated: !reduced }); }}>
         {!messages.length && !pending && <Reveal><View style={styles.welcome}>
           <Text style={styles.welcomeTitle}>Where will we go?</Text>
           <Text style={styles.welcomeCopy}>Find your trail, prepare your pack, or talk through a trek. Let’s take it one step at a time.</Text>
@@ -138,7 +140,7 @@ export function AIChatPage({ status, retry, request }: Props) {
           </Animated.View>;
         })}
 
-        {pending && <>
+        {Boolean(pending) && <>
           <View style={[styles.bubble, styles.userBubble]}>
             <Text style={[styles.sender, styles.userSender]}>YOU</Text>
             <Text style={[styles.message, styles.userMessage]}>{pending}</Text>

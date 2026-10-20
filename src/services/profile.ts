@@ -1,5 +1,6 @@
 import { dropRaw, readJSON, writeJSON } from '@/lib/storage';
 import type { OnboardingAnswers, Profile } from '@/types/navo';
+import { validOnboarding } from './onboarding-state';
 
 const profileKey = (userId: string) => `profile:${userId}`;
 const onboardingKey = (userId: string) => `onboarding:${userId}`;
@@ -20,7 +21,8 @@ export function splitName(fullName: string) {
 }
 
 export async function loadProfile(userId: string): Promise<Profile | null> {
-  return readJSON<Profile>(profileKey(userId));
+  const value = await readJSON<Profile>(profileKey(userId));
+  return value?.id === userId && typeof value.fullName === 'string' ? value : null;
 }
 
 export async function saveProfile(profile: Profile): Promise<void> {
@@ -29,7 +31,8 @@ export async function saveProfile(profile: Profile): Promise<void> {
 
 export async function loadOnboarding(userId: string): Promise<OnboardingAnswers> {
   const stored = await readJSON<OnboardingAnswers>(onboardingKey(userId));
-  return stored ? { ...emptyOnboarding, ...stored } : { ...emptyOnboarding };
+  const restored = stored ? { ...emptyOnboarding, ...stored } : null;
+  return validOnboarding(restored) ? restored : { ...emptyOnboarding };
 }
 
 export async function saveOnboarding(userId: string, answers: OnboardingAnswers): Promise<void> {
