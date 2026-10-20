@@ -65,6 +65,8 @@ function selectedPlace(raw: unknown): Place | null {
       p.name.length <= 200 &&
       typeof p?.id === "string" &&
       typeof p?.fullName === "string" &&
+      typeof p?.type === "string" &&
+      (p?.provider === "photon" || p?.provider === "coordinates" || p?.provider === "osm-reference") &&
       isCoordinate(p)
       ? (p as Place)
       : null;

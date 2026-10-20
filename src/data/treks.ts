@@ -134,17 +134,26 @@ export function trekBounds(route: TrekPoint[]) {
   };
 }
 
+export function cumulativeKm(route: TrekPoint[]): number[] {
+  const distances: number[] = [];
+  let meters = 0;
+  for (let index = 0; index < route.length; index++) {
+    if (index > 0) meters += haversineMeters(route[index - 1], route[index]);
+    distances.push(Math.round(meters / 100) / 10);
+  }
+  return distances;
+}
+
 export function trekStats(route: TrekPoint[]) {
   let ascent = 0;
   let descent = 0;
-  let meters = 0;
   for (let index = 1; index < route.length; index++) {
     const delta = route[index].elevation - route[index - 1].elevation;
     if (delta > 0) ascent += delta;
     else descent -= delta;
-    meters += haversineMeters(route[index - 1], route[index]);
   }
-  return { ascent, descent, stops: route.length, km: Math.round(meters / 100) / 10 };
+  const distances = cumulativeKm(route);
+  return { ascent, descent, stops: route.length, km: distances[distances.length - 1] ?? 0 };
 }
 
 function haversineMeters(from: TrekPoint, to: TrekPoint) {

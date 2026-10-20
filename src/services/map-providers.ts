@@ -8,3 +8,15 @@ export function validTileTemplate(value: string) {
   try { const url = new URL(value.replace(/\{[szxy]\}/g, '0')); if (url.protocol !== 'https:' || url.username || url.password) return false; } catch { return false; }
   return /^https:\/\//.test(value) && ['{z}', '{x}', '{y}'].every(part => value.includes(part)) && !/[<>"'\s]/.test(value);
 }
+
+export type BasemapOption = { id: 'terrain' | 'streets' | 'satellite'; label: string; caption: string };
+
+// Terrain and streets always have a public tile source; satellite needs a configured, credited template.
+export function basemapOptions(satelliteTemplate: string, satelliteCredit: string): BasemapOption[] {
+  const options: BasemapOption[] = [
+    { id: 'terrain', label: 'Terrain', caption: 'Contours & trails' },
+    { id: 'streets', label: 'Streets', caption: 'Roads & access' },
+  ];
+  if (validTileTemplate(satelliteTemplate) && satelliteCredit.trim()) options.push({ id: 'satellite', label: 'Satellite', caption: 'Imagery' });
+  return options;
+}

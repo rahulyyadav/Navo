@@ -30,6 +30,15 @@ export async function requestChatAPI(messages: { role: 'user' | 'assistant'; con
   return result;
 }
 
+const CONNECTION_FAILURE = 'Could not connect to Navo. Check your connection and try again.';
+// A loopback base means Navo's own backend is down, which is not the user's connection problem.
+function connectionFailureMessage(base: string, development: boolean) {
+  if (!development) return CONNECTION_FAILURE;
+  let loopback = false;
+  try { loopback = ['localhost', '127.0.0.1', '[::1]'].includes(new URL(base).hostname); } catch { /* an invalid base already reports its own configuration error */ }
+  return loopback ? 'Navo’s own service is not answering on this device. Start the Navo backend, then retry — your internet connection is fine.' : CONNECTION_FAILURE;
+}
+
 async function requestJSON<T>(path: string, body: unknown, method: string, token?: string, base = apiBase) {
   if (!base) throw new Error('Navo AI is unavailable on this connection. Please retry later.');
   const environment = networkEnvironment();
@@ -42,7 +51,7 @@ async function requestJSON<T>(path: string, body: unknown, method: string, token
       response = await fetch(base + path, { method, headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body), signal: controller.signal });
     } catch (error) {
       if (controller.signal.aborted || (error instanceof Error && error.name === 'AbortError')) throw new Error('The request timed out. Check your connection and retry.');
-      throw new Error('Could not connect to Navo. Check your connection and try again.');
+      throw new Error(connectionFailureMessage(base, environment.development));
     }
     let result;
     try { result = await response.json(); }

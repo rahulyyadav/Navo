@@ -56,6 +56,24 @@ export function navigationProgress(
     crossTrack,
   };
 }
+/**
+ * Where each maneuver sits along the planned line, as a 0-1 fraction, so a map
+ * panel can draw turn markers in proportion to real walking distance. Long
+ * routes are thinned evenly to keep the strip readable on a phone.
+ */
+export function maneuverFractions(route: WalkingRoute, max = 24): number[] {
+  if (!(route.distanceM > 0) || !route.instructions.length) return [];
+  const marks: number[] = [];
+  let covered = 0;
+  for (const step of route.instructions) {
+    covered += step.distanceM;
+    marks.push(Math.min(1, Math.max(0, covered / route.distanceM)));
+  }
+  if (marks.length <= max) return marks;
+  const stride = marks.length / max;
+  return Array.from({ length: max }, (_, index) => marks[Math.floor(index * stride)] ?? 1);
+}
+
 export function sustainedDeviation(
   fix: Fix | null,
   crossTrack: number | null,

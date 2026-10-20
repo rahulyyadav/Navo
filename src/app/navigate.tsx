@@ -88,6 +88,9 @@ function LoadNavigation({ uid, id }: { uid: string; id: string }) {
     [attempt, setAttempt] = useState(0),
     [draft, setDraft] = useState<NavigationDraft | null>(null);
   useEffect(() => {
+    // Reading storage without an owner or a plan id always throws, so those cases render
+    // their own state instead of a device-storage failure the user cannot act on.
+    if (!uid || !id) return;
     let alive = true;
     void Promise.all([readAdventures(uid), readNavigationDraft(uid, id)])
       .then(([v, draft]) => {
@@ -112,24 +115,48 @@ function LoadNavigation({ uid, id }: { uid: string; id: string }) {
       alive = false;
     };
   }, [uid, id, attempt]);
-  if (!plan)
+  if (!plan) {
+    const signedOut = !uid, noPlan = Boolean(uid) && !id;
     return (
       <Backdrop>
         <View style={{ padding: space.lg, gap: space.md }}>
-          <Heading title="Opening your walking plan" />
-          <Notice message={error} />
-          {Boolean(error) && (
-            <Button
-              label="Retry saved plan"
-              onPress={() => {
-                setError("");
-                setAttempt((v) => v + 1);
-              }}
-            />
+          <Heading
+            title={
+              signedOut
+                ? "Sign in to start a hike"
+                : noPlan
+                  ? "Choose a saved plan"
+                  : "Opening your walking plan"
+            }
+          />
+          <Notice
+            message={
+              signedOut
+                ? "Your saved plans live in your account. Sign in and this screen opens the route you chose."
+                : noPlan
+                  ? "Open one of your saved walking plans and press Start — the full-screen route map appears while you hike."
+                  : error
+            }
+          />
+          {signedOut ? (
+            <Button label="Go to sign in" onPress={() => router.replace("/login")} />
+          ) : noPlan ? (
+            <Button label="Open saved plans" onPress={() => router.replace("/adventures")} />
+          ) : (
+            Boolean(error) && (
+              <Button
+                label="Retry saved plan"
+                onPress={() => {
+                  setError("");
+                  setAttempt((v) => v + 1);
+                }}
+              />
+            )
           )}
         </View>
       </Backdrop>
     );
+  }
   return <LiveNavigation uid={uid} initial={plan} draft={draft} />;
 }
 function LiveNavigation({
@@ -555,6 +582,8 @@ function LiveNavigation({
         title={plan.name}
         subtitle={phase === 'active' ? instruction : `GPS ${phase}`}
         status={error || mapStatus}
+        progress={progress?.matched ? progress.ratio : null}
+        remainingLabel={progress?.matched && progress.remainingM !== null ? `${(progress.remainingM / 1000).toFixed(2)} km remaining` : undefined}
         actionLabel="Trek controls & trip information"
         onAction={() => router.setParams({map:''})}
         onClose={() => router.setParams({map:''})}

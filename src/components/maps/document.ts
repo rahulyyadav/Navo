@@ -1,12 +1,14 @@
 import { outdoorTiles, outdoorAttribution, satelliteTiles, satelliteAttribution, validTileTemplate } from '@/services/map-providers';
 import type { Coords } from '@/hooks/useMyLocation';
-import { treks, type MapRegion } from '@/data/treks';
+import { treks, cumulativeKm, type MapRegion } from '@/data/treks';
 import { colorForTrek } from '@/data/map-style';
+
+export type MapBasemap = 'terrain' | 'streets' | 'satellite';
 
 export type NepalMapProps = {
   focusPoint?: { latitude: number; longitude: number; label: string } | null;
   trailPlaces?: { id: string; name: string; kind: string; latitude: number; longitude: number }[];
-  basemap?: 'terrain' | 'streets' | 'satellite';
+  basemap?: MapBasemap;
   region: MapRegion;
   regionNonce: number;
   selectedId: string | null;
@@ -26,7 +28,7 @@ export const mapPayload = ({ focusPoint, trailPlaces = [], basemap, region, regi
 export const scriptJSON = (value: unknown) => JSON.stringify(value).replace(/</g, '\\u003c');
 
 export function mapDocument(props: NepalMapProps) {
-  const data = treks.map(t => ({ id: t.id, name: t.name, color: colorForTrek(t.id), points: t.route }));
+  const data = treks.map(t => ({ id: t.id, name: t.name, color: colorForTrek(t.id), points: t.route, km: cumulativeKm(t.route) }));
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="strict-origin-when-cross-origin">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <style>html,body,#map{height:100%;width:100%;margin:0;background:#19293a;font-family:system-ui}#status{position:absolute;z-index:1000;left:12px;right:12px;top:12px;background:#0d141a;color:white;padding:12px;border-radius:12px;font-size:13px}button{padding:8px;margin-left:8px}.leaflet-control-attribution{font-size:10px!important}.leaflet-popup-content{line-height:1.5}.leaflet-tooltip{white-space:normal;width:max-content;max-width:190px;line-height:1.4}.leaflet-control-layers{font-size:14px}.leaflet-control-zoom a{width:44px!important;height:44px!important;line-height:44px!important}.leaflet-control-layers-toggle{width:44px!important;height:44px!important}.leaflet-control-layers label{padding:6px 0}</style></head><body><div id="map" aria-label="Interactive Nepal map"></div><div id="status" role="status">Loading online map…</div>
@@ -68,9 +70,10 @@ window.updateNavoMap=function(payload){
  for(const trek of ((payload.importedSegments?.length||payload.walkingRoutes?.length||payload.endpoints)?[]:data)){
  const selected=payload.selectedId===trek.id;
  if(selected)L.polyline(trek.points.map(p=>[p.latitude,p.longitude]),{color:trek.color,weight:2,opacity:.55,dashArray:'5 10'}).addTo(markers).bindTooltip('Illustrative waypoint connections — not a navigation track');
- const points=selected?trek.points:[trek.points[trek.points.length-1]];
- for(const point of points){const content=document.createElement('div');content.textContent=trek.name+' · '+point.name+' · approx. '+point.elevation+' m';
+ const points=selected?trek.points.map((point,index)=>({point,km:trek.km[index]})):[{point:trek.points[trek.points.length-1],km:trek.km[trek.km.length-1]}];
+ for(const {point,km} of points){const content=document.createElement('div');content.textContent=trek.name+' · '+point.name+' · approx. '+point.elevation+' m · '+km.toFixed(1)+' km along the route';
  const marker=L.circleMarker([point.latitude,point.longitude],{radius:selected?7:9,color:trek.color,fillColor:trek.color,fillOpacity:.8,weight:2}).addTo(markers).bindPopup(content);
+ if(selected)marker.bindTooltip(point.name+' · '+km.toFixed(1)+' km',{direction:'top',offset:[0,-8]});
  marker.on('click',()=>notify(trek.id));}
  }
  if(payload.focusPoint){const p=payload.focusPoint;const label=document.createElement('div');label.textContent=p.label;L.circleMarker([p.latitude,p.longitude],{radius:12,color:'#FFFFFF',fillColor:'#19293A',fillOpacity:1,weight:4}).addTo(markers).bindTooltip(label,{permanent:true,direction:'top'});}

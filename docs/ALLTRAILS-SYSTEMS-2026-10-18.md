@@ -71,3 +71,22 @@ Before enabling shared feedback: use two test accounts to submit, approve, view,
 ## Outstanding release configuration
 
 `npm run check:release` still fails on public HTTPS API, privacy, Photon, walking-router and chat configuration plus a valid support email. Local credentials/secrets and environment files were preserved. User input requested: deployed Render HTTPS URL and local Firebase Admin credential path. AllTrails-style offline basemaps, background navigation, native field testing, licensing and operational moderation remain open; this document does not mark them complete.
+
+## 2026-10-20 increment: discovery map, ease of use and hike-time route
+
+**AllTrails evidence route.** Downloading AllTrails' shipped JavaScript for REA analysis was refused by the local permission classifier (fetching unvetted external code needs explicit confirmation). This increment therefore comes from observing AllTrails' *rendered public UI* — "Expand map", trail stat row, layer controls, Length / Elevation gain / Estimated time, route type ("Point to point", "Out & back") — and re-implementing those ideas against public tile and routing sources. No AllTrails code, tile or trail data was copied or fetched.
+
+**What changed**
+- `src/services/elevation-profile.ts` + `src/components/ElevationProfile.tsx`: profile x positions are real walked kilometres (`cumulativeKm` in `src/data/treks.ts` also feeds the headline distance, so the two cannot disagree). Size comes from `src/hooks/useMeasuredSize.ts`, which measures synchronously; `onLayout` alone never fires before the first painted frame.
+- `src/components/maps/document.ts`: waypoint popups and tooltips now state `… · approx. <elev> m · <km> km along the route`; the dashed line keeps its "Illustrative waypoint connections — not a navigation track" label.
+- `src/services/map-providers.ts`: `basemapOptions()` exposes Terrain and Streets always, Satellite only when a credited `https` tile template is configured — no dead layer button.
+- `src/app/(tabs)/map.tsx`: layer chips, an expand-to-full-screen mode, and a measured header plus a fixed card allowance. The card scrolls inside its own allowance while Close and the actions stay pinned; the map keeps ~162 px with a card open and 657 px expanded, and cannot overlap the card.
+- `src/services/routing/progress.ts` (`maneuverFractions`), `src/components/RouteProgressStrip.tsx`, `src/components/FullRouteMap.tsx`, `src/app/navigate.tsx`: hike time shows the walking route full-screen with layer chips, a progress bar carrying one tick per maneuver, remaining distance and climb. With no confident GPS fix the bar reads "Waiting for a confident position" instead of inventing progress. Route geometry carries no elevation, so no hike-time elevation profile is drawn.
+- Honest states: `/navigate` without an account or without a `plan` id now says "Sign in to start a hike" / "Choose a saved plan" with a working next step, rather than a device-storage error. `trek-plan.tsx` validates `type`/`provider` on a destination passed through the URL.
+
+**Validation performed (2026-10-20)**
+- 124 client tests pass (`npm test`), including two new map-document tests that assert the exact waypoint label text for the selected and unselected cases; `npx tsc --noEmit` and `npx expo lint -- --no-cache` are clean.
+- Browser at 591×693 on `localhost:8081`: basemap chips move the ✓ and switch the iframe to `tile.openstreetmap.org`; expand mode changes the map from 162 px to 657 px; the card's resting box is 12 px under the map with Close/Open trek/Preview trek on screen; `/trek-plan` routed Namche Bazaar → Lukla (19.58 km, 28 steps) and the hike full-screen map held 329 px with the progress strip in its uncertain-position state, dropping to 228 px when the direction list was expanded. `/ai` shows the offline service banner and re-probes on "Check the connection again".
+- Saved-plan storage was exercised for a signed-in browser account (one Namche → Lukla plan). That plan is user data created during testing and can be deleted from `/adventures`.
+
+**Still open.** No offline terrain-map downloader and no on-device routing engine — tiles, geocoding and walking routes all need a connection. Field behaviour on a phone with real GPS is untested. In the automated hidden tab, synthetic taps on Leaflet vector layers do not open popups and entering animations freeze, so those two behaviours were verified by unit test and by computed style rather than by screenshot.
