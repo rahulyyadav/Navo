@@ -1,6 +1,6 @@
 import { FullRouteMap } from '@/components/FullRouteMap';
 import { openLocationSettings } from "@/lib/location-settings";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   AppState,
   Linking,
@@ -561,7 +561,17 @@ function LiveNavigation({
       if (alive.current) setBusy(false);
     }
   }
-  if (mapMode === 'full' && phase !== 'ended' && !leavePrompt && !endConfirm) {
+  const fullMapVisible = mapMode === 'full' && phase !== 'ended' && !leavePrompt && !endConfirm;
+  // This sibling stays mounted when switching map/details. Consent and sharing state belong to the session.
+  function withCrewSession(content: ReactNode) {
+    return <View style={{flex:1}}>
+      {content}
+      <View style={fullMapVisible ? {height:0,overflow:'hidden'} : {maxHeight:220,backgroundColor:colors.navy}} accessibilityElementsHidden={fullMapVisible} importantForAccessibility={fullMapVisible?'no-hide-descendants':'auto'}>
+        {cloud.ready && Boolean(sharingCrew) && phase !== 'ended' && <ScrollView><TrekLocationSession key={sharingCrew} groupId={sharingCrew} context="navigation" externalFix={fresh ? location.fix : null} /></ScrollView>}
+      </View>
+    </View>;
+  }
+  if (fullMapVisible) {
     const instruction = progress?.matched && progress.next
       ? `In ${Math.round(progress.nextDistanceM ?? 0)} m · ${progress.next.text}`
       : 'Route position uncertain · check the mapped line and local signs';
@@ -572,7 +582,7 @@ function LiveNavigation({
         : fresh
           ? `${progress?.remainingM == null ? 'Distance unavailable' : `${(progress.remainingM / 1000).toFixed(2)} km remaining`} · GPS ±${Math.round(location.fix?.accuracy ?? 0)} m`
           : 'Waiting for a fresh GPS position. Keep this screen open.';
-    return <>
+    return withCrewSession(<>
       <Stack.Screen options={{headerShown:false}} />
       <FullRouteMap
         sessionAction={phase === 'active' ? {label:'Pause trek',onPress:pause} : phase === 'paused' ? {label:'Resume trek',onPress:start} : undefined}
@@ -589,9 +599,9 @@ function LiveNavigation({
         onClose={() => router.setParams({map:''})}
         map={{region:mapRegion,regionNonce:mapNonce,selectedId:null,onSelectTrek:()=>undefined,myCoords:fresh?location.fix:null,followUser:follow&&fresh,walkingRoutes:mapRoutes,walkingRouteId:plan.route.id,endpoints:mapEndpoints}}
       />
-    </>;
+    </>);
   }
-  return (
+  return withCrewSession(
     <Backdrop>
       <Stack.Screen options={{headerShown:true}} />
       <ScrollView contentContainerStyle={[styles.page, page]}>
@@ -862,14 +872,7 @@ function LiveNavigation({
                     />
                   ))}
                 </View>
-                {Boolean(sharingCrew) && (
-                  <TrekLocationSession
-                    key={sharingCrew}
-                    groupId={sharingCrew}
-                    context="navigation"
-                    externalFix={fresh ? location.fix : null}
-                  />
-                )}
+                {Boolean(sharingCrew) && <Text style={styles.copy}>Use the crew-sharing controls below. Your choice stays in place when opening the full-screen map.</Text>}
               </Card>
             )}
             <RouteAssistant

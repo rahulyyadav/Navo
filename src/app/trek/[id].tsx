@@ -114,7 +114,7 @@ export function TrekDetail({ id }: { id: string }) {
           <View style={{flexDirection:'row',flexWrap:'wrap',gap:8,paddingHorizontal:20,marginBottom:12}}><Chip label="About this trek" selected={false} onPress={()=>scroll.current?.scrollTo({y:detailsY.current,animated:!reduced})} /><Chip label="Reviews & conditions" selected={false} onPress={()=>scroll.current?.scrollTo({y:reviewsY.current,animated:!reduced})} /></View>
           <Reveal delay={80}><View style={styles.statsRow}>
             <OverviewStat symbol="◷" value={trek.days} label="Duration" />
-            <OverviewStat symbol="↔" value={`${stats.km} km`} label="Approx. length" />
+            <OverviewStat symbol="↔" value="Unverified" label="Walk distance" />
             <OverviewStat symbol="△" value={`${trek.maxElevation.toLocaleString()} m`} label="High point" />
           </View></Reveal>
           <Reveal delay={120}><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gallery}>

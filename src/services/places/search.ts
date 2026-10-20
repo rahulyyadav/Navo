@@ -39,7 +39,7 @@ export function decodePlaces(value: unknown, near?: Coordinate): Place[] {
       country = string("country");
     const name = p.name.slice(0, 200);
     const fullName = [
-      ...new Set([name, city, region, country].filter(Boolean)),
+      ...new Set([name, string('street'), string('district'), city, string('county'), region, country].filter(Boolean)),
     ].join(", ");
     const place: Place = {
       ...point,
@@ -56,16 +56,19 @@ export function decodePlaces(value: unknown, near?: Coordinate): Place[] {
     if (near) place.distanceM = distance(near, point);
     if (!results.some((v) => v.id === place.id)) results.push(place);
   }
-  return results.slice(0, 6);
+  return results.slice(0, 6).map(place => results.filter(other => other.fullName === place.fullName).length > 1
+    ? { ...place, fullName: `${place.fullName} · ${place.type.replace(/_/g,' ')} · ${place.latitude.toFixed(4)}, ${place.longitude.toFixed(4)}` }
+    : place);
 }
 export async function searchPlaces(
   query: string,
-  options: { near?: Coordinate; signal?: AbortSignal } = {},
+  options: { near?: Coordinate; signal?: AbortSignal; countryCode?: 'NP' } = {},
 ): Promise<Place[]> {
   const q = query.trim();
   if (!q || q.length > 100) return [];
   const references = hikingReferences(q, options.near);
   const params = new URLSearchParams({ q, limit: "6", lang: "en" });
+  if (options.countryCode) params.set('countrycode', options.countryCode);
   const bias =
     options.near && isCoordinate(options.near)
       ? options.near
@@ -94,7 +97,7 @@ export async function searchPlaces(
           ? "Place search is busy. Wait a moment and retry."
           : "Couldn’t search places. Check your connection and retry.",
       );
-    const remote = decodePlaces(await response.json(), options.near);
+    const remote = decodePlaces(await response.json(), options.near).filter(p => !options.countryCode || p.countryCode?.toUpperCase() === options.countryCode || p.country === 'Nepal');
     const results = [...references, ...remote.filter(p => !references.some(r => distance(r, p) < 100 && p.type === r.type))].slice(0, 6);
     cache.set(key, { time: Date.now(), results });
     if (cache.size > 50) cache.delete(cache.keys().next().value!);

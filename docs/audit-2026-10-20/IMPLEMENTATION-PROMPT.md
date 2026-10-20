@@ -1,0 +1,34 @@
+# Implementation prompt grounded in the current audit
+
+Work in the existing Navo Expo/React Native repository. Read AGENTS.md and `docs/audit-2026-10-20/README.md` first. Preserve working features and the slate/blue, lime and Satoshi visual identity. Do not replace the app with a mockup. Follow the installed Expo major's versioned documentation before API changes.
+
+Objective: deliver a small, dependable Nepal hiking product with unified discovery, reviewed routes, usable full-screen navigation, honest offline capabilities, reachable authenticated services and measurable acceptance tests. AllTrails is a product-pattern reference; do not copy its code, private APIs, assets or proprietary trail data. Do not promise broad Nepal coverage or production readiness without evidence.
+
+## Order of work
+
+1. Restore service readiness. Configure public HTTPS API/chat endpoints, Firebase Admin credentials via server secrets, Firestore rules/indexes, CORS, public privacy/support details, and approved place/routing providers. Keep keys private. Prove `/ready`, authenticated session and a real Nemotron reply. Keep email verification/security guards; provide accurate resend/retry UX. Avoid confusing a configured model key with verified live inference.
+2. Finish the private-screen audit after the user completes onboarding. Do not invent or save experience/emergency preferences for them. Verify Home, Groups, AI, Profile, preparation, saved library and notifications using fresh screenshots and two authorized test accounts where required.
+3. Correct catalogue metrics immediately. Never label sparse-stop straight-line spans as walked route distance or out-and-back total. Use unknown values until validated geometry/elevation exists. Add source, license, version, direction, reviewed date and confidence to trail records.
+4. Unify destination search. One prominent input searches Trails, Places/trailheads and Regions. Preserve query across scopes, aliases and Nepali/English names. Pulchowki/Phulchowki, Shivapuri, Dhap Dam, Budhanilkantha, Sundarijal and Pokhara should resolve to correctly typed results. Deduplicate identical labels; show area/type and entrance context. A found landmark must not become an invented verified trail.
+5. Improve the main journey: discovery → selected trail/place → start/departure → real route → full-screen preview → save/download readiness → navigation → summary. Separate travel to the trailhead, the hike and its return. Preserve entered state when going back. Use date/time controls, meaningful empty states and concise inline validation.
+6. Keep full-screen map-first preview/navigation. Add clear start/end, route contrast, recenter, heading mode, GPS accuracy/freshness, maneuver distance, remaining distance, cautious ETA, elevation where verified, and compact controls. Retain accessible textual directions. Keep crew-sharing lifecycle mounted independently of map/details view, with explicit sharing consent and visible state.
+7. Prototype MapLibre Native behind a map adapter. Validate SDK57 integration and development-build requirements. Preserve web support. Use permitted production tile/style sources. No demo tiles as production infrastructure. Compare gestures, render performance, memory, attribution and cold-start behavior before switching the default.
+8. Implement genuine offline packs only with licensed tiles/data: route, basemap resources, bounds/zoom, instructions, known POIs, provenance/version/checksum, size/progress/cancel/retry and low-storage recovery. Distinguish offline viewing/following from offline rerouting. Never bulk-download standard OSM tiles against policy. Do not relabel a JSON trip snapshot as an offline map.
+9. Make weather/POIs reliable. Cache bounded provider responses; preserve source/date and stale state; handle outages and forecast horizon limits. Display a departure-window/daylight summary first. Facilities need access/detour and freshness context; never infer potable water, safe rest areas or live hazards from missing data.
+10. Make AI useful through validated context and tools: answer packing/preparation/route questions using selected-route facts and fetched forecasts, with sources and unknowns. Never let AI fabricate geometry, emergency capability, current closures or weather. Add request budgets, cancellation, timeouts, retry and source-aware output. Record inference success without logging sensitive prompts or coordinates.
+11. Complete shared groups, reviews and notifications using actual persistent storage, membership checks and two-account tests. Published reviews, private pending reviews, moderation, reporting, revocation and deletion must respect permissions. Never silently create device-only fake shared groups.
+12. Apply consistent UI patterns: one search entry; compact discovery cards with first result near the fold; labeled navigation; one primary action per state; readable surfaces behind text; 44–48 point targets; resilient keyboard/text scaling; reduced motion. Keep beautiful photos secondary to route confidence and task completion.
+
+## Acceptance criteria
+
+- Lint, typecheck, relevant tests and release configuration checks pass. Report exact commands/results and any remaining blockers.
+- Real authenticated AI reply, durable group creation and two-account membership/message behavior are demonstrated against the configured backend. Mock success is not completion.
+- Search works for named local aliases and carries the query into place results when no catalogue trail exists. No identical ambiguous labels without disambiguation.
+- Every navigation route is measured from actual accepted geometry and carries provenance; no confident hiking ETA from missing terrain data.
+- Route generation opens a useful full-screen map automatically. Details/map switching preserves active trek and explicitly enabled crew sharing. End/pause/resume are reachable and tested.
+- Every advertised offline capability passes airplane-mode cold-start tests on both platforms; unsupported capabilities remain clearly gated.
+- Public routes have local review evidence and real-device outdoor test results. Do not call browser-only verification production-ready GPS navigation.
+- Fresh mobile screenshots at small and large phone sizes document each changed flow. Screen-reader, text-size, keyboard, poor-network and permission-denial checks are included.
+- Keep a concise completion ledger distinguishing implemented, tested live, tested with fixtures, blocked by credentials/deployment, and requiring field validation. Do not declare all tasks complete while any release-critical gate is unresolved.
+
+Do not enable paid services without authorization. For the no-cost phase use a closed preview with explicit provider quotas/cold-start limitations and a small reviewed route corpus. Finish and verify each phase before expanding scope.

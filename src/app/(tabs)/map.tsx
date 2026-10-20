@@ -197,12 +197,12 @@ export default function MapScreen() {
               <Text style={styles.statLabel}>MAX M</Text>
             </View>
             <View style={styles.statCell}>
-              <Text style={styles.statValue}>{stats.km}</Text>
-              <Text style={styles.statLabel}>APPROX. KM</Text>
+              <Text style={styles.statValue}>—</Text>
+              <Text style={styles.statLabel}>DISTANCE UNVERIFIED</Text>
             </View>
             <View style={styles.statCell}>
-              <Text style={styles.statValue}>+{Math.round(stats.ascent / 100) / 10}k</Text>
-              <Text style={styles.statLabel}>APPROX. GAIN</Text>
+              <Text style={styles.statValue}>—</Text>
+              <Text style={styles.statLabel}>ASCENT UNVERIFIED</Text>
             </View>
           </View>
 

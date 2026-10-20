@@ -1,4 +1,5 @@
-import { Fragment, type ComponentProps } from 'react';
+import { type ComponentProps } from 'react';
+import { Text } from '@/components/Typography';
 import { useEffect, useState } from 'react';
 import { Keyboard, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Tabs } from 'expo-router';
@@ -35,19 +36,11 @@ export function BottomNav({ state, descriptors, navigation }: TabBarProps) {
 
   return <View pointerEvents="box-none" style={[styles.dock, { paddingBottom: Math.max(insets.bottom, 12), paddingLeft: Math.max(insets.left, 20), paddingRight: Math.max(insets.right, 20) }]}>
     <View pointerEvents="box-none" style={styles.bar}>
-      <View pointerEvents="none" style={styles.middleBackdrop} />
-      {state.routes.filter(route => route.name !== 'groups').map((route, index) => {
+      {state.routes.filter(route => route.name !== 'groups').map((route) => {
         const active = state.routes[state.index].key === route.key;
         const { options } = descriptors[route.key];
-        return <Fragment key={route.key}>
-          {index === 2 && <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.chevrons}>
-            <Svg width={46} height={24} viewBox="0 0 46 24" fill="none" stroke="#FFFFFF" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-              <Path opacity={0.25} d="m5 6 6 6-6 6" />
-              <Path opacity={0.5} d="m19 6 6 6-6 6" />
-              <Path opacity={0.95} d="m33 6 6 6-6 6" />
-            </Svg>
-          </View>}
-          <Pressable
+        return <Pressable
+            key={route.key}
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
             accessibilityLabel={options.tabBarAccessibilityLabel ?? options.title ?? route.name}
@@ -60,8 +53,8 @@ export function BottomNav({ state, descriptors, navigation }: TabBarProps) {
             style={({ pressed }) => [styles.button, width < 360 && styles.compactButton, active && styles.active, pressed && styles.pressed]}
           >
             <NavigationIcon name={route.name} active={active} />
-          </Pressable>
-        </Fragment>;
+            <Text style={{fontSize:11,fontWeight:'600',color:active?'#10180E':'#FFFFFF',textAlign:'center'}}>{options.title ?? route.name}</Text>
+          </Pressable>;
       })}
     </View>
   </View>;
@@ -71,15 +64,13 @@ const styles = StyleSheet.create({
   dock: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingTop: 8, backgroundColor: 'transparent' },
   bar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    alignSelf: 'center', width: '100%', maxWidth: 440, paddingHorizontal: 4, backgroundColor: 'transparent',
+    alignSelf: 'center', width: '100%', maxWidth: 440, padding: 6, borderRadius: 38, backgroundColor: 'rgba(25,41,58,0.96)',
   },
   button: {
-    width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center',
+    width: 68, minHeight: 64, paddingVertical: 8, gap: 4, borderRadius: 28, alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(154,185,210,0.32)',
   },
-  middleBackdrop: { position: 'absolute', left: '22%', right: '22%', top: -7, bottom: -7, borderRadius: 40, backgroundColor: 'rgba(63,96,125,0.36)' },
-  compactButton: { width: 48, height: 48, borderRadius: 24 },
+  compactButton: { width: 60, borderRadius: 24 },
   active: { backgroundColor: '#E4FF89' },
   pressed: { opacity: 0.75, transform: [{ scale: 0.96 }] },
-  chevrons: { width: 46, alignItems: 'center' },
 });

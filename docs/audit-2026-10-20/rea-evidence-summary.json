@@ -1,0 +1,110 @@
+{
+  "date": "2026-10-20",
+  "tool": "REA capture_browser_scenario",
+  "scope": "Public web only; no native binary, private API or paid feature inspection",
+  "captures": [
+    {
+      "evidenceId": "ev_bd92df16167e4cd5c635fcc40e9bd11de0408f6e16af34a6b00a0cca2df9e6d1",
+      "startUrl": "https://www.alltrails.com/",
+      "actions": [
+        {
+          "stepId": "settle",
+          "action": "wait_for_timeout"
+        }
+      ],
+      "steps": [
+        {
+          "stepId": "scenario_start",
+          "status": "completed"
+        },
+        {
+          "stepId": "settle",
+          "status": "completed"
+        }
+      ],
+      "completeness": {
+        "status": "incomplete",
+        "equality_eligible": false,
+        "missing_sections": [
+          "events"
+        ],
+        "truncated_sections": []
+      },
+      "cleanup": "terminated-owned-process"
+    },
+    {
+      "evidenceId": "ev_0a13a4d5dc8d97b464753ff6be0214af802d852f965693c98ce96eb373d2fe4c",
+      "startUrl": "https://www.alltrails.com/",
+      "actions": [
+        {
+          "stepId": "search_nepal",
+          "action": "fill"
+        },
+        {
+          "stepId": "results",
+          "action": "wait_for_timeout"
+        }
+      ],
+      "steps": [
+        {
+          "stepId": "scenario_start",
+          "status": "completed"
+        },
+        {
+          "stepId": "search_nepal",
+          "status": "completed"
+        },
+        {
+          "stepId": "results",
+          "status": "completed"
+        }
+      ],
+      "completeness": {
+        "status": "complete",
+        "equality_eligible": true,
+        "missing_sections": [],
+        "truncated_sections": []
+      },
+      "cleanup": "terminated-owned-process"
+    },
+    {
+      "evidenceId": "ev_9c45c7d34c267badd37f8cb98b044e65d9e0bcf07966d7767aff0f72577698d0",
+      "startUrl": "https://www.alltrails.com/trail/nepal/province-1/everest-base-camp-trek",
+      "actions": [
+        {
+          "stepId": "trail_loaded",
+          "action": "wait_for_timeout"
+        }
+      ],
+      "steps": [
+        {
+          "stepId": "scenario_start",
+          "status": "completed"
+        },
+        {
+          "stepId": "trail_loaded",
+          "status": "completed"
+        }
+      ],
+      "completeness": {
+        "status": "complete",
+        "equality_eligible": true,
+        "missing_sections": [],
+        "truncated_sections": []
+      },
+      "cleanup": "terminated-owned-process"
+    }
+  ],
+  "observations": [
+    "Homepage is search-first, with nearby trails, custom routes and trip creation entry points.",
+    "Kathmandu input opened a search overlay, but only Trip Assistant appeared in the captured results; page error recorded.",
+    "Everest detail capture exposed only an iframe; later visual observation showed a verification challenge.",
+    "No evidence establishes AllTrails native renderer, routing engine, offline storage or backend implementation."
+  ],
+  "limitations": [
+    "Controlled public browser replay only.",
+    "Network capture on homepage ended before every request completed.",
+    "No verification challenge was solved or bypassed.",
+    "Full DOM, request identifiers and analytics values deliberately excluded from this portable summary."
+  ]
+}
