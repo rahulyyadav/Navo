@@ -1,0 +1,31 @@
+{
+  "package": "maplibre-gl",
+  "version": "6.14.0",
+  "license": "BSD-3-Clause",
+  "assets": [
+    {
+      "file": "maplibre-gl.mjs",
+      "url": "https://unpkg.com/maplibre-gl@6.14.0/dist/maplibre-gl.mjs",
+      "bytes": 1078892,
+      "sha256": "244d36122c1398da3a8259817cc6d71e04321afe6404f32606b4b6c6cc4f26fb"
+    },
+    {
+      "file": "maplibre-gl-worker.mjs",
+      "url": "https://unpkg.com/maplibre-gl@6.14.0/dist/maplibre-gl-worker.mjs",
+      "bytes": 508314,
+      "sha256": "5f1e2f0e1624082b7e88a06e4c86085992b0f8c02929801e552f3f7a119856a9"
+    },
+    {
+      "file": "maplibre-gl.css",
+      "url": "https://unpkg.com/maplibre-gl@6.14.0/dist/maplibre-gl.css",
+      "bytes": 83263,
+      "sha256": "bacba6a85a867fcf602f2ff88331b8acf7edf3fbd063a519888cfbff39970193"
+    },
+    {
+      "file": "LICENSE.txt",
+      "url": "https://unpkg.com/maplibre-gl@6.14.0/LICENSE.txt",
+      "bytes": 5984,
+      "sha256": "ee5fc05a0677eaf69601d2c7db0d9ecd6cc27c3abc1d0733bc9ed34707cf8ef2"
+    }
+  ]
+}

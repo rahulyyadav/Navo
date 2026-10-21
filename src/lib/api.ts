@@ -8,10 +8,12 @@ export async function withTimeout<T>(task: Promise<T>, milliseconds: number, mes
   try { return await Promise.race([task, new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error(message)), milliseconds); })]); }
   finally { if (timer) clearTimeout(timer); }
 }
-export const apiBase = (process.env.EXPO_PUBLIC_API_BASE_URL ?? '').replace(/\/$/, '');
-export const chatBase = (process.env.EXPO_PUBLIC_CHAT_BASE_URL?.trim() || apiBase).replace(/\/$/, '');
+export const apiBase = (process.env.EXPO_PUBLIC_API_BASE_URL ?? '').trim().replace(/\/+$/, '');
+export const chatBase = (process.env.EXPO_PUBLIC_CHAT_BASE_URL?.trim() || apiBase).replace(/\/+$/, '');
 export async function requestAPI<T>(getToken: () => Promise<string | null>, path: string, body?: unknown, method = 'POST'): Promise<T> {
   if (!apiBase) throw new Error('Connect the Navo backend: set EXPO_PUBLIC_API_BASE_URL and restart Expo.');
+  const environment = networkEnvironment();
+  resolveBackendAddress(apiBase, environment.platform, environment.development, environment.expoHost);
   const token = await withTimeout(getToken().catch(() => { throw new Error('Could not refresh your sign-in. Check your connection and try again.'); }), 15000, 'Your session could not reconnect. Check your internet and try again.');
   if (!token) throw new Error('Your session expired. Sign in again.');
   return requestJSON<T>(path, body, method, token);
@@ -40,7 +42,6 @@ function connectionFailureMessage(base: string, development: boolean) {
 }
 
 async function requestJSON<T>(path: string, body: unknown, method: string, token?: string, base = apiBase) {
-  if (!base) throw new Error('Navo AI is unavailable on this connection. Please retry later.');
   const environment = networkEnvironment();
   base = resolveBackendAddress(base, environment.platform, environment.development, environment.expoHost);
   const controller = new AbortController();

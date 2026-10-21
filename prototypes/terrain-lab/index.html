@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#142126">
+  <title>Navo · Terrain Lab</title>
+  <link rel="stylesheet" href="./vendor/maplibre-gl.css">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="masthead"><a class="brand" href="./" aria-label="Navo Terrain Lab home">navo<span class="brand-dot"></span></a><span class="lab-tag">TERRAIN LAB <span>03</span></span><span class="header-note">An isolated research prototype</span><button id="details-toggle" class="quiet mobile-only" aria-controls="route-panel" aria-expanded="true">Route details</button></header>
+  <main class="workspace">
+    <aside id="route-panel" class="panel" aria-label="Demonstration route details">
+      <div class="panel-inner">
+        <p class="eyebrow">KATHMANDU VALLEY / NEPAL</p>
+        <h1>A different<br> perspective.</h1>
+        <p class="intro">Explore the shape of the hills.<br> Understand the route before you go.</p>
+        <div class="route-heading"><span class="route-swatch"></span><div><p class="overline">DEMONSTRATION ROUTE</p><h2 id="route-title">Godawari to Phulchowki</h2></div></div>
+        <div class="metrics"><div><strong id="distance">—</strong><span>route line · one way</span></div><div><strong id="height-range">—</strong><span>DEM height range</span></div></div>
+        <section class="profile-card" aria-labelledby="profile-heading"><div class="section-line"><h3 id="profile-heading">Read the terrain</h3><span>DEM SAMPLE</span></div><svg id="profile" viewBox="0 0 300 110" role="img" aria-label="Elevation profile unavailable until data loads"><defs><linearGradient id="profile-fill" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#e4ff89" stop-opacity=".3"/><stop offset="1" stop-color="#e4ff89" stop-opacity="0"/></linearGradient></defs><path id="profile-area" fill="url(#profile-fill)"/><path id="profile-line" fill="none" stroke="#e4ff89" stroke-width="2"/><line id="profile-cursor" x1="8" x2="8" y1="8" y2="110" stroke="#ffffff" stroke-dasharray="3 4"/></svg><div class="chart-labels"><span>Start</span><span id="profile-length">—</span></div><label class="sr-only" for="profile-position">Inspect elevation along route</label><input id="profile-position" type="range" min="0" max="100" value="0" step="1" disabled><p id="profile-readout" class="readout">Loading the real elevation samples…</p><p class="fine">100 m sampling · modelled ground height.<br>Not measured ascent, trail grade or hiking time.</p></section>
+        <div class="endpoints"><div><i class="start-dot"></i><p><strong>Godawari garden area</strong><span>Route start / unverified trailhead reference</span></p></div><div><i class="end-dot"></i><p><strong>Phulchowki area</strong><span>Routing-engine snapped destination</span></p></div></div>
+        <div class="notice"><strong>Explore, then verify.</strong><p>This is an OSRM route, not a field-verified hiking trail. Access, conditions and the return journey need local review.</p></div>
+        <details class="sources"><summary>Data &amp; prototype limits</summary><p>Route: existing public OSRM foot response, 21 October 2026. OSM-derived geometry, ODbL 1.0. No imported or field-surveyed trail is claimed.</p><p>Elevation: Mapzen/Tilezen Terrain Tiles on AWS; global SRTM/GMTED2010 courtesy USGS, global ETOPO1 NOAA. Blended-source accuracy and vertical datum are not independently established here.</p><p>Online map: OpenStreetMap interactive raster tiles. No downloaded map region, background GPS, live navigation, current weather or Firebase integration.</p><a href="./data/provenance.json" target="_blank" rel="noopener">Inspect source record ↗</a><a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Terrain source credits ↗</a></details>
+        <div class="panel-footer">Built for a closer look. <span>Not for field navigation.</span><p id="performance" aria-live="polite"></p></div>
+      </div>
+    </aside>
+    <section class="map-stage" aria-label="Interactive 3D Nepal terrain">
+      <div id="map" role="region" aria-label="Phulchowki terrain map"></div>
+      <div class="map-heading"><span class="map-kicker">27.58° N / 85.39° E</span><h2>Into the hills.</h2><p id="terrain-caption">Elevation-backed perspective</p></div>
+      <div id="state-card" class="state-card" role="status" aria-live="polite"><span id="state-icon" class="spinner" aria-hidden="true"></span><h3 id="state-title">Loading the landscape</h3><p id="state-detail">Preparing the map and elevation tiles. Your demonstration route stays local.</p><button id="retry" class="primary" hidden>Try again</button></div>
+      <div id="preview-label" class="preview-label" hidden></div>
+      <div class="map-top"><span id="terrain-status" class="status-pill"><i></i>Loading terrain</span><button id="fit" class="quiet" disabled>Fit route <span aria-hidden="true">↗</span></button></div>
+      <div class="map-tools" aria-label="Map camera controls"><button id="zoom-in" aria-label="Zoom in" disabled>+</button><button id="zoom-out" aria-label="Zoom out" disabled>−</button><button id="north" aria-label="Reset bearing to north" disabled><span aria-hidden="true">N</span><small id="bearing">0°</small></button></div>
+      <div class="camera-bar"><div class="view-switch" role="group" aria-label="Map perspective"><button id="view-2d" aria-pressed="false" disabled>2D</button><button id="view-3d" aria-pressed="true" disabled>3D terrain</button></div><label for="tilt">Tilt <output id="tilt-value">60°</output></label><input id="tilt" type="range" min="0" max="60" step="1" value="60" disabled></div>
+      <div class="map-bottom"><span class="terrain-note">DEM · 1× VERTICAL SCALE</span><button id="measure" class="measure-button" disabled>Measure interaction</button></div>
+      <div class="attribution">Map <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a> · Terrain <a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">Mapzen / Tilezen, USGS &amp; NOAA</a> · Route OSM/OSRM · <a href="https://maplibre.org/" target="_blank" rel="noopener">MapLibre</a></div>
+    </section>
+  </main>
+  <noscript><p class="no-js">JavaScript is required for this terrain prototype. No map or navigation is available.</p></noscript>
+  <script type="module" src="./app.mjs"></script>
+</body>
+</html>

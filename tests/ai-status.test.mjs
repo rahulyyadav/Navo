@@ -2,7 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import ts from 'typescript';
-const {outputText}=ts.transpileModule(await readFile(new URL('../src/services/ai-status.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}});
+const addressCode=ts.transpileModule(await readFile(new URL('../src/services/backend-address.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.ESNext}}).outputText;
+const addressURL=`data:text/javascript;base64,${Buffer.from(addressCode).toString('base64')}`;
+const statusSource=(await readFile(new URL('../src/services/ai-status.ts',import.meta.url),'utf8')).replace("'./backend-address'",JSON.stringify(addressURL));
+const {outputText}=ts.transpileModule(statusSource,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}});
 const {classifyAiHealth,aiStatusCopy,probeAiStatus}=await import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`);
 
 test('health classification separates a missing address, a dead service and a missing model key',()=>{
@@ -72,5 +75,18 @@ test('model configuration cannot claim readiness when the account probe stalls',
  try {
   globalThis.fetch=(url,{signal})=>url.endsWith('/health')?Promise.resolve({ok:true,json:async()=>({aiConfigured:true})}):new Promise((_resolve,reject)=>signal.addEventListener('abort',()=>reject(new Error('timeout'))));
   assert.equal(await probeAiStatus('http://x.test',60),'storage-unavailable');
+ } finally {globalThis.fetch=original;}
+});
+
+test('phone readiness uses the same LAN resolution as authenticated requests',async()=>{
+ const original=globalThis.fetch,requested=[];
+ try {
+  globalThis.fetch=async url=>{requested.push(url);return {ok:true,json:async()=>url.endsWith('/ready')?{ready:true}:{aiConfigured:true}};};
+  assert.equal(await probeAiStatus('http://localhost:8114',6000,{platform:'ios',development:true,expoHost:'192.168.1.5:8115'}),'online');
+  assert.deepEqual(requested,['http://192.168.1.5:8114/health','http://192.168.1.5:8114/ready']);
+  requested.length=0;
+  assert.equal(await probeAiStatus('https://private-marker:password@example.test'),'unconfigured');
+  assert.equal(await probeAiStatus('http://localhost:8114',6000,{platform:'ios',development:false}),'unconfigured');
+  assert.equal(requested.length,0);
  } finally {globalThis.fetch=original;}
 });

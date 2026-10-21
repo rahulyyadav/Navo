@@ -1,0 +1,17 @@
+{
+  "source": "https://api.openstreetmap.org/api/0.6/node/3490869705.json",
+  "checkedOn": "2026-10-21",
+  "httpStatus": 200,
+  "id": 3490869705,
+  "type": "node",
+  "version": 4,
+  "timestamp": "2023-10-10T08:48:20Z",
+  "latitude": 27.5710397,
+  "longitude": 85.4067119,
+  "tags": {
+    "name": "Phulchoki",
+    "natural": "peak",
+    "ele": "2782"
+  },
+  "status": "OSM landmark record; not surveyed access or elevation verification"
+}

@@ -1,3 +1,5 @@
+import { resolveBackendAddress, validateBackendAddress } from './backend-address';
+
 export type AiStatus = 'checking' | 'online' | 'model-missing' | 'storage-unavailable' | 'unreachable' | 'unconfigured';
 export type AiTone = 'ok' | 'warn' | 'bad';
 export type AiStatusCopy = { label: string; title: string; detail: string; hint: string; tone: AiTone };
@@ -45,9 +47,12 @@ export function aiStatusCopy(status: AiStatus): AiStatusCopy {
   }
 }
 
-export async function probeAiStatus(base: string, timeoutMs = 6000): Promise<AiStatus> {
-  const trimmed = base.trim().replace(/\/$/, '');
-  if (!trimmed) return classifyAiHealth('', null);
+export async function probeAiStatus(base: string, timeoutMs = 6000, environment?: { platform: string; development: boolean; expoHost?: string }): Promise<AiStatus> {
+  if (!base.trim()) return classifyAiHealth('', null);
+  let trimmed: string;
+  try {
+    trimmed = environment ? resolveBackendAddress(base, environment.platform, environment.development, environment.expoHost) : validateBackendAddress(base);
+  } catch { return 'unconfigured'; }
   const controller = new AbortController();
   let modelConfigured = false;
   const timer = setTimeout(() => controller.abort(), timeoutMs);

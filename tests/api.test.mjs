@@ -82,3 +82,26 @@ test('an empty successful AI response is an actionable failure, not an empty ass
   });
  }
 });
+
+test('invalid API configuration fails before token refresh or network access',async()=>{
+ const previous=process.env.EXPO_PUBLIC_API_BASE_URL;
+ process.env.EXPO_PUBLIC_API_BASE_URL='https://private-marker:password@example.test';
+ let invalid;
+ try { invalid=await import(`data:text/javascript;base64,${Buffer.from(compiled+'\n// invalid-address-test').toString('base64')}`); }
+ finally {if(previous===undefined)delete process.env.EXPO_PUBLIC_API_BASE_URL;else process.env.EXPO_PUBLIC_API_BASE_URL=previous;}
+ let tokenCalls=0;
+ await withFetch(()=>{throw Error('network must not be used');},async()=>{
+  await assert.rejects(invalid.requestAPI(async()=>{tokenCalls++;return 'token';},'/session'),error=>/address is invalid/.test(error.message)&&!error.message.includes('private-marker')&&!error.message.includes('password'));
+  assert.equal(tokenCalls,0);
+ });
+});
+
+test('trimmed main address also supplies chat when the optional override is blank',async()=>{
+ const previousMain=process.env.EXPO_PUBLIC_API_BASE_URL,previousChat=process.env.EXPO_PUBLIC_CHAT_BASE_URL;
+ process.env.EXPO_PUBLIC_API_BASE_URL='  http://test.local:8000///  ';process.env.EXPO_PUBLIC_CHAT_BASE_URL='  ';
+ let normalized;
+ try {normalized=await import(`data:text/javascript;base64,${Buffer.from(compiled+'\n// trimmed-address-test').toString('base64')}`);}
+ finally {if(previousMain===undefined)delete process.env.EXPO_PUBLIC_API_BASE_URL;else process.env.EXPO_PUBLIC_API_BASE_URL=previousMain;if(previousChat===undefined)delete process.env.EXPO_PUBLIC_CHAT_BASE_URL;else process.env.EXPO_PUBLIC_CHAT_BASE_URL=previousChat;}
+ assert.equal(normalized.apiBase,'http://test.local:8000');assert.equal(normalized.chatBase,normalized.apiBase);
+ await withFetch(async(url)=>{assert.equal(url,'http://test.local:8000/chat');return new Response(JSON.stringify({reply:'Fixture reply'}));},async()=>assert.equal((await normalized.requestChatAPI([{role:'user',content:'Fixture question'}],null)).reply,'Fixture reply'));
+});

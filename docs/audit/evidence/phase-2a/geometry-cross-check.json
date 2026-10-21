@@ -1,0 +1,13 @@
+{
+  "same_vertices_as_export": true,
+  "provider_distance_m": 6756.6,
+  "haversine_geometry_m": 6760.06,
+  "difference_m": 3.46,
+  "effective_speed_kmh": 4.5,
+  "has_return_leg": false,
+  "step_distance_sum_m": 6756.7,
+  "step_duration_sum_s": 5405.3,
+  "unique_named_steps": [
+    "Godavari Phulchoki Marg"
+  ]
+}
