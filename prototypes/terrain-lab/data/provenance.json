@@ -1,0 +1,27 @@
+{
+  "preparedAt": "2026-10-21T09:02:11.148925+00:00",
+  "routeSourceSHA256": "81612ebb18afc7b0197a4f05cc04b3f051aa36f2f888d6177747a162f0d9d3ae",
+  "geometryKind": "routing-engine",
+  "fieldVerified": false,
+  "routeVertices": 269,
+  "geometryLengthM": 6760.06,
+  "sourceVerticalDatum": "Not independently established for these blended tiles",
+  "terrainTileSize": 256,
+  "terrainZoom": 12,
+  "terrainTiles": [
+    {
+      "url": "https://elevation-tiles-prod.s3.amazonaws.com/terrarium/12/3019/1721.png",
+      "sha256": "fdf9dbe0c675c96132b5b032b549b5bfbcbed4c7642f4d6fd80fd3c83ac0872e",
+      "bytes": 57545
+    }
+  ],
+  "terrainAttribution": "Mapzen / Tilezen; global GMTED2010 and SRTM courtesy USGS; global ETOPO1 NOAA",
+  "limitations": [
+    "Not a surveyed trail or access approval",
+    "No current closure, water or hazard validation",
+    "DEM profile is not a measured ascent or a hiking ETA",
+    "No offline map region is created"
+  ],
+  "routeRequestURL": "https://routing.openstreetmap.de/routed-foot/route/v1/foot/85.383258,27.597047;85.406692,27.571287?overview=full&geometries=geojson&steps=true&alternatives=true&annotations=nodes",
+  "routeFetchedAt": "2026-10-21T06:22:10.606476+00:00"
+}

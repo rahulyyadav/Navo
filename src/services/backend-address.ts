@@ -1,8 +1,21 @@
+/** Validate before sending a bearer token; never echo an invalid URL or its secrets. */
+export function validateBackendAddress(base: string) {
+  const address = base.trim().replace(/\/+$/, '');
+  if (!address) throw new Error('Navo’s server address is missing. Set EXPO_PUBLIC_API_BASE_URL (or EXPO_PUBLIC_CHAT_BASE_URL for chat) in .env.local, then reload the app or restart Expo.');
+  try {
+    const url = new URL(address);
+    if (!/^https?:\/\//i.test(address) || /[\s\\?#]/.test(address) || !['http:', 'https:'].includes(url.protocol) || !url.hostname || url.username || url.password) throw new Error();
+    return address;
+  } catch {
+    throw new Error('Navo’s server address is invalid. Configure an HTTP or HTTPS API base URL without credentials, a query or a fragment in .env.local, then reload the app or restart Expo.');
+  }
+}
+
 /** Resolve development loopback on a phone without changing a production URL. */
 export function resolveBackendAddress(base: string, platform: string, development: boolean, expoHost?: string) {
-  if (!base || platform === 'web') return base;
-  let url: URL;
-  try { url = new URL(base); } catch { throw new Error('Navo’s server address is invalid. Update the app configuration.'); }
+  base = validateBackendAddress(base);
+  if (platform === 'web') return base;
+  const url = new URL(base);
   if (!['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) return base;
   if (development && expoHost) {
     const host = expoHost.replace(/^https?:\/\//, '').split('/')[0].split(':')[0];

@@ -121,8 +121,7 @@ export const treks: Trek[] = [
 export const trekById = (id: string) => treks.find(trek => trek.id === id) ?? null;
 
 export function trekMeta(trek: Trek) {
-  const { km, ascent } = trekStats(trek.route);
-  return `${km} km · ${trek.days} · +${ascent.toLocaleString()} m gain`;
+  return `${trek.days} suggested · ${trek.difficulty} · walking distance not verified`;
 }
 
 export function trekBounds(route: TrekPoint[]) {

@@ -9,12 +9,13 @@ from fastapi.exceptions import RequestValidationError
 import logging
 from firebase_admin import auth, firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
+from google.api_core.exceptions import PermissionDenied, Unauthenticated
 from .auth import current_user, recently_authenticated_user
 from .chat import reply as chat_reply
 from .schemas import ChatRequest, TrekPreparation
 from .boundary import RequestBoundary
 from .config import settings
-from .database import database
+from .database import database, FirebaseSetupError
 from .proximity import nearby
 from .token_factory import configured as ai_configured
 from .planner import ROUTES, generate, route_by_id
@@ -70,9 +71,13 @@ def health():
 @app.get('/ready')
 def readiness():
     try:
-        database().collection('_readiness').document('probe').get(timeout=5)
+        database().collection('_readiness').document('probe').get(timeout=5, retry=None)
+    except FirebaseSetupError as error:
+        return JSONResponse(status_code=503, content={'ready': False, 'code': error.code, 'detail': error.detail, 'action': error.action})
+    except (PermissionDenied, Unauthenticated):
+        return JSONResponse(status_code=503, content={'ready': False, 'code': 'account_storage_access_denied', 'detail': 'Account storage access was denied.', 'action': 'Check the approved server identity, FIREBASE_PROJECT_ID, Firestore availability and IAM permissions. Do not change client security rules to grant Admin access.'})
     except Exception:
-        return JSONResponse(status_code=503, content={'ready': False, 'detail': 'Account storage is unavailable.'})
+        return JSONResponse(status_code=503, content={'ready': False, 'code': 'account_storage_unavailable', 'detail': 'Account storage is unavailable.', 'action': 'Check Firestore setup and backend network access, then retry /ready. This probe does not write data.'})
     return {'ready': True, 'aiConfigured': ai_configured()}
 
 @app.post('/session')

@@ -32,7 +32,7 @@ import { colors, radius, space } from '@/theme/tokens';
 export default function ProfileScreen() {
   const cloud = useCloud();
   const insets = useSafeAreaInsets();
-  const { answers, groups, email, imageUrl, profile, signOut, signingOut, updateAnswers } = useNavo();
+  const { answers, groups, email, imageUrl, profile, signOut, signingOut, updateAnswers, error: profileError } = useNavo();
   const [loud, setLoud] = useState(answers.alertsEnabled);
   const [contact, setContact] = useState(() => ({
     name: answers.emergencyContact?.name ?? '',
@@ -97,11 +97,8 @@ export default function ProfileScreen() {
 
   async function redoSetup() {
     setError('');
-    try {
-      await updateAnswers({ completed: false });
-    } catch (failure) {
-      setError(friendlyAuthError(failure, 'We couldn’t open the setup steps.'));
-    }
+    // Editing preferences must not revoke the already completed onboarding checkpoint.
+    router.push('/welcome');
   }
 
   async function leave() {
@@ -140,7 +137,7 @@ export default function ProfileScreen() {
           </Card>
         </Reveal>
 
-        <Notice message={error} /><CloudStatus />
+        <Notice message={error || profileError} /><CloudStatus />
 
         <Reveal delay={90}>
           <View style={styles.section}>

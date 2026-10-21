@@ -20,6 +20,15 @@ export function CloudProvider({ children }: PropsWithChildren) {
   const { user } = useFirebaseAuth();
   const isSignedIn = Boolean(user);
   const userId = user?.uid;
+  const [profileSnapshot, setProfileSnapshot] = useState<{ uid: string; value: CloudProfile | null }>({ uid: '', value: null });
+  // Profile restoration must not wait for the group API or its Admin credentials.
+  // Existing Firestore rules still enforce ownership and verified accounts.
+  useEffect(() => {
+    if (!userId || !firestore) return;
+    return onSnapshot(doc(firestore, 'users', userId), result => {
+      setProfileSnapshot({ uid: userId, value: result.exists() ? decodeCloud(result.data()) as CloudProfile : null });
+    }, () => { /* Keep this account's last successful snapshot during an outage. */ });
+  }, [userId]);
   const getToken = useCallback(() => user ? user.getIdToken() : Promise.resolve(null), [user]);
   const [attempt, setAttempt] = useState(0);
   const [snapshot, setSnapshot] = useState<{ uid: string; ready: boolean; status: string; error: string; groups: TrekGroup[]; notifications: CloudNotification[]; notificationsLoaded: boolean; notificationsCached: boolean; remoteProfile: CloudProfile | null }>({ uid: '', ready: false, status: 'Not connected', error: '', groups: [], notifications: [], notificationsLoaded: false, notificationsCached: false, remoteProfile: null });
@@ -49,12 +58,11 @@ export function CloudProvider({ children }: PropsWithChildren) {
         cleanups.push(onSnapshot(query(collection(firestore, 'users', uid, 'notifications'), orderBy('createdAt', 'desc'), limit(50)), { includeMetadataChanges: true }, result => {
           if (active && !streamFailed) setSnapshot(current => ({ ...current, notificationsLoaded: true, notificationsCached: result.metadata.fromCache, notifications: result.docs.map(item => ({ ...decodeCloud(item.data()) as CloudNotification, id: item.id })) }));
         }, failure));
-        cleanups.push(onSnapshot(doc(firestore, 'users', uid), result => { if (active && !streamFailed) setSnapshot(current => ({ ...current, remoteProfile: result.exists() ? decodeCloud(result.data()) as CloudProfile : null })); }, failure));
       } catch (error) { if (active) setSnapshot({ ...initial, status: 'Connection unavailable', error: actionError(error) }); }
     });
     return () => { active = false; cleanups.forEach(stop => stop()); };
   }, [api, user, isSignedIn, userId, attempt]);
-  const value = useMemo(() => ({ ...snapshot, notificationsLoaded: snapshot.uid === userId && snapshot.notificationsLoaded, notificationsCached: snapshot.uid !== userId || snapshot.notificationsCached, ready: snapshot.uid === userId && snapshot.ready, groups: snapshot.uid === userId ? snapshot.groups : [], notifications: snapshot.uid === userId ? snapshot.notifications : [], remoteProfile: snapshot.uid === userId ? snapshot.remoteProfile : null, api, retry: () => setAttempt(value => value + 1) }), [snapshot, userId, api]);
+  const value = useMemo(() => ({ ...snapshot, notificationsLoaded: snapshot.uid === userId && snapshot.notificationsLoaded, notificationsCached: snapshot.uid !== userId || snapshot.notificationsCached, ready: snapshot.uid === userId && snapshot.ready, groups: snapshot.uid === userId ? snapshot.groups : [], notifications: snapshot.uid === userId ? snapshot.notifications : [], remoteProfile: profileSnapshot.uid === userId ? profileSnapshot.value : null, api, retry: () => setAttempt(value => value + 1) }), [snapshot, userId, api, profileSnapshot]);
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 export function useCloud() { const state = useContext(Context); if (!state) throw new Error('CloudProvider missing'); return state; }

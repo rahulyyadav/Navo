@@ -1,0 +1,23 @@
+{
+  "sha256": "0d232f499e002991daf68b767dc21290d34773b36a81364a32e1fc3675b7c37c",
+  "bytes": 12760,
+  "segments": 1,
+  "points": 269,
+  "geometry_length_m": 6760.06,
+  "largest_consecutive_gap_m": 203.66,
+  "elevation_points": 0,
+  "start": {
+    "lat": 27.597047,
+    "lon": 85.383258
+  },
+  "end": {
+    "lat": 27.571287,
+    "lon": 85.406692
+  },
+  "bounds": {
+    "south": 27.571191,
+    "north": 27.59738,
+    "west": 85.378313,
+    "east": 85.406692
+  }
+}

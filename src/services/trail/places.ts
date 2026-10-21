@@ -24,28 +24,47 @@ export function decodeTrailPlaces(value: unknown, route: Coordinate[]): TrailPla
 let retryAfter = 0;
 const endpoint = process.env.EXPO_PUBLIC_OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
 const cache = new Map<string, {at:number; places:TrailPlace[]}>();
-export async function fetchTrailPlaces(route: Coordinate[], signal?: AbortSignal) {
+export type TrailPlaceSnapshot = { places: TrailPlace[]; fetchedAt: string; stale: boolean };
+export async function fetchTrailPlaceSnapshot(route: Coordinate[], signal?: AbortSignal, refresh = false): Promise<TrailPlaceSnapshot> {
   if (route.length < 2 || route.length > 30000 || !route.every(isCoordinate)) throw Error('Choose a walking route first.');
   const lat = route.map(p=>p.latitude), lon = route.map(p=>p.longitude);
   const south=Math.min(...lat)-.003, north=Math.max(...lat)+.003, west=Math.min(...lon)-.003, east=Math.max(...lon)+.003;
   if (north-south > .4 || east-west > .4) throw Error('Choose a shorter daily stage to find nearby facilities.');
   const box = [south,west,north,east].map(v=>v.toFixed(5)).join(',');
-  const cached = cache.get(box);
-  if (cached && Date.now()-cached.at < 600000) return cached.places.filter(p=>(distanceToRoute(p,route)??Infinity)<=300);
-  if(Date.now()<retryAfter) throw Error('Trail information is busy. Wait 30 seconds before trying again. Your route remains available.');
+  // Different routes in the same bounds must not reuse an already route-filtered result.
+  const key = JSON.stringify(route.map(p=>[p.latitude,p.longitude]));
+  const saved = cache.get(key);
+  const cached = saved && Date.now()-saved.at < 86400000 ? saved : null;
+  const snapshot = (entry: {at:number;places:TrailPlace[]}, stale: boolean): TrailPlaceSnapshot => ({places:entry.places,fetchedAt:new Date(entry.at).toISOString(),stale});
+  if (signal?.aborted) throw Error('Mapped stops request cancelled.');
+  if (!refresh && cached && Date.now()-cached.at < 600000) return snapshot(cached,false);
+  if(Date.now()<retryAfter) {
+    if(cached) return snapshot(cached,true);
+    throw Error('Trail information is busy. Wait 30 seconds before trying again. Your route remains available.');
+  }
   if(!/^https:\/\//i.test(endpoint)) throw Error('Trail information requires a secure provider connection.');
   const query = `[out:json][timeout:15];(nwr[amenity~"^(shelter|bench|drinking_water|toilets)$"](${box});nwr[tourism~"^(viewpoint|picnic_site)$"](${box});nwr[hazard](${box}););out center 1000;`;
   const controller=new AbortController(); const abort=()=>controller.abort();
   signal?.addEventListener('abort',abort); if(signal?.aborted) controller.abort();
   const timer=setTimeout(abort,20000);
   try {
-    const response=await fetch(endpoint, {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({data:query}).toString(),signal:controller.signal});
+    const response=await fetch(`${endpoint}${endpoint.includes('?')?'&':'?'}${new URLSearchParams({data:query})}`, {signal:controller.signal});
     if(!response.ok) {
       if(response.status===406||response.status===429) retryAfter=Date.now()+30000;
       throw Error('The trail information provider is unavailable. Wait 30 seconds and retry. Your route remains available.');
     }
-    const places=decodeTrailPlaces(await response.json(),route); cache.set(box,{at:Date.now(),places});
+    const places=decodeTrailPlaces(await response.json(),route); const entry={at:Date.now(),places}; cache.set(key,entry);
     if(cache.size>10)cache.delete(cache.keys().next().value!);
-    return places;
+    return snapshot(entry,false);
+  } catch(error) {
+    if(signal?.aborted) throw error;
+    if(cached) return snapshot(cached,true);
+    if(controller.signal.aborted) throw Error('Mapped stops took too long to load. Your route is still available; retry later.');
+    if(error instanceof TypeError) throw Error('Could not reach the mapped-stops service. Your route remains available. Retry when connected.');
+    throw error;
   } finally {clearTimeout(timer);signal?.removeEventListener('abort',abort);}
+}
+
+export async function fetchTrailPlaces(route: Coordinate[], signal?: AbortSignal) {
+  return (await fetchTrailPlaceSnapshot(route,signal)).places;
 }

@@ -2,7 +2,7 @@ import { pendingWalkingPlan } from '@/lib/pending-walking-plan';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Text, satoshiFonts } from '@/components/Typography';
 import { useFonts } from 'expo-font';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
@@ -49,6 +49,12 @@ function Routes() {
   const { authLoaded, isSignedIn, hydrated, needsOnboarding, userId } = useNavo();
   const reduced = useReducedMotion();
   const animation = reduced ? 'none' : 'slide_from_right';
+  const offered = useRef('');
+  useEffect(() => {
+    if (!authLoaded || !hydrated || !isSignedIn || !needsOnboarding || offered.current === userId) return;
+    offered.current = userId;
+    router.replace('/welcome');
+  }, [authLoaded, hydrated, isSignedIn, needsOnboarding, userId]);
   useEffect(() => {
     if (!isSignedIn || !hydrated || needsOnboarding) return;
     let active = true;
@@ -89,12 +95,9 @@ function Routes() {
       <Stack.Screen name="signup" options={{ headerShown: false }} />
     </Stack.Protected>
 
-    <Stack.Protected guard={isSignedIn && needsOnboarding}>
-      <Stack.Screen name="welcome" options={{ headerShown: false }} />
-    </Stack.Protected>
-
-    <Stack.Protected guard={isSignedIn && !needsOnboarding}>
+    <Stack.Protected guard={isSignedIn}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: reduced ? 'none' : 'fade' }} />
+      <Stack.Screen name="welcome" options={{ headerShown: false }} />
       <Stack.Screen name="journey" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="group/[id]" options={{ title: 'Group', headerBackTitle: 'Back' }} />
       <Stack.Screen name="group/new" options={{ title: 'New group', presentation: 'modal' }} />

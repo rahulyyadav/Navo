@@ -108,6 +108,18 @@ export default function WelcomeScreen() {
     }
   }
 
+  async function deferSetup() {
+    if (saving) return;
+    if (answers.completed) { router.replace('/(tabs)/discover'); return; }
+    setSaving(true); setError('');
+    try {
+      // Remember the explicit skip without inventing experience, goals or an emergency contact.
+      await completeOnboarding({ ...answers, fullName: draft.fullName.trim().length >= 2 ? draft.fullName.trim() : 'Trekker' });
+      router.replace('/(tabs)/discover');
+    } catch (failure) { setError(friendlyAuthError(failure, 'Could not remember your choice on this device. Please retry.')); }
+    finally { setSaving(false); }
+  }
+
   const name = draft.fullName.trim() || 'trekker';
 
   return (
@@ -116,6 +128,7 @@ export default function WelcomeScreen() {
         <View style={styles.progressWrap}>
           <Row style={styles.progressTop}>
             <Text style={styles.progressLabel}>{copy.eyebrow}</Text>
+            <LinkAction disabled={saving} label={answers.completed ? 'Close' : 'Set up later'} onPress={() => void deferSetup()} />
             {index > 0 && step !== 'ready'
               ? <LinkAction align="right" label="Back" onPress={back} />
               : <View style={styles.progressSpacer} />}

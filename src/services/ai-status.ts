@@ -1,4 +1,6 @@
-export type AiStatus = 'checking' | 'online' | 'model-missing' | 'unreachable' | 'unconfigured';
+import { resolveBackendAddress, validateBackendAddress } from './backend-address';
+
+export type AiStatus = 'checking' | 'online' | 'model-missing' | 'storage-unavailable' | 'unreachable' | 'unconfigured';
 export type AiTone = 'ok' | 'warn' | 'bad';
 export type AiStatusCopy = { label: string; title: string; detail: string; hint: string; tone: AiTone };
 
@@ -13,7 +15,9 @@ export function classifyAiHealth(base: string, health: { ok: boolean; aiConfigur
 export function aiStatusCopy(status: AiStatus): AiStatusCopy {
   switch (status) {
     case 'online':
-      return { label: 'AI online', title: 'Navo AI is connected', detail: 'Answers come from the live Nemotron model.', hint: '', tone: 'ok' };
+      return { label: 'Service ready', title: 'Navo AI is ready to connect', detail: 'The model is configured and account storage is reachable. Send a question to request an answer.', hint: '', tone: 'ok' };
+    case 'storage-unavailable':
+      return { label: 'Account sync unavailable', title: 'The AI service needs its account connection', detail: 'The model is configured, but account storage readiness could not be confirmed. Your question is kept for retry.', hint: 'Check /ready, Firebase Admin credentials, project access and Firestore setup on the backend.', tone: 'bad' };
     case 'model-missing':
       return {
         label: 'Model key missing',
@@ -26,7 +30,7 @@ export function aiStatusCopy(status: AiStatus): AiStatusCopy {
       return {
         label: 'AI offline',
         title: 'Navo AI cannot reach its service',
-        detail: 'The AI service did not answer. This is not your internet connection — the service itself is down. Your message stays in the input.',
+        detail: 'The connection check did not finish. Check your connection or retry while the service wakes up. Your message stays in the input.',
         hint: 'Start the backend that EXPO_PUBLIC_CHAT_BASE_URL points to, then tap Retry.',
         tone: 'bad',
       };
@@ -43,18 +47,27 @@ export function aiStatusCopy(status: AiStatus): AiStatusCopy {
   }
 }
 
-export async function probeAiStatus(base: string, timeoutMs = 6000): Promise<AiStatus> {
-  const trimmed = base.trim().replace(/\/$/, '');
-  if (!trimmed) return classifyAiHealth('', null);
+export async function probeAiStatus(base: string, timeoutMs = 6000, environment?: { platform: string; development: boolean; expoHost?: string }): Promise<AiStatus> {
+  if (!base.trim()) return classifyAiHealth('', null);
+  let trimmed: string;
+  try {
+    trimmed = environment ? resolveBackendAddress(base, environment.platform, environment.development, environment.expoHost) : validateBackendAddress(base);
+  } catch { return 'unconfigured'; }
   const controller = new AbortController();
+  let modelConfigured = false;
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(`${trimmed}/health`, { signal: controller.signal });
     if (!response.ok) return classifyAiHealth(trimmed, { ok: false });
     const body = (await response.json().catch(() => null)) as { aiConfigured?: unknown } | null;
-    return classifyAiHealth(trimmed, { ok: true, aiConfigured: body?.aiConfigured });
+    const configured = classifyAiHealth(trimmed, { ok: true, aiConfigured: body?.aiConfigured });
+    if (configured !== 'online') return configured;
+    modelConfigured = true;
+    const ready = await fetch(`${trimmed}/ready`, { signal: controller.signal });
+    const readiness = await ready.json().catch(() => null) as {ready?:unknown} | null;
+    return ready.ok && readiness?.ready === true ? 'online' : 'storage-unavailable';
   } catch {
-    return classifyAiHealth(trimmed, null);
+    return modelConfigured ? 'storage-unavailable' : classifyAiHealth(trimmed, null);
   } finally {
     clearTimeout(timer);
   }
