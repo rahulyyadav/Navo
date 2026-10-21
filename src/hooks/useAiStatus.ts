@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { chatBase } from '@/lib/api';
 import { probeAiStatus, type AiStatus } from '@/services/ai-status';
+import { networkEnvironment } from '@/lib/network-environment';
 
 export function useAiStatus() {
   const [attempt, setAttempt] = useState(0);
@@ -10,7 +11,7 @@ export function useAiStatus() {
   useEffect(() => {
     if (!chatBase) return;
     let active = true;
-    void probeAiStatus(chatBase).then(status => { if (active) setProbe({ key, status }); });
+    void probeAiStatus(chatBase, 6000, networkEnvironment()).then(status => { if (active) setProbe({ key, status }); });
     return () => { active = false; };
   }, [key]);
   // An untried key is still checking, so the banner never fires on stale results.

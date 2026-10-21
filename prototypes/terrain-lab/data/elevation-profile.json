@@ -1,0 +1,563 @@
+{
+  "source": "Mapzen / Tilezen Terrain Tiles on AWS",
+  "encoding": "Terrarium",
+  "zoom": 12,
+  "sampleSpacingM": 100,
+  "method": "bilinear pixel-centre sampling along routing-engine geometry",
+  "verticalAccuracyM": null,
+  "ascentM": null,
+  "samples": [
+    {
+      "distanceM": 0,
+      "coordinate": [
+        85.383258,
+        27.597047
+      ],
+      "elevationM": 1521.0
+    },
+    {
+      "distanceM": 100,
+      "coordinate": [
+        85.3841912,
+        27.5973774
+      ],
+      "elevationM": 1530.7
+    },
+    {
+      "distanceM": 200,
+      "coordinate": [
+        85.3851321,
+        27.5971139
+      ],
+      "elevationM": 1529.3
+    },
+    {
+      "distanceM": 300,
+      "coordinate": [
+        85.3848164,
+        27.5964743
+      ],
+      "elevationM": 1540.2
+    },
+    {
+      "distanceM": 400,
+      "coordinate": [
+        85.3841618,
+        27.5957873
+      ],
+      "elevationM": 1538.8
+    },
+    {
+      "distanceM": 500,
+      "coordinate": [
+        85.3835117,
+        27.5950979
+      ],
+      "elevationM": 1535.7
+    },
+    {
+      "distanceM": 600,
+      "coordinate": [
+        85.382781,
+        27.5944738
+      ],
+      "elevationM": 1537.6
+    },
+    {
+      "distanceM": 700,
+      "coordinate": [
+        85.3820381,
+        27.5938636
+      ],
+      "elevationM": 1538.5
+    },
+    {
+      "distanceM": 800,
+      "coordinate": [
+        85.381174,
+        27.5933936
+      ],
+      "elevationM": 1536.9
+    },
+    {
+      "distanceM": 900,
+      "coordinate": [
+        85.3805055,
+        27.5939968
+      ],
+      "elevationM": 1538.4
+    },
+    {
+      "distanceM": 1000,
+      "coordinate": [
+        85.3796894,
+        27.5944092
+      ],
+      "elevationM": 1533.5
+    },
+    {
+      "distanceM": 1100,
+      "coordinate": [
+        85.3787035,
+        27.5942078
+      ],
+      "elevationM": 1532.1
+    },
+    {
+      "distanceM": 1200,
+      "coordinate": [
+        85.3784289,
+        27.5935879
+      ],
+      "elevationM": 1539.0
+    },
+    {
+      "distanceM": 1300,
+      "coordinate": [
+        85.3786064,
+        27.5927025
+      ],
+      "elevationM": 1545.9
+    },
+    {
+      "distanceM": 1400,
+      "coordinate": [
+        85.3787864,
+        27.5918178
+      ],
+      "elevationM": 1549.5
+    },
+    {
+      "distanceM": 1500,
+      "coordinate": [
+        85.3787821,
+        27.5909266
+      ],
+      "elevationM": 1555.2
+    },
+    {
+      "distanceM": 1600,
+      "coordinate": [
+        85.3787996,
+        27.5900628
+      ],
+      "elevationM": 1562.8
+    },
+    {
+      "distanceM": 1700,
+      "coordinate": [
+        85.3788332,
+        27.589166
+      ],
+      "elevationM": 1570.5
+    },
+    {
+      "distanceM": 1800,
+      "coordinate": [
+        85.3793442,
+        27.588598
+      ],
+      "elevationM": 1588.2
+    },
+    {
+      "distanceM": 1900,
+      "coordinate": [
+        85.3798381,
+        27.5879921
+      ],
+      "elevationM": 1605.6
+    },
+    {
+      "distanceM": 2000,
+      "coordinate": [
+        85.3806698,
+        27.587554
+      ],
+      "elevationM": 1624.8
+    },
+    {
+      "distanceM": 2100,
+      "coordinate": [
+        85.3811383,
+        27.5867562
+      ],
+      "elevationM": 1659.9
+    },
+    {
+      "distanceM": 2200,
+      "coordinate": [
+        85.3814849,
+        27.5859231
+      ],
+      "elevationM": 1700.0
+    },
+    {
+      "distanceM": 2300,
+      "coordinate": [
+        85.3814223,
+        27.5851491
+      ],
+      "elevationM": 1737.5
+    },
+    {
+      "distanceM": 2400,
+      "coordinate": [
+        85.3813505,
+        27.5843107
+      ],
+      "elevationM": 1762.8
+    },
+    {
+      "distanceM": 2500,
+      "coordinate": [
+        85.3820993,
+        27.5837038
+      ],
+      "elevationM": 1797.4
+    },
+    {
+      "distanceM": 2600,
+      "coordinate": [
+        85.3829516,
+        27.5832318
+      ],
+      "elevationM": 1838.2
+    },
+    {
+      "distanceM": 2700,
+      "coordinate": [
+        85.3836007,
+        27.5827771
+      ],
+      "elevationM": 1876.7
+    },
+    {
+      "distanceM": 2800,
+      "coordinate": [
+        85.3840506,
+        27.5820649
+      ],
+      "elevationM": 1917.2
+    },
+    {
+      "distanceM": 2900,
+      "coordinate": [
+        85.384906,
+        27.5817974
+      ],
+      "elevationM": 1949.3
+    },
+    {
+      "distanceM": 3000,
+      "coordinate": [
+        85.3856842,
+        27.581358
+      ],
+      "elevationM": 1971.8
+    },
+    {
+      "distanceM": 3100,
+      "coordinate": [
+        85.3865488,
+        27.5811157
+      ],
+      "elevationM": 1991.9
+    },
+    {
+      "distanceM": 3200,
+      "coordinate": [
+        85.3871027,
+        27.5805013
+      ],
+      "elevationM": 2015.5
+    },
+    {
+      "distanceM": 3300,
+      "coordinate": [
+        85.3880699,
+        27.5805921
+      ],
+      "elevationM": 2051.0
+    },
+    {
+      "distanceM": 3400,
+      "coordinate": [
+        85.3890509,
+        27.5803734
+      ],
+      "elevationM": 2082.3
+    },
+    {
+      "distanceM": 3500,
+      "coordinate": [
+        85.3900276,
+        27.5801453
+      ],
+      "elevationM": 2109.7
+    },
+    {
+      "distanceM": 3600,
+      "coordinate": [
+        85.3908317,
+        27.5800017
+      ],
+      "elevationM": 2118.2
+    },
+    {
+      "distanceM": 3700,
+      "coordinate": [
+        85.3911427,
+        27.5792896
+      ],
+      "elevationM": 2138.4
+    },
+    {
+      "distanceM": 3800,
+      "coordinate": [
+        85.3918624,
+        27.5791242
+      ],
+      "elevationM": 2169.6
+    },
+    {
+      "distanceM": 3900,
+      "coordinate": [
+        85.3926973,
+        27.5788398
+      ],
+      "elevationM": 2197.6
+    },
+    {
+      "distanceM": 4000,
+      "coordinate": [
+        85.3936271,
+        27.578749
+      ],
+      "elevationM": 2224.6
+    },
+    {
+      "distanceM": 4100,
+      "coordinate": [
+        85.3945598,
+        27.5785893
+      ],
+      "elevationM": 2259.0
+    },
+    {
+      "distanceM": 4200,
+      "coordinate": [
+        85.3954127,
+        27.5783758
+      ],
+      "elevationM": 2295.5
+    },
+    {
+      "distanceM": 4300,
+      "coordinate": [
+        85.3962092,
+        27.5781234
+      ],
+      "elevationM": 2337.9
+    },
+    {
+      "distanceM": 4400,
+      "coordinate": [
+        85.3968323,
+        27.5782239
+      ],
+      "elevationM": 2357.9
+    },
+    {
+      "distanceM": 4500,
+      "coordinate": [
+        85.3972017,
+        27.5778358
+      ],
+      "elevationM": 2394.3
+    },
+    {
+      "distanceM": 4600,
+      "coordinate": [
+        85.3975982,
+        27.5775044
+      ],
+      "elevationM": 2428.2
+    },
+    {
+      "distanceM": 4700,
+      "coordinate": [
+        85.3981204,
+        27.5778372
+      ],
+      "elevationM": 2417.5
+    },
+    {
+      "distanceM": 4800,
+      "coordinate": [
+        85.3990915,
+        27.5776182
+      ],
+      "elevationM": 2407.2
+    },
+    {
+      "distanceM": 4900,
+      "coordinate": [
+        85.3996588,
+        27.5768858
+      ],
+      "elevationM": 2413.8
+    },
+    {
+      "distanceM": 5000,
+      "coordinate": [
+        85.3991191,
+        27.5769563
+      ],
+      "elevationM": 2448.4
+    },
+    {
+      "distanceM": 5100,
+      "coordinate": [
+        85.3987873,
+        27.5767169
+      ],
+      "elevationM": 2474.9
+    },
+    {
+      "distanceM": 5200,
+      "coordinate": [
+        85.3986588,
+        27.5761472
+      ],
+      "elevationM": 2499.8
+    },
+    {
+      "distanceM": 5300,
+      "coordinate": [
+        85.3990238,
+        27.5753604
+      ],
+      "elevationM": 2514.3
+    },
+    {
+      "distanceM": 5400,
+      "coordinate": [
+        85.3992048,
+        27.574636
+      ],
+      "elevationM": 2544.6
+    },
+    {
+      "distanceM": 5500,
+      "coordinate": [
+        85.3984149,
+        27.5741823
+      ],
+      "elevationM": 2571.1
+    },
+    {
+      "distanceM": 5600,
+      "coordinate": [
+        85.3976795,
+        27.5737327
+      ],
+      "elevationM": 2580.9
+    },
+    {
+      "distanceM": 5700,
+      "coordinate": [
+        85.3981518,
+        27.5732065
+      ],
+      "elevationM": 2587.5
+    },
+    {
+      "distanceM": 5800,
+      "coordinate": [
+        85.3989894,
+        27.5734899
+      ],
+      "elevationM": 2600.0
+    },
+    {
+      "distanceM": 5900,
+      "coordinate": [
+        85.3995872,
+        27.5729568
+      ],
+      "elevationM": 2638.9
+    },
+    {
+      "distanceM": 6000,
+      "coordinate": [
+        85.3995824,
+        27.5720759
+      ],
+      "elevationM": 2636.1
+    },
+    {
+      "distanceM": 6100,
+      "coordinate": [
+        85.4003306,
+        27.5714784
+      ],
+      "elevationM": 2648.0
+    },
+    {
+      "distanceM": 6200,
+      "coordinate": [
+        85.4012751,
+        27.5717399
+      ],
+      "elevationM": 2653.9
+    },
+    {
+      "distanceM": 6300,
+      "coordinate": [
+        85.4022589,
+        27.5717681
+      ],
+      "elevationM": 2660.3
+    },
+    {
+      "distanceM": 6400,
+      "coordinate": [
+        85.4032266,
+        27.5715364
+      ],
+      "elevationM": 2662.9
+    },
+    {
+      "distanceM": 6500,
+      "coordinate": [
+        85.4041523,
+        27.5712334
+      ],
+      "elevationM": 2683.6
+    },
+    {
+      "distanceM": 6600,
+      "coordinate": [
+        85.4051288,
+        27.5712353
+      ],
+      "elevationM": 2727.9
+    },
+    {
+      "distanceM": 6700,
+      "coordinate": [
+        85.4060832,
+        27.5712668
+      ],
+      "elevationM": 2744.9
+    },
+    {
+      "distanceM": 6760.06,
+      "coordinate": [
+        85.406692,
+        27.571287
+      ],
+      "elevationM": 2745.2
+    }
+  ]
+}
