@@ -137,3 +137,7 @@ cd backend
 `GET /health` works without external credentials; authenticated cloud operations require valid Admin credentials, and AI planning also requires Nebius credentials. Native Google sign-in needs the configured web/iOS OAuth clients and Android signing registration described in [AUTH-AND-MAPS.md](./AUTH-AND-MAPS.md) and a development build.
 
 Dependency overrides pin patched gRPC and UUID versions within Firebase and Expo tooling. Keep these overrides until upstream dependencies include the security fixes; verify Expo Doctor and exports after changing them.
+
+## License
+
+Navo is licensed under the [MIT License](LICENSE). Third-party components retain their respective licenses.

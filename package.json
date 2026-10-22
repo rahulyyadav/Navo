@@ -1,6 +1,7 @@
 {
   "name": "navo",
   "version": "1.0.0",
+  "license": "MIT",
   "engines": {
     "node": ">=22.13.0"
   },
