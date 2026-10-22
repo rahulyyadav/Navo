@@ -1,3 +1,4 @@
+import { toJourneyPoint } from '@/services/journeys/types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Modal, ScrollView, View, useWindowDimensions } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
@@ -92,7 +93,7 @@ export function JourneyHome() {
       ...('canonicalId' in place && typeof place.canonicalId === 'string' ? { canonicalId: place.canonicalId } : {}),
       ...('destinationMeaning' in place && typeof place.destinationMeaning === 'string' ? { destinationMeaning: place.destinationMeaning } : {}),
     };
-    router.push({ pathname: '/journey-setup', params: { destination: JSON.stringify(destination) } });
+    router.push({ pathname: '/journey-setup', params: { destination: JSON.stringify(toJourneyPoint(destination)) } });
   }
   const localMapped = useMemo(() => matchingDestinations(query).map(cataloguePoint), [query]);
   const mappedPlaces = useMemo(() => {

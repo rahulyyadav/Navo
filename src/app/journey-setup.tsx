@@ -17,12 +17,12 @@ import { useNavo } from '@/context/NavoContext';
 import { useMyLocation } from '@/hooks/useMyLocation';
 import { readJourneyDraft, saveJourneyDraft, saveJourney } from '@/lib/journey-store';
 import { itineraryStatus, prepareItinerary, connectOrigin, unconfirmedApproach, type PreparationStatus } from '@/services/journeys/api';
-import { validDate, validPoint, type JourneyPoint, type JourneyPreferences } from '@/services/journeys/types';
+import { validDate, validPoint, toJourneyPoint, type JourneyPoint, type JourneyPreferences } from '@/services/journeys/types';
 import { nepalToday } from '@/services/day-hike';
 import { NepalMap } from '@/components/NepalMap';
 function parse(value: unknown): JourneyPoint | null { try {
     const p = JSON.parse(typeof value === 'string' ? value : '');
-    return validPoint(p) ? p : null;
+    return validPoint(p) ? toJourneyPoint(p) : null;
 }
 catch {
     return null;
@@ -227,7 +227,7 @@ function Setup({ destination, uid }: {
         setEditOrigin(!editOrigin);
     }
     function selectOrigin(point: JourneyPoint) {
-        Keyboard.dismiss(); resetPreparation(); setMapChoices({}); setOrigin(point); setMapNonce(value => value + 1); setEditOrigin(false); setError('');
+        Keyboard.dismiss(); resetPreparation(); setMapChoices({}); setOrigin(toJourneyPoint(point)); setMapNonce(value => value + 1); setEditOrigin(false); setError('');
     }
     const primaryLabel = step < 2 ? 'Continue' : saving ? 'Connecting your start…' : researchError ? 'Retry preparation' : preparing ? 'Preparing…' : mapChoicePrompt ? 'Choose a map result above' : 'View my route';
     return <View style={s.page}><KeyboardAvoidingView style={s.keyboard} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>

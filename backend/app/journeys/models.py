@@ -4,6 +4,16 @@ from datetime import date
 
 class Point(BaseModel):
     model_config = ConfigDict(extra='forbid')
+
+    @model_validator(mode='before')
+    @classmethod
+    def discard_catalogue_metadata(cls, value):
+        # Older clients and cached plans may include search-only aliases. They
+        # do not affect location identity or research. Keep other fields strict.
+        if isinstance(value, dict) and 'aliases' in value:
+            return {key: item for key, item in value.items() if key != 'aliases'}
+        return value
+
     id: str = Field(min_length=1, max_length=200)
     name: str = Field(min_length=1, max_length=150)
     latitude: float = Field(ge=-90, le=90)

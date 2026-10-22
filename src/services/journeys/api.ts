@@ -1,5 +1,5 @@
 import { requestJourneyAPI } from '@/lib/api';
-import { decodeItinerary, decodeLegs, pointDistanceM, validPoint, type JourneyPoint, type JourneySource, type Itinerary, type JourneyLeg } from './types';
+import { decodeItinerary, decodeLegs, toJourneyPoint, pointDistanceM, validPoint, type JourneyPoint, type JourneySource, type Itinerary, type JourneyLeg } from './types';
 export type PreparationStatus = {
     id: string;
     status: 'preparing' | 'ready' | 'failed' | 'needs_user_choice';
@@ -27,7 +27,7 @@ function status(v: PreparationStatus) {
     return v;
 }
 export async function prepareItinerary(destination: JourneyPoint, origin: JourneyPoint, startDate: string, mapChoices: Record<string, string> = {}) {
-    return status(await requestJourneyAPI<PreparationStatus>('/journey-itineraries/prepare', { destination, origin, startDate, mapChoices }));
+    return status(await requestJourneyAPI<PreparationStatus>('/journey-itineraries/prepare', { destination: toJourneyPoint(destination), origin: toJourneyPoint(origin), startDate, mapChoices }));
 }
 export async function itineraryStatus(id: string) {
     return status(await requestJourneyAPI<PreparationStatus>(`/journey-itineraries/${id}`, undefined, 'GET'));
@@ -42,7 +42,7 @@ export async function connectOrigin(template: Itinerary, origin: JourneyPoint) {
     const value = await requestJourneyAPI<{
         legs: JourneyLeg[];
         sources: JourneySource[];
-    }>('/journey-itineraries/approach', { templateId: template.id, revision: template.researchedAt, origin });
+    }>('/journey-itineraries/approach', { templateId: template.id, revision: template.researchedAt, origin: toJourneyPoint(origin) });
     if (!Array.isArray(value?.sources) || value.sources.some(s => !s || typeof s.id !== 'string' || typeof s.title !== 'string' || typeof s.url !== 'string' || !s.url.startsWith('https://')))
         throw new Error('Approach information is incomplete.');
     return { legs: decodeLegs(value.legs, value.sources), sources: value.sources };

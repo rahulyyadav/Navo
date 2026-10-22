@@ -38,7 +38,7 @@ function screen() {
     useMyLocation: () => ({ state: 'idle' }), useSafeAreaInsets: () => ({}),
     useWindowDimensions: () => ({ height: 800 }), useReducedMotion: () => true,
     nepalToday: () => '2026-10-22', validDate: value => /^\d{4}-\d{2}-\d{2}$/.test(value),
-    validPoint: value => Boolean(value?.id), selectedOption: leg => leg.options[0],
+    toJourneyPoint: value => value, validPoint: value => Boolean(value?.id), selectedOption: leg => leg.options[0],
     readJourneyDraft: async () => null, saveJourneyDraft: async () => {},
     saveJourney: async (_uid, journey) => { saved.push(journey); }, router: { replace() {} },
     prepareItinerary: (...args) => { const d = deferred(); requests.push({ args, ...d }); return d.promise; },

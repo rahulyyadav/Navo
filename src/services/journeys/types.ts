@@ -17,6 +17,16 @@ export type JourneyPoint = {
     /** Schematic planning point; never treat this as precise map geometry. */
     coordinatesApproximate?: boolean;
 };
+/** Construct the API location shape; TypeScript types don't strip runtime metadata. */
+export function toJourneyPoint(value: JourneyPoint): JourneyPoint {
+    return {
+        id: value.id, name: value.name, latitude: value.latitude, longitude: value.longitude,
+        fullName: value.fullName, region: value.region, country: value.country,
+        placeType: value.placeType, canonicalId: value.canonicalId,
+        destinationMeaning: value.destinationMeaning, provider: value.provider,
+        providerId: value.providerId, coordinatesApproximate: value.coordinatesApproximate,
+    };
+}
 export type JourneySource = {
     id: string;
     title: string;
@@ -118,6 +128,7 @@ export function decodeItinerary(value: unknown): Itinerary {
         throw new Error('The journey information is incomplete. Please retry.');
     if (!Array.isArray(v.legs) || !v.legs.length) throw new Error('No journey stages were found.');
     decodeLegs(v.legs, v.sources);
+    v.destination = toJourneyPoint(v.destination);
     return v;
 }
 export function decodeLegs(value: unknown, sources: JourneySource[]): JourneyLeg[] {
@@ -130,6 +141,9 @@ export function decodeLegs(value: unknown, sources: JourneySource[]): JourneyLeg
         ids.add(leg.id);
         if (!leg.options.every(o => o && typeof o.id === 'string' && typeof o.label === 'string' && typeof o.note === 'string' && Object.hasOwn(modeIcon, o.mode) && (o.minutes === null || Number.isInteger(o.minutes) && o.minutes > 0 && o.minutes <= 20000) && Array.isArray(o.sourceIds) && o.sourceIds.length && o.sourceIds.every(id => sources.some(s => s.id === id))) || !leg.options.some(o => o.id === leg.selected))
             throw new Error('The transport options are incomplete.');
+        leg.start = toJourneyPoint(leg.start);
+        leg.end = toJourneyPoint(leg.end);
+        leg.geometry = leg.geometry.map(toJourneyPoint);
     }
     return value;
 }

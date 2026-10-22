@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { decodeItinerary, decodeLegs, validPoint, validDate, type PersonalJourney, type JourneyLibrary, type JourneyPreferences } from '@/services/journeys/types';
+import { decodeItinerary, decodeLegs, toJourneyPoint, validPoint, validDate, type PersonalJourney, type JourneyLibrary, type JourneyPreferences } from '@/services/journeys/types';
 import { requestJourneyAPI } from '@/lib/api';
 const queues = new Map<string, Promise<unknown>>();
 const listeners = new Set<() => void>();
@@ -18,6 +18,7 @@ function decode(raw: string | null): JourneyLibrary {
         decodeLegs(j.approach, j.approachSources);
         if (j.version !== 1 || typeof j.id !== 'string' || !validPoint(j.preferences?.origin) || !validDate(j.preferences.startDate) || typeof j.preferences.budget !== 'string' || !['draft', 'ready', 'travelling', 'paused', 'completed'].includes(j.phase) || !Number.isInteger(j.completed) || j.completed < 0 || j.completed > j.approach.length + j.template.legs.length || !j.selections || typeof j.selections !== 'object')
             throw new Error('Saved journey is incomplete. Your data has been kept.');
+        j.preferences.origin = toJourneyPoint(j.preferences.origin);
         for (const leg of [...j.approach, ...j.template.legs])
             if (j.selections[leg.id] && !leg.options.some(o => o.id === j.selections[leg.id]))
                 throw new Error('A saved transport option is unavailable.');
@@ -100,7 +101,7 @@ export async function readJourneyDraft(uid: string, destinationId: string): Prom
     const v = JSON.parse(raw);
     if (!v || typeof v !== 'object') return null;
     return {
-        ...(validPoint(v.origin) ? { origin: v.origin } : {}),
+        ...(validPoint(v.origin) ? { origin: toJourneyPoint(v.origin) } : {}),
         ...(typeof v.startDate === 'string' && v.startDate.length <= 10 ? { startDate: v.startDate } : {}),
         ...(typeof v.finishDate === 'string' && v.finishDate.length <= 10 ? { finishDate: v.finishDate } : {}),
         ...(typeof v.budget === 'string' && v.budget.length <= 12 ? { budget: v.budget } : {}),
