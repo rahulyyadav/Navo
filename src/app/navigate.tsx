@@ -34,8 +34,6 @@ import {
   Notice,
   SectionTitle,
 } from "@/components/ui";
-import { TrekLocationSession } from "@/components/TrekLocationSession";
-import { useCloud } from "@/context/CloudContext";
 import { RouteAssistant } from "@/components/RouteAssistant";
 import { trekChatContext } from "@/services/routing/ai-context";
 import { NepalMap } from "@/components/NepalMap";
@@ -143,8 +141,6 @@ function LiveNavigation({
 }) {
   const { map: mapMode } = useLocalSearchParams<{map?:string}>();
   const { email } = useNavo();
-  const cloud = useCloud();
-  const [sharingCrew, setSharingCrew] = useState("");
   const network = useNetworkState();
   const offline =
     network.isConnected === false || network.isInternetReachable === false;
@@ -808,41 +804,6 @@ function LiveNavigation({
               variant="outline"
               onPress={() => setFollow((v) => !v)}
             />
-            {cloud.ready && cloud.groups.length > 0 && (
-              <Card>
-                <SectionTitle title="Your crew on this hike" />
-                <Text style={styles.copy}>
-                  Choose a group to share with. Updates and nearby alerts go
-                  only to that group after you turn sharing on.
-                </Text>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    flexWrap: "wrap",
-                    gap: space.sm,
-                  }}
-                >
-                  {cloud.groups.map((group) => (
-                    <Chip
-                      key={group.id}
-                      label={group.name}
-                      selected={sharingCrew === group.id}
-                      onPress={() =>
-                        setSharingCrew((v) => (v === group.id ? "" : group.id))
-                      }
-                    />
-                  ))}
-                </View>
-                {Boolean(sharingCrew) && (
-                  <TrekLocationSession
-                    key={sharingCrew}
-                    groupId={sharingCrew}
-                    context="navigation"
-                    externalFix={fresh ? location.fix : null}
-                  />
-                )}
-              </Card>
-            )}
             <RouteAssistant
               email={email ?? null}
               context={trekChatContext(

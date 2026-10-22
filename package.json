@@ -8,15 +8,17 @@
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-google-signin/google-signin": "^16.1.5",
+    "@react-native-masked-view/masked-view": "0.3.2",
     "babel-preset-expo": "~57.0.0",
     "expo": "~57.0.27",
     "expo-asset": "~57.0.18",
     "expo-audio": "~57.0.5",
     "expo-auth-session": "~57.0.14",
+    "expo-blur": "~57.0.3",
     "expo-clipboard": "~57.0.2",
     "expo-constants": "~57.0.19",
     "expo-crypto": "~57.0.3",
-    "expo-dev-client": "~57.0.19",
+    "expo-dev-client": "~57.0.20",
     "expo-document-picker": "~57.0.3",
     "expo-file-system": "~57.0.7",
     "expo-font": "~57.0.4",
@@ -31,6 +33,7 @@
     "expo-sensors": "~57.0.3",
     "expo-sharing": "~57.0.22",
     "expo-status-bar": "~57.0.1",
+    "expo-system-ui": "~57.0.4",
     "expo-web-browser": "~57.0.3",
     "fast-xml-parser": "^5.11.2",
     "firebase": "^12.19.0",
@@ -56,9 +59,9 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "start": "node scripts/dev.mjs",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
@@ -66,7 +69,8 @@
     "test": "node --test tests/*.test.mjs",
     "test:rules": "node --test tests/firestore/*.test.mjs",
     "check:release": "node scripts/check-release.mjs",
-    "eas-build-pre-install": "node scripts/check-eas.mjs"
+    "eas-build-pre-install": "node scripts/check-eas.mjs",
+    "start:app": "expo start"
   },
   "private": true,
   "overrides": {

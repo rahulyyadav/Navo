@@ -10,7 +10,7 @@ service cloud.firestore {
       allow read: if own(uid);
       allow write: if false; // Authenticated backend validates all mutations.
       match /{collection}/{id} {
-        allow read: if own(uid) && collection in ['notifications', 'plans', 'savedRoutes'];
+        allow read: if own(uid) && collection in ['notifications', 'plans', 'savedRoutes', 'journeys', 'journeyPreparations', 'journeyReviewJobs'];
         allow write: if false;
       }
     }

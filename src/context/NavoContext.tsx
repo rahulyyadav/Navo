@@ -141,7 +141,7 @@ export function NavoProvider({ children }: PropsWithChildren) {
       profile: user && cloud.remoteProfile?.onboarding ? buildProfile({ userId, email: user.email ?? '', imageUrl: user.photoURL, answers: cloud.remoteProfile.onboarding, createdAt: data?.profile?.createdAt }) : data?.profile ?? null,
       answers,
       hydrated: data !== null,
-      needsOnboarding: Boolean(isSignedIn) && data !== null && !answers.completed,
+      needsOnboarding: false, // Journey setup now collects only the details needed for the selected trip.
       groups: cloud.groups,
       dataLoading: Boolean(isSignedIn) && data === null,
       error,

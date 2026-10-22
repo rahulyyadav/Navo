@@ -34,6 +34,8 @@ npm ci
 npm run start
 ```
 
+`npm start` starts both the local backend and Expo, or reuses an existing backend. Set up `backend/.venv` using the backend instructions below first. Use `npm run start:app` only when you deliberately run the backend separately. Keep the terminal running while using the app.
+
 Then scan the QR code with Expo Go, or press `a`, `i`, or `w` for Android, iOS, or web.
 
 ## Validate changes

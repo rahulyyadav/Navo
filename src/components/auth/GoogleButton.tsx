@@ -2,11 +2,13 @@ import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { Text } from '@/components/Typography';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
-import { colors, radius } from '@/theme/tokens';
+import { tapHaptic } from '@/services/tap-haptics';
+import { createThemedStyles } from '@/theme/create-styles';
 
 const googleMark = require('../../../assets/google-g.png');
 
 export function GoogleButton({ label, onPress, busy, disabled }: { label: string; onPress: () => void; busy?: boolean; disabled?: boolean }) {
+  const styles = useStyles();
   const scale = useSharedValue(1);
   const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const press = (value: number) => { scale.value = withSpring(value, { damping: 16, stiffness: 320, mass: 0.7 }); };
@@ -17,7 +19,7 @@ export function GoogleButton({ label, onPress, busy, disabled }: { label: string
       accessibilityRole="button"
       accessibilityState={{ disabled: inactive, busy }}
       disabled={inactive}
-      onPress={onPress}
+      onPress={() => { tapHaptic(); onPress(); }}
       onPressIn={() => press(0.97)}
       onPressOut={() => press(1)}
     >
@@ -31,13 +33,13 @@ export function GoogleButton({ label, onPress, busy, disabled }: { label: string
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(t => StyleSheet.create({
   shell: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderColor: colors.line,
-    borderRadius: radius.pill,
-    borderWidth: 1.5,
+    backgroundColor: t.background,
+    borderColor: t.border,
+    borderRadius: 16,
+    borderWidth: 1,
     flexDirection: 'row',
     gap: 12,
     justifyContent: 'center',
@@ -47,5 +49,5 @@ const styles = StyleSheet.create({
   inactive: { opacity: 0.5 },
   markWrap: { backgroundColor: '#FFFFFF', borderRadius: 11, height: 26, justifyContent: 'center', alignItems: 'center', width: 26 },
   mark: { height: 18, width: 18 },
-  label: { color: colors.ink, fontSize: 15, fontWeight: '700' },
-});
+  label: { color: t.ink, fontSize: 15, fontWeight: '700' },
+}));

@@ -60,3 +60,15 @@ export const gradients = {
   danger: [colors.danger, colors.dangerDeep] as const,
   hero: ['rgba(13,20,26,0.15)', 'rgba(13,20,26,0.72)', colors.night] as const,
 };
+
+// Shared light palette for discovery, profile, and authentication.
+export const lightTheme = {
+  background: '#FFFFFF',
+  green: '#0C6243',
+  ink: '#222E29',
+  muted: '#66756C',
+  surface: '#F5F7F6',
+  border: '#E0E9E3',
+  mint: '#DEF7E9',
+  danger: '#A34036',
+} as const;

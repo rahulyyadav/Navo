@@ -1,3 +1,4 @@
+import { useTheme } from '@/context/ThemeContext';
 import { forwardRef } from 'react';
 import { Text as NativeText, TextInput as NativeInput, StyleSheet, type TextProps, type TextInputProps, type StyleProp, type TextStyle } from 'react-native';
 
@@ -19,5 +20,8 @@ function typography(style: StyleProp<TextStyle>) {
 export const Text = forwardRef<NativeText, TextProps>(({ style, ...props }, ref) => <NativeText {...props} ref={ref} style={typography(style)} />);
 Text.displayName = 'Text';
 export type TextInputHandle = NativeInput;
-export const TextInput = forwardRef<NativeInput, TextInputProps>(({ style, ...props }, ref) => <NativeInput {...props} ref={ref} style={typography(style)} />);
+export const TextInput = forwardRef<NativeInput, TextInputProps>(({ style, ...props }, ref) => {
+  const { palette, scheme } = useTheme();
+  return <NativeInput keyboardAppearance={scheme} selectionColor={palette.green} placeholderTextColor={palette.faint} {...props} ref={ref} style={typography(style)} />;
+});
 TextInput.displayName = 'TextInput';

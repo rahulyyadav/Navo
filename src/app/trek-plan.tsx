@@ -26,7 +26,6 @@ import {
 import { shareGPX } from "@/lib/gpx-files";
 import { exportGPX } from "@/services/routes/gpx";
 import { utf8Bytes } from "@/services/utf8";
-import { RouteCrew } from "@/components/RouteCrew";
 import { RouteAssistant } from "@/components/RouteAssistant";
 import { trekChatContext } from "@/services/routing/ai-context";
 import { PlaceSearch } from "@/components/PlaceSearch";
@@ -106,7 +105,6 @@ function Planner({
   const [editing, setEditing] = useState(false);
   const [details, setDetails] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
-  const [crewOpen, setCrewOpen] = useState(false);
   const [forecast, setForecast] = useState<HourlyForecast | null>(null);
   const [destination, setDestination] = useState(initialDestination),
     [origin, setOrigin] = useState<Place | null>(null),
@@ -743,23 +741,7 @@ function Planner({
                 weather: forecast,
               })}
             />}
-            <Button label={crewOpen ? "Close crew planning" : "Plan with your crew"} variant="outline" onPress={() => setCrewOpen(v => !v)} />
-            {crewOpen && <RouteCrew
-              key={`${destination!.id}:${origin!.id}:${date}:${time}:${route.id}`}
-              plan={{
-                version: 1,
-                id: "preview",
-                name: destination!.name,
-                origin: origin!,
-                destination: destination!,
-                stops,
-                date,
-                time,
-                pace,
-                route,
-                savedAt: route.fetchedAt,
-              }}
-            />}
+
             <AdventureWeather
               onForecast={setForecast}
               key={`${origin?.id}:${destination?.id}:${date}:${time}:${pace}:${route.id}`}

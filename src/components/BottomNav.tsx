@@ -1,85 +1,114 @@
-import { Fragment, type ComponentProps } from 'react';
-import { useEffect, useState } from 'react';
-import { Keyboard, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useEffect, useState, type ComponentProps } from 'react';
+import { Keyboard, StyleSheet, View } from 'react-native';
 import { Tabs } from 'expo-router';
+import type { BlurViewProps } from 'expo-blur';
+import { BottomBackdrop } from '@/components/BottomBackdrop';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { ReduceMotion, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
-
 import { TabIcon } from '@/components/TabIcon';
+import { useTheme } from '@/context/ThemeContext';
+import { HomePressable } from '@/components/journeys/HomeMotion';
 
 type TabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>>[0];
+const visibleTabs = ['discover', 'journeys', 'profile'];
 
 function NavigationIcon({ name, active }: { name: string; active: boolean }) {
-  const color = active ? '#10180E' : '#FFFFFF';
-  if (name === 'discover' || name === 'profile') {
-    return <Svg width={25} height={25} viewBox="0 0 24 24" fill={color}>
-      {name === 'discover'
-        ? <Path d="M10.1 3.6a3 3 0 0 1 3.8 0l6.1 5a3 3 0 0 1 1.1 2.3V19a2 2 0 0 1-2 2H4.9a2 2 0 0 1-2-2v-8.1A3 3 0 0 1 4 8.6ZM9 17.5a.8.8 0 0 0 0 1.6h6a.8.8 0 0 0 0-1.6Z" />
-        : <Path d="M12 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9ZM7.3 12a7.4 7.4 0 0 0-3.8 6.5v1A2.5 2.5 0 0 0 6 22h12a2.5 2.5 0 0 0 2.5-2.5v-1a7.4 7.4 0 0 0-3.8-6.5A7 7 0 0 1 12 13.8 7 7 0 0 1 7.3 12Z" />}
+  const { scheme } = useTheme();
+  const color = active ? scheme === 'dark' ? '#111111' : '#FFFFFF' : scheme === 'dark' ? '#77777E' : '#858B90';
+  if (name === 'discover') {
+    return <Svg width={22} height={22} viewBox="0 0 24 24" fill={active ? color : 'none'} stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"/>
     </Svg>;
   }
-  if (name === 'ai') return <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><Path d="M19.5 13.5v3a3 3 0 0 1-3 3H9l-4.5 2v-5.1a7.5 7.5 0 1 1 9-12.4M18 2l1.2 3.8L23 7l-3.8 1.2L18 12l-1.2-3.8L13 7l3.8-1.2Z" /></Svg>;
-  return <TabIcon name="compass" color={color} size={26} />;
+  return <TabIcon name={name === 'journeys' ? 'route' : 'person'} color={color} size={22}/>;
 }
 
-export function BottomNav({ state, descriptors, navigation }: TabBarProps) {
+function NavigationItem({ name, accessibilityLabel, testID, active, onPress, onLongPress }: {
+  name: string;
+  accessibilityLabel: string;
+  testID?: string;
+  active: boolean;
+  onPress: () => void;
+  onLongPress: () => void;
+}) {
+  const selected = useSharedValue(active ? 1 : 0);
+  useEffect(() => {
+    selected.value = withSpring(active ? 1 : 0, { damping: 20, stiffness: 290, mass: .65, reduceMotion: ReduceMotion.System });
+  }, [active, selected]);
+  const motion = useAnimatedStyle(() => ({
+    transform: [{ translateY: -selected.value }, { scale: .96 + selected.value * .08 }],
+  }));
+  const selectedIcon = useAnimatedStyle(() => ({ opacity: Math.max(0, Math.min(1, selected.value)) }));
+  const unselectedIcon = useAnimatedStyle(() => ({ opacity: 1 - Math.max(0, Math.min(1, selected.value)) }));
+  return <HomePressable
+    accessibilityRole="tab"
+    accessibilityState={{ selected: active }}
+    aria-selected={active}
+    accessibilityLabel={accessibilityLabel}
+    testID={testID}
+    onPress={onPress}
+    onLongPress={onLongPress}
+    style={styles.button}
+  >
+    <Animated.View accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.icon, motion]}>
+      <Animated.View style={[styles.glyph, unselectedIcon]}><NavigationIcon name={name} active={false}/></Animated.View>
+      <Animated.View style={[styles.glyph, selectedIcon]}><NavigationIcon name={name} active/></Animated.View>
+    </Animated.View>
+  </HomePressable>;
+}
+
+export function BottomNav({ state, descriptors, navigation, blurTarget }: TabBarProps & { blurTarget?: BlurViewProps['blurTarget'] }) {
+  const { scheme } = useTheme();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   useEffect(() => {
     const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardOpen(true));
     const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardOpen(false));
     return () => { show.remove(); hide.remove(); };
   }, []);
+  const bottomGap = Math.max(insets.bottom - 8, 10);
   if (keyboardOpen) return null;
 
-  return <View pointerEvents="box-none" style={[styles.dock, { paddingBottom: Math.max(insets.bottom, 12), paddingLeft: Math.max(insets.left, 20), paddingRight: Math.max(insets.right, 20) }]}>
-    <View pointerEvents="box-none" style={styles.bar}>
-      <View pointerEvents="none" style={styles.middleBackdrop} />
-      {state.routes.filter(route => route.name !== 'groups').map((route, index) => {
+  return <View pointerEvents="box-none" style={[styles.dock, {
+    bottom: bottomGap,
+    paddingLeft: Math.max(insets.left, 24),
+    paddingRight: Math.max(insets.right, 24),
+  }]}>
+    <BottomBackdrop bottomGap={bottomGap} blurTarget={blurTarget}/>
+    <View style={[styles.bar, scheme === 'dark' && styles.lightBar]}>
+      {state.routes.filter(route => visibleTabs.includes(route.name)).map(route => {
         const active = state.routes[state.index].key === route.key;
         const { options } = descriptors[route.key];
-        return <Fragment key={route.key}>
-          {index === 2 && <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.chevrons}>
-            <Svg width={46} height={24} viewBox="0 0 46 24" fill="none" stroke="#FFFFFF" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-              <Path opacity={0.25} d="m5 6 6 6-6 6" />
-              <Path opacity={0.5} d="m19 6 6 6-6 6" />
-              <Path opacity={0.95} d="m33 6 6 6-6 6" />
-            </Svg>
-          </View>}
-          <Pressable
-            accessibilityRole="tab"
-            accessibilityState={{ selected: active }}
-            accessibilityLabel={options.tabBarAccessibilityLabel ?? options.title ?? route.name}
-            testID={options.tabBarButtonTestID}
-            onPress={() => {
-              const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-              if (!active && !event.defaultPrevented) navigation.navigate(route.name, route.params);
-            }}
-            onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
-            style={({ pressed }) => [styles.button, width < 360 && styles.compactButton, active && styles.active, pressed && styles.pressed]}
-          >
-            <NavigationIcon name={route.name} active={active} />
-          </Pressable>
-        </Fragment>;
+        const label = options.title ?? route.name;
+        return <NavigationItem
+          key={route.key}
+          name={route.name}
+          accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
+          testID={options.tabBarButtonTestID}
+          active={active}
+          onPress={() => {
+            const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+            if (!active && !event.defaultPrevented) navigation.navigate(route.name, route.params);
+          }}
+          onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
+        />;
       })}
     </View>
   </View>;
 }
 
 const styles = StyleSheet.create({
-  dock: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingTop: 8, backgroundColor: 'transparent' },
+  dock: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   bar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    alignSelf: 'center', width: '100%', maxWidth: 440, paddingHorizontal: 4, backgroundColor: 'transparent',
+    width: 244, maxWidth: '100%', height: 58, paddingHorizontal: 10,
+    flexDirection: 'row', alignItems: 'center', borderRadius: 999,
+    backgroundColor: '#111314', borderWidth: 1, borderColor: '#25282A',
+    shadowColor: '#101713', shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: .16, shadowRadius: 12, elevation: 7,
   },
-  button: {
-    width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(154,185,210,0.32)',
-  },
-  middleBackdrop: { position: 'absolute', left: '22%', right: '22%', top: -7, bottom: -7, borderRadius: 40, backgroundColor: 'rgba(63,96,125,0.36)' },
-  compactButton: { width: 48, height: 48, borderRadius: 24 },
-  active: { backgroundColor: '#E4FF89' },
-  pressed: { opacity: 0.75, transform: [{ scale: 0.96 }] },
-  chevrons: { width: 46, alignItems: 'center' },
+  lightBar: { backgroundColor: '#FFFFFF', borderColor: '#E5E5E7', shadowColor: '#000000', shadowOpacity: .3 },
+  button: { flex: 1, height: 56, minWidth: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 28 },
+  icon: { width: 26, height: 26 },
+  glyph: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' },
 });

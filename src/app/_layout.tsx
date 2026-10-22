@@ -1,20 +1,16 @@
-import { pendingWalkingPlan } from '@/lib/pending-walking-plan';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Text, satoshiFonts } from '@/components/Typography';
 import { useFonts } from 'expo-font';
-import { useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { Stack, type ErrorBoundaryProps } from 'expo-router';
+import { Stack, usePathname, type ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Backdrop, Button, Heading, useReducedMotion } from '@/components/ui';
-import { IncomingUpdates } from '@/components/IncomingUpdates';
 import { AuthProvider } from '@/context/AuthContext';
 import { CloudProvider } from '@/context/CloudContext';
 import { NavoProvider, useNavo } from '@/context/NavoContext';
 import { firebaseConfigured } from '@/lib/firebase';
+import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { colors } from '@/theme/tokens';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -46,60 +42,36 @@ function NotConfigured() {
 }
 
 function Routes() {
-  const { authLoaded, isSignedIn, hydrated, needsOnboarding, userId } = useNavo();
+  const { palette, scheme } = useTheme();
+  const pathname = usePathname();
+  const adaptiveStatus = ['/discover', '/profile', '/journey-setup'].includes(pathname) || pathname.startsWith('/trek/');
+  const { authLoaded, isSignedIn, hydrated, needsOnboarding } = useNavo();
   const reduced = useReducedMotion();
   const animation = reduced ? 'none' : 'slide_from_right';
-  useEffect(() => {
-    if (!isSignedIn || !hydrated || needsOnboarding) return;
-    let active = true;
-    void AsyncStorage.getItem('navo:pending-invite').then(value => {
-      if (!active || !value) return;
-      const saved = JSON.parse(value);
-      if (/^[a-zA-Z0-9]{1,80}$/.test(saved.group) && /^[a-zA-Z0-9_-]{43}$/.test(saved.token)) router.push({ pathname: '/join', params: saved });
-    }).catch(() => undefined);
-    return () => { active = false; };
-  }, [isSignedIn, hydrated, needsOnboarding]);
-
-
-  useEffect(() => {
-    if (!userId || !hydrated || needsOnboarding) return;
-    let active = true;
-    void pendingWalkingPlan(userId).then(plan => {
-      if (active && plan) router.push('/trek-plan');
-    }).catch(() => undefined);
-    return () => { active = false; };
-  }, [userId, hydrated, needsOnboarding]);
-
   if (!authLoaded || (isSignedIn && !hydrated)) {
-    return <BootScreen title="Waking Navo up" detail={isSignedIn ? 'Restoring your treks and groups…' : 'Securing your session…'} />;
+    return <BootScreen title="Waking Navo up" detail={isSignedIn ? 'Restoring your treks…' : 'Securing your session…'} />;
   }
 
-  return <><Stack screenOptions={{
+  return <><StatusBar style={scheme === 'dark' || !adaptiveStatus ? 'light' : 'dark'}/><Stack screenOptions={{
     headerShadowVisible: false,
     headerBackTitle: 'Back',
-    headerStyle: { backgroundColor: colors.homeMiddle },
+    headerStyle: { backgroundColor: scheme === 'dark' ? palette.surface : colors.homeMiddle },
     headerTintColor: colors.ink,
     headerTitleStyle: { fontFamily: 'SatoshiBold', fontWeight: 'normal' },
-    contentStyle: { backgroundColor: colors.night },
+    contentStyle: { backgroundColor: palette.background },
     animation,
   }}>
     <Stack.Protected guard={!isSignedIn}>
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
-      <Stack.Screen name="signup" options={{ headerShown: false }} />
-    </Stack.Protected>
-
-    <Stack.Protected guard={isSignedIn && needsOnboarding}>
-      <Stack.Screen name="welcome" options={{ headerShown: false }} />
     </Stack.Protected>
 
     <Stack.Protected guard={isSignedIn && !needsOnboarding}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: reduced ? 'none' : 'fade' }} />
+      <Stack.Screen name="welcome" options={{ headerShown: false }} />
+      <Stack.Screen name="journey-setup" options={{ headerShown: false }} />
+      <Stack.Screen name="journey-levels" options={{ headerShown: false }} />
       <Stack.Screen name="journey" options={{ headerShown: false, gestureEnabled: false }} />
-      <Stack.Screen name="group/[id]" options={{ title: 'Group', headerBackTitle: 'Back' }} />
-      <Stack.Screen name="group/new" options={{ title: 'New group', presentation: 'modal' }} />
-      <Stack.Screen name="alert" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-      <Stack.Screen name="notifications" options={{ title: 'Your updates' }} />
       <Stack.Screen name="copilot" options={{ title: 'AI trek copilot' }} />
       <Stack.Screen name="offline" options={{ title: 'Offline trip packs' }} />
       <Stack.Screen name="plan" options={{ headerShown: false }} />
@@ -111,28 +83,28 @@ function Routes() {
       <Stack.Screen name="record-hike" options={{ title: 'Record a hike' }} />
       <Stack.Screen name="day-hike" options={{ title: "Plan a day hike" }} />
       <Stack.Screen name="safety" options={{ title: 'Offline essentials', headerBackTitle: 'Back' }} />
+      <Stack.Screen name="trails" options={{ title: "Explore Nepal" }} />
+      <Stack.Screen name="trek/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="trek-plan" options={{ title: 'Plan your trek' }} />
     </Stack.Protected>
-    <Stack.Screen name="trails" options={{ title: "Explore Nepal" }} />
-    <Stack.Screen name="trek/[id]" options={{ headerShown: false }} />
-    <Stack.Screen name="trek-plan" options={{ title: 'Plan your trek' }} />
-    <Stack.Screen name="join" options={{ title: "Join a trek group" }} />
     <Stack.Screen name="privacy" options={{ title: "Privacy & data" }} />
-  </Stack>{isSignedIn && !needsOnboarding && <IncomingUpdates />}</>;
+  </Stack></>;
 }
 
-export default function RootLayout() {
+function AppRoot() {
   const [fontsLoaded, fontError] = useFonts(satoshiFonts);
   if (!fontsLoaded && !fontError) return <BootScreen title="Waking Navo up" />;
   if (!firebaseConfigured) return <NotConfigured />;
   return <AuthProvider>
     <SafeAreaProvider>
       <CloudProvider><NavoProvider>
-        <StatusBar style="light" />
         <Routes />
       </NavoProvider></CloudProvider>
     </SafeAreaProvider>
   </AuthProvider>;
 }
+
+export default function RootLayout() { return <ThemeProvider><AppRoot/></ThemeProvider>; }
 
 const styles = StyleSheet.create({
   boot: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 18, padding: 32 },

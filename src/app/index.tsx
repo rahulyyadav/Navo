@@ -12,7 +12,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Text } from '@/components/Typography';
-import { Button, useReducedMotion } from '@/components/ui';
+import { useReducedMotion } from '@/components/ui';
 import { shouldCompleteSlide } from '@/services/onboarding-slide';
 import { colors } from '@/theme/tokens';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -176,8 +176,6 @@ export default function OnboardingScreen() {
             </Animated.View>
           </View>
         </View>
-        <Button label="Explore & plan without signing in" variant="quiet" onPress={() => router.push('/trek-plan')} />
-          <Button label="Browse Nepal trek overviews" variant="quiet" onPress={() => router.push('/trails')} />
       </SafeAreaView>
     </ImageBackground>
     </Animated.View>

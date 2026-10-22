@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      - name: Process notification and deletion retries
+      - name: Process notifications, deletion retries, and Maya journey reviews
         env:
           NAVO_API_URL: ${{ vars.NAVO_API_URL }}
           NAVO_MAINTENANCE_TOKEN: ${{ secrets.NAVO_MAINTENANCE_TOKEN }}

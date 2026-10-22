@@ -7,9 +7,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 import logging
+from time import perf_counter
+from uuid import uuid4
 from firebase_admin import auth, firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 from .auth import current_user, recently_authenticated_user
+from .chat_access import chat_user, reserve_local_chat
 from .chat import reply as chat_reply
 from .schemas import ChatRequest, TrekPreparation
 from .boundary import RequestBoundary
@@ -21,9 +24,38 @@ from .planner import ROUTES, generate, route_by_id
 from .schemas import GroupCreate, InvitationCreate, InvitationResponse, TextMessage, Position, AlertCreate, AlertAction, Onboarding, PlanRequest, DeviceToken, JoinLink, JoinDecision
 
 from .reviews import router as reviews_router
+from .journeys.api import router as journeys_router
+from .journeys.cloud import router as saved_journeys_router
+
+from .email_otp import router as email_otp_router
 
 app = FastAPI(title='Navo API', version='1.0.0')
+
+@app.middleware('http')
+async def log_backend_operations(request, call_next):
+    correlation = uuid4().hex[:12]
+    started = perf_counter()
+    log = logging.getLogger('uvicorn.error')
+    # Use the matched route template (not URLs containing user IDs or coordinates).
+    log.info('request=%s method=%s outcome=received', correlation, request.method)
+    try:
+        response = await call_next(request)
+    except Exception as error:
+        route = request.scope.get('route')
+        log.error('request=%s route=%s outcome=failed error_type=%s elapsed_ms=%s', correlation,
+                  getattr(route, 'path', 'unmatched'), type(error).__name__, round((perf_counter() - started) * 1000))
+        raise
+    route = request.scope.get('route')
+    log.info('request=%s route=%s outcome=completed status=%s elapsed_ms=%s', correlation,
+             getattr(route, 'path', 'unmatched'), response.status_code, round((perf_counter() - started) * 1000))
+    response.headers['X-Request-ID'] = correlation
+    return response
+
+
+app.include_router(email_otp_router)
 app.include_router(reviews_router)
+app.include_router(journeys_router)
+app.include_router(saved_journeys_router)
 app.add_middleware(RequestBoundary)
 app.add_middleware(CORSMiddleware, allow_origins=[v.strip() for v in settings().cors_origins.split(',') if v.strip()], allow_credentials=False, allow_methods=['GET','POST','PUT','DELETE'], allow_headers=['Authorization','Content-Type'])
 @app.exception_handler(Exception)
@@ -66,6 +98,14 @@ def member_record(uid, person):
 def health():
     # Liveness must not wait on network credentials or Firestore.
     return {'status': 'ok', 'readinessPath': '/ready', 'trailReviewsEnabled': True, 'aiConfigured': ai_configured(), 'demoEnabled': settings().enable_demo}
+
+@app.get('/ready/journeys')
+def journey_readiness():
+    try:
+        database().collection('_journeyReadiness').document('probe').get(timeout=5)
+        return {'ready': True, 'storage': 'firestore'}
+    except Exception:
+        return JSONResponse(status_code=503, content={'ready': False, 'detail': 'Journey storage is unavailable.'})
 
 @app.get('/ready')
 def readiness():
@@ -352,12 +392,11 @@ async def revise(pid: str, value: PlanRequest, uid: str = Depends(current_user))
 chat_slots = asyncio.Semaphore(2)
 
 @app.post('/chat')
-async def chat(value: ChatRequest, uid: str = Depends(current_user)):
-    from .ai_budget import reserve_chat
+async def chat(value: ChatRequest, uid: str = Depends(chat_user)):
     if chat_slots.locked():
         raise HTTPException(429, 'Navo AI is busy. Please retry shortly.', headers={'Retry-After': '15'})
     async with chat_slots:
-        await asyncio.to_thread(reserve_chat, database(), uid)
+        await asyncio.to_thread(reserve_local_chat, uid)
         return await chat_reply(value)
 
 

@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "scheme": "navo",
     "ios": {
       "supportsTablet": true,
@@ -54,6 +54,7 @@
         }
       ],
       "expo-font",
+      "expo-system-ui",
       [
         "expo-sensors",
         {

@@ -147,7 +147,20 @@ class TrekChatContext(Model):
             raise ValueError('Weather context does not match the planned date.')
         return self
 
+class JourneyChatLeg(Model):
+    start: str = Field(min_length=1, max_length=150)
+    end: str = Field(min_length=1, max_length=150)
+    mode: Literal['taxi', 'bus', 'jeep', 'flight', 'walk']
+    minutes: int | None = Field(default=None, ge=1, le=20000)
+    note: str = Field(default='', max_length=1000)
+
+class JourneyChatSummary(Model):
+    title: str = Field(max_length=180)
+    completed: int = Field(ge=0, le=80)
+    legs: list[JourneyChatLeg] = Field(min_length=1, max_length=80)
+
 class ChatRequest(Model):
+    journey: JourneyChatSummary | None = None
     context: TrekChatContext | None = None
     # Client-provided metadata only; never an authenticated identity.
     email: str | None = Field(default=None, max_length=254, pattern=r'^[^\s@]+@[^\s@]+\.[^\s@]+$')

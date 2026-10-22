@@ -19,5 +19,5 @@ export function backendRequestTimeout(path: string, base: string) {
   if (path.startsWith('/plans')) return 210000;
   let preview = false;
   try { preview = new URL(base).hostname.endsWith('.onrender.com'); } catch { /* URL validation supplies the useful error separately. */ }
-  return preview ? 120000 : path === '/chat' ? 75000 : 20000;
+  return preview ? 120000 : path.startsWith('/journey-itineraries') ? 60000 : path === '/chat' ? 75000 : 20000;
 }

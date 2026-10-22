@@ -3,10 +3,8 @@ import { useRef, useState } from 'react';
 import { Linking, ScrollView, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Backdrop, Badge, Button, Card, Chip, Field, Heading, Notice, SectionTitle, useReducedMotion } from '@/components/ui';
-import { CloudStatus } from '@/components/CloudStatus';
 import { usePageLayout } from '@/hooks/usePageLayout';
 import { useTripLibrary } from '@/hooks/useTripLibrary';
-import { useCloud } from '@/context/CloudContext';
 import { useMyLocation } from '@/hooks/useMyLocation';
 import { actionError, requestId } from '@/lib/api';
 import { dayHikes, directionsURL, fetchDayWeather, finishTime, nepalToday, validateHikeDetails, validateWalkHours, type DayWeather } from '@/services/day-hike';
@@ -14,11 +12,10 @@ import { colors } from '@/theme/tokens';
 
 export default function DayHikeScreen() {
   const layout = usePageLayout(); const reduced = useReducedMotion(); const scroll = useRef<ScrollView>(null);
-  const [showGroup, setShowGroup] = useState(false);
   const params = useLocalSearchParams<{ hike?: string; name?: string }>();
   const initial = dayHikes.find(hike => hike.id === params.hike) ?? dayHikes[0];
   const library = useTripLibrary(); const personalId = useRef(requestId());
-  const cloud = useCloud(); const gps = useMyLocation();
+  const gps = useMyLocation();
   const [step, setStep] = useState(0);
   function goToStep(next: number) { setStep(next); scroll.current?.scrollTo({ y: 0, animated: !reduced }); }
   const [editCoordinates, setEditCoordinates] = useState(initial.id === 'custom');
@@ -29,7 +26,7 @@ export default function DayHikeScreen() {
   const [people, setPeople] = useState('4'); const [hours, setHours] = useState(String(initial.hours)); const [travel, setTravel] = useState('');
   const [weather, setWeather] = useState<{ key: string; value: DayWeather } | null>(null);
   const [busy, setBusy] = useState(''); const [error, setError] = useState('');
-  const lock = useRef(false); const creation = useRef({ payload: '', id: requestId() });
+  const lock = useRef(false);
   const weatherKey = `${date}/${latitude}/${longitude}`; const forecast = weather?.key === weatherKey ? weather.value : null;
   const finish = travel.trim() && Number(travel) >= 0 && Number(travel) <= 600 && Number(hours) > 0 && Number(hours) <= 16 ? finishTime(date, time, Number(hours), Number(travel)) : null;
   const copy = { color: colors.muted, fontSize: 14, lineHeight: 22 } as const;
@@ -56,13 +53,7 @@ export default function DayHikeScreen() {
         return { ...data, trips: [trip, ...data.trips.filter(item => item.id !== trip.id)] };
       });
       router.push({ pathname: '/trip/[id]', params: { id: personalId.current } });
-    })} /><Button label={showGroup ? 'Hide group options' : 'Want to invite your crew?'} variant="quiet" onPress={() => setShowGroup(value => !value)} />{showGroup && <><Text style={copy}>Group invitations need a connected account. Nobody joins until they accept or you approve their request.</Text><CloudStatus /><Button label="Create hike group & invite people" busy={busy === 'create'} disabled={Boolean(busy) || !cloud.ready} onPress={() => void run('create', async () => {
-      const invalid = validateHikeDetails(name, place, date, time, people) || validateWalkHours(hours);
-      if (invalid) throw new Error(invalid);
-      const payload = { name: name.trim(), trekId: 'custom-hike', startDate: date, outing: { destination: name.trim(), meetingPoint: place.trim(), startTime: time, expectedPeople: Number(people), walkingHours: Number(hours) } };
-      const serialized = JSON.stringify(payload); if (creation.current.payload !== serialized) creation.current = { payload: serialized, id: requestId() };
-      const group = await cloud.api<{ id: string }>('/groups', { ...payload, requestId: creation.current.id }); router.push(`/group/${group.id}`);
-    })} /></>}</Card>}
+    })} /></Card>}
     <View style={{ flexDirection: 'row', gap: 12 }}>{step > 0 && <Button label="Back" variant="outline" style={{ flex: 1 }} onPress={() => goToStep(step - 1)} />}{step < 4 && <Button label="Continue" style={{ flex: 1 }} onPress={() => { const invalid = step === 0 ? validateHikeDetails(name, place, date, time, people) : step === 2 ? validateWalkHours(hours) : null; setError(invalid || ''); if (!invalid) goToStep(step + 1); }} />}</View>
     <Text style={copy}>Agree on the turnaround time, last return transport, water, food, emergency contact and who stays with the slowest member before setting off. Navo does not yet supply a verified trail track for these day hikes.</Text>
   </ScrollView></Backdrop>;

@@ -1,3 +1,4 @@
+import { clearJourneys } from '@/lib/journey-store';
 import { clearUserData } from '@/services/profile';
 import { requestAPI } from '@/lib/api';
 import { clearPendingWalkingPlan } from '@/lib/pending-walking-plan';
@@ -25,7 +26,7 @@ export default function PrivacyScreen() {
   const [message, setMessage] = useState('');
   async function clear() {
     if (!user || busy) return; setBusy(true); setMessage('');
-    try { await clearTripDownloads(user.uid); await clearLibrary(user.uid); await clearInbox(user.uid); await clearRoutes(user.uid); await clearAdventures(user.uid); await clearNavigationDrafts(user.uid); setConfirm(false); setMessage('Downloaded packs, local AI drafts, checklists, personal plans, bookmarks, cached notifications, expenses and activity summaries were removed from this device.'); }
+    try { await clearJourneys(user.uid); await clearTripDownloads(user.uid); await clearLibrary(user.uid); await clearInbox(user.uid); await clearRoutes(user.uid); await clearAdventures(user.uid); await clearNavigationDrafts(user.uid); setConfirm(false); setMessage('Downloaded packs, local AI drafts, checklists, personal plans, bookmarks, cached notifications, expenses and activity summaries were removed from this device.'); }
     catch { setMessage('Could not clear every download. Please try again.'); }
     finally { setBusy(false); }
   }
@@ -34,7 +35,7 @@ export default function PrivacyScreen() {
     setBusy(true); setMessage('');
     try {
       await requestAPI(() => user.getIdToken(true), '/account', undefined, 'DELETE');
-      const results = await Promise.allSettled([clearTripDownloads(user.uid), clearLibrary(user.uid),
+      const results = await Promise.allSettled([clearJourneys(user.uid), clearTripDownloads(user.uid), clearLibrary(user.uid),
         clearInbox(user.uid), clearRoutes(user.uid), clearAdventures(user.uid),
         clearNavigationDrafts(user.uid), clearUserData(user.uid), clearPendingWalkingPlan(), dropRaw(`push-device:${user.uid}`), setInspirationNotifications(false)]);
       setDeleteConfirm(false);
@@ -46,7 +47,7 @@ export default function PrivacyScreen() {
   async function open(url: string) { try { await Linking.openURL(url); } catch { setMessage('Could not open this link. Check your device’s browser or email setup.'); } }
   return <Backdrop><ScrollView contentContainerStyle={styles.scroll}>
     <Reveal><Heading title="Your data, your choice." subtitle="Understand what stays on your phone and what your crew can see." /></Reveal>
-    <Card><SectionTitle title="YOUR ACCOUNT" /><Text style={styles.copy}>Firebase manages sign-in. Your profile and emergency contact sync to your private account when connected. Group members can see the name you share with them, group messages and group alerts.</Text></Card>
+    <Card><SectionTitle title="YOUR ACCOUNT" /><Text style={styles.copy}>Firebase manages sign-in. For passwordless email sign-in, Brevo receives your email address to deliver a one-time code. Codes expire after ten minutes; the Navo backend stores code hashes and rate-limit records, not plaintext codes. Your profile and emergency contact sync to your private account when connected. Group members can see the name you share with them, group messages and group alerts.</Text></Card>
     <Card><SectionTitle title="LOCATION IS YOUR CHOICE" /><Text style={styles.copy}>Navo requests a position when you tap a location action. Sharing a check-in sends that position to your group with a timestamp. Stop sharing from the group’s Safety tab to remove your current marker and pause reminders. Earlier check-ins remain in group history. An explicit location session uploads positions while the group Safety screen is open and opts you into nearby group alerts. Leaving or backgrounding pauses uploads; nearby eligibility expires after two minutes. Hide your last position to remove the current marker. Navo does not continuously track you in the background.</Text></Card>
     <Card><SectionTitle title="SAVED ON THIS DEVICE" /><Text style={styles.copy}>Your personal plans, starting places, stay notes, expense logs, bookmarks and activity summaries are saved locally for this account. The latest 50 inbox updates are cached on this device. Cached updates older than seven days are discarded when the inbox is opened. Reconnect before acting on invitations or alerts. Recent searches, saved destinations, walking plans and optionally recorded navigation paths stay on this device. Imported GPX route coordinates are stored locally until you remove them or clear downloaded trip data. Exporting shares the route file only when you choose it. The hike recorder keeps totals without storing a GPS history. Downloaded trip packs may contain your emergency contact and your crew’s last shared positions. They stay available to this account after sign-out. Clear them before giving away this device; keep needed trip information elsewhere first.</Text>
       {user && <Button label="Clear downloaded trip data" variant="outline" onPress={() => setConfirm(true)} />}

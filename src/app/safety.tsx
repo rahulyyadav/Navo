@@ -1,5 +1,4 @@
 import * as Clipboard from 'expo-clipboard';
-import { router } from 'expo-router';
 import { useState } from 'react';
 import { Linking, Share, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '@/components/Typography';
@@ -16,12 +15,11 @@ const packItems = [
   ['Saved preparation', 'On this device'],
   ['Map tiles', 'Internet required'],
   ['Weather & advisories', 'Internet required'],
-  ['Group alerts', 'Connection required'],
 ] as const;
 
 export default function SafetyScreen() {
   const { coords, state, locate } = useMyLocation();
-  const { profile, groups } = useNavo();
+  const { profile } = useNavo();
   const [error, setError] = useState('');
   async function sharePosition() {
     if (!coords) return;
@@ -42,7 +40,6 @@ export default function SafetyScreen() {
           />
         </Reveal>
 
-        <View style={styles.section}><SectionTitle title="YOUR GROUP SAFETY" />{groups.map(group => <Button key={group.id} label={`${group.name} · check in / SOS`} variant="outline" onPress={() => router.push(`/group/${group.id}`)} />)}{!groups.length && <Button label="Find or create your trail group" variant="outline" onPress={() => router.push('/(tabs)/groups')} />}</View>
         <Reveal delay={50}>
           <Card>
             <View style={styles.fixHeader}>

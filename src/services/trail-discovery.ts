@@ -9,5 +9,5 @@ export function discoverTreks(treks:Trek[],query:string,region='All regions',dif
 export function destinationForTrek(trek:Trek):import('./places/types').Place|null {
   const end=trek.route.at(-1);
   if(!end||!Number.isFinite(end.latitude)||Math.abs(end.latitude)>90||!Number.isFinite(end.longitude)||Math.abs(end.longitude)>180)return null;
-  return {id:`catalog:${trek.id}`,name:`${trek.name} · ${end.name}`,fullName:`${trek.name} · ${end.name} · approximate planning point`,latitude:end.latitude,longitude:end.longitude,type:'destination',provider:'coordinates'};
+  return {id:`catalog:${trek.id}`,name:`${trek.name} · ${end.name}`,fullName:`${trek.name} · ${end.name} · ${trek.region}, Nepal · approximate planning point`,region:trek.region,country:'Nepal',latitude:end.latitude,longitude:end.longitude,type:'trek destination',provider:'coordinates'};
 }

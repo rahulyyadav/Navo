@@ -7,12 +7,17 @@ const errorsURL = `data:text/javascript;base64,${Buffer.from(errorsSource).toStr
 const originalSource = await readFile(new URL('../src/lib/api.ts', import.meta.url), 'utf8');
 const addressSource = ts.transpileModule(await readFile(new URL('../src/services/backend-address.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText;
 const addressURL = `data:text/javascript;base64,${Buffer.from(addressSource).toString('base64')}`;
-const source = originalSource.replace("'../services/server-errors'", JSON.stringify(errorsURL)).replace("import { firebaseAuth } from './firebase';", "const firebaseAuth = { currentUser: { getIdToken: async () => 'chat-test-token' } };").replace("import { networkEnvironment } from './network-environment';", "const networkEnvironment = () => ({ platform: 'web', development: false });").replace("'../services/backend-address'", JSON.stringify(addressURL));
+const otpSource = ts.transpileModule(await readFile(new URL('../src/services/email-otp.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText;
+const otpURL = `data:text/javascript;base64,${Buffer.from(otpSource).toString('base64')}`;
+const source = originalSource.replace("'@/services/email-otp'", JSON.stringify(otpURL)).replace("'../services/server-errors'", JSON.stringify(errorsURL)).replace("import { firebaseAuth } from './firebase';", "const firebaseAuth = { currentUser: { getIdToken: async () => 'chat-test-token' } };").replace("import { networkEnvironment } from './network-environment';", "const networkEnvironment = () => ({ platform: 'web', development: false });").replace("'../services/backend-address'", JSON.stringify(addressURL));
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
 const oldBase = process.env.EXPO_PUBLIC_API_BASE_URL;
+const oldChatBase = process.env.EXPO_PUBLIC_CHAT_BASE_URL;
 process.env.EXPO_PUBLIC_API_BASE_URL = 'http://test.local:8000';
-const { requestAPI, requestChatAPI } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
+process.env.EXPO_PUBLIC_CHAT_BASE_URL = 'http://chat.local:8004';
+const { requestAPI, requestChatAPI, requestJourneyAPI, requestEmailOTP, verifyEmailOTP } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
 if (oldBase === undefined) delete process.env.EXPO_PUBLIC_API_BASE_URL; else process.env.EXPO_PUBLIC_API_BASE_URL = oldBase;
+if (oldChatBase === undefined) delete process.env.EXPO_PUBLIC_CHAT_BASE_URL; else process.env.EXPO_PUBLIC_CHAT_BASE_URL = oldChatBase;
 async function withFetch(fetch, work) { const original = globalThis.fetch; globalThis.fetch = fetch; try { await work(); } finally { globalThis.fetch = original; } }
 
 test('native network failures produce clean copy without exposing Swift internals', async () => {
@@ -44,11 +49,18 @@ test('working requests preserve authenticated route and payload', async () => {
 
 test('chat sends a Firebase bearer token with optional metadata', async () => {
   await withFetch(async (url, options) => {
-    assert.equal(url, 'http://test.local:8000/chat');
+    assert.equal(url, 'http://chat.local:8004/chat');
     assert.equal(options.headers.Authorization, 'Bearer chat-test-token');
     assert.deepEqual(JSON.parse(options.body), { messages: [{ role: 'user', content: 'Hi' }], email: 'trekker@example.com' });
     return new Response(JSON.stringify({ reply: 'Hello' }));
   }, async () => assert.deepEqual(await requestChatAPI([{ role: 'user', content: 'Hi' }], 'trekker@example.com'), { reply: 'Hello' }));
+});
+test('journey requests always use the shared backend, never the chat-only base', async () => {
+  await withFetch(async (url, options) => {
+    assert.equal(url, 'http://test.local:8000/journey-itineraries/prepare');
+    assert.equal(options.headers.Authorization, 'Bearer chat-test-token');
+    return new Response(JSON.stringify({ id: 'a'.repeat(24), status: 'preparing' }));
+  }, async () => assert.equal((await requestJourneyAPI('/journey-itineraries/prepare', { destination: 'x' })).status, 'preparing'));
 });
 test('a chat-only endpoint works while shared services are unconfigured', async () => {
   const previousMain = process.env.EXPO_PUBLIC_API_BASE_URL, previousChat = process.env.EXPO_PUBLIC_CHAT_BASE_URL;
@@ -81,4 +93,27 @@ test('an empty successful AI response is an actionable failure, not an empty ass
    await assert.rejects(requestChatAPI([{role:'user', content:'Where can I hike?'}], null), /did not return an answer/);
   });
  }
+});
+
+
+test('email code requests are public, contain no Firebase bearer, and validate the returned challenge', async () => {
+  await withFetch(async (url, options) => {
+    assert.equal(url, 'http://test.local:8000/auth/email/request');
+    assert.equal(options.headers.Authorization, undefined);
+    assert.deepEqual(JSON.parse(options.body), { email: 'hiker@example.com' });
+    return new Response(JSON.stringify({ challengeId: 'x'.repeat(43), expiresIn: 600, resendAfter: 45 }));
+  }, async () => assert.equal((await requestEmailOTP('hiker@example.com')).resendAfter, 45));
+});
+test('verification exchanges the proof for a token and never accepts an empty exchange', async () => {
+  await withFetch(async (url, options) => {
+    assert.match(url, /auth\/email\/verify$/);
+    assert.deepEqual(JSON.parse(options.body), { email: 'hiker@example.com', challengeId: 'x'.repeat(43), code: '123456', name: 'Aasha' });
+    return new Response(JSON.stringify({ customToken: 'signed-token' }));
+  }, async () => assert.equal(await verifyEmailOTP('hiker@example.com', 'x'.repeat(43), '123456', 'Aasha'), 'signed-token'));
+  await withFetch(async () => new Response('{}'), async () => assert.rejects(verifyEmailOTP('hiker@example.com', 'x'.repeat(43), '123456')));
+});
+test('email throttling honors Retry-After and hides upstream error bodies', async () => {
+  await withFetch(async () => new Response(JSON.stringify({ detail: 'secret provider response' }), { status: 429, headers: { 'Retry-After': '90' } }), async () => {
+    await assert.rejects(requestEmailOTP('hiker@example.com'), error => error.retryAfter === 90 && !error.message.includes('secret'));
+  });
 });

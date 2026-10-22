@@ -5,16 +5,18 @@ import { useCloud } from '@/context/CloudContext';
 import { useNavo } from '@/context/NavoContext';
 import { nepalToday } from '@/services/day-hike';
 import { conditionLabels, decodeReviewFeed, findReviews, visibleReviewSummary, reviewDraftError, type ReviewFeed, type TrailCondition } from '@/services/trail-reviews';
-import { Badge, Button, Card, Chip, Field, Notice, SectionTitle } from './ui';
+import { Badge, Button, Card, Chip, Field, Notice, SectionTitle } from './treks/ReviewUI';
 import { Text } from './Typography';
-import { colors } from '@/theme/tokens';
+import { createThemedStyles } from '@/theme/create-styles';
 
 export function TrailReviews({trekId}:{trekId:string}) {
+  const styles = useStyles();
   const {userId,isSignedIn}=useNavo();
   if(!isSignedIn) return <Card><SectionTitle title="Hikers’ reviews & conditions" /><Text style={styles.copy}>Sign in to read and share Navo hikers’ experiences. Visit dates and condition reports help you prepare for your own trip.</Text><Button label="Sign in for trail reviews" variant="outline" onPress={()=>router.push('/login')} /></Card>;
   return <ReviewPanel key={`${userId}:${trekId}`} trekId={trekId} />;
 }
 function ReviewPanel({trekId}:{trekId:string}) {
+  const styles = useStyles();
   const {ready,api,retry,error:connectionError}=useCloud();
   const [feed,setFeed]=useState<ReviewFeed|null>(null),[error,setError]=useState(''),[message,setMessage]=useState('');
   const [attempt,setAttempt]=useState(0),[loading,setLoading]=useState(false),[busy,setBusy]=useState(false);
@@ -83,4 +85,4 @@ function ReviewPanel({trekId}:{trekId:string}) {
     </>}
   </Card>;
 }
-const styles=StyleSheet.create({row:{flexDirection:'row',flexWrap:'wrap',gap:8},copy:{color:colors.muted,fontSize:14,lineHeight:22},title:{color:colors.ink,fontSize:16,fontWeight:'700'},review:{gap:8,paddingVertical:14,borderTopWidth:1,borderTopColor:colors.line}});
+const useStyles=createThemedStyles(t => StyleSheet.create({row:{flexDirection:'row',flexWrap:'wrap',gap:8},copy:{color:t.secondaryText,fontSize:14,lineHeight:22},title:{color:t.ink,fontSize:16,fontWeight:'700'},review:{gap:8,paddingVertical:14,borderTopWidth:1,borderTopColor:t.border}}));

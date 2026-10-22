@@ -1,7 +1,9 @@
+import { decodeEmailChallenge, emailOTPFailure } from '@/services/email-otp';
 import { serverErrorMessage } from '../services/server-errors';
 import { firebaseAuth } from './firebase';
 import { networkEnvironment } from './network-environment';
 import { resolveBackendAddress, backendRequestTimeout } from '../services/backend-address';
+import type { JourneyChatSummary } from '@/services/journeys/types';
 import type { TrekChatContext } from '@/services/routing/ai-context';
 export async function withTimeout<T>(task: Promise<T>, milliseconds: number, message: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -17,21 +19,40 @@ export async function requestAPI<T>(getToken: () => Promise<string | null>, path
   return requestJSON<T>(path, body, method, token);
 }
 
-export async function requestChatAPI(messages: { role: 'user' | 'assistant'; content: string }[], email: string | null, context?: TrekChatContext) {
+export async function requestChatAPI(messages: { role: 'user' | 'assistant'; content: string }[], email: string | null, context?: TrekChatContext, journey?: JourneyChatSummary) {
   const user = firebaseAuth?.currentUser;
   if (!user) throw new Error('Sign in to use Navo AI. Your route stays available.');
   const token = await withTimeout(user.getIdToken(), 15000, 'Your sign-in could not reconnect. Please retry.');
   const normalized = email?.trim() ?? '';
   const metadataEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized) ? normalized : null;
-  const result = await requestJSON<{ reply: string; source?: 'nemotron' | 'safety-rule'; model?: string }>('/chat', { messages, email: metadataEmail, ...(context ? { context } : {}) }, 'POST', token, chatBase);
+  const result = await requestJSON<{ reply: string; source?: 'nemotron' | 'safety-rule'; model?: string }>('/chat', { messages, email: metadataEmail, ...(context ? { context } : {}), ...(journey ? { journey } : {}) }, 'POST', token, chatBase);
   if (!result || typeof result.reply !== 'string' || !result.reply.trim()) {
     throw new Error('Navo AI did not return an answer. Your question is still available to retry.');
   }
   return result;
 }
 
+export async function requestJourneyAPI<T>(path: string, body?: unknown, method = 'POST'): Promise<T> {
+  const user = firebaseAuth?.currentUser;
+  if (!user) throw new Error('Sign in to plan your journey.');
+  const token = await withTimeout(user.getIdToken(), 15000, 'Your sign-in could not reconnect. Please retry.');
+  // Journey preparation, polling and saved-journey operations belong to the
+  // authenticated shared backend. EXPO_PUBLIC_CHAT_BASE_URL may point at a
+  // chat-only deployment and must never receive journey mutations.
+  return requestJSON<T>(path, body, method, token, apiBase);
+}
+
+export async function requestEmailOTP(email: string) {
+  return decodeEmailChallenge(await requestJSON('/auth/email/request', { email }, 'POST'));
+}
+export async function verifyEmailOTP(email: string, challengeId: string, code: string, name?: string) {
+  const result = await requestJSON<{ customToken: string }>('/auth/email/verify', { email, challengeId, code, ...(name ? { name } : {}) }, 'POST');
+  if (!result || typeof result.customToken !== 'string' || !result.customToken) throw new Error('Sign-in could not be completed. Please request a new code.');
+  return result.customToken;
+}
+
 async function requestJSON<T>(path: string, body: unknown, method: string, token?: string, base = apiBase) {
-  if (!base) throw new Error('Navo AI is unavailable on this connection. Please retry later.');
+  if (!base) throw new Error(path.startsWith('/auth/email/') ? 'Email sign-in is unavailable on this connection. Please continue with Google.' : 'Navo AI is unavailable on this connection. Please retry later.');
   const environment = networkEnvironment();
   base = resolveBackendAddress(base, environment.platform, environment.development, environment.expoHost);
   const controller = new AbortController();
@@ -47,7 +68,10 @@ async function requestJSON<T>(path: string, body: unknown, method: string, token
     let result;
     try { result = await response.json(); }
     catch { throw new Error(response.ok ? 'Navo received an unexpected server reply. Please try again.' : serverErrorMessage(response.status)); }
-    if (!response.ok) throw new Error(serverErrorMessage(response.status, result?.detail));
+    if (!response.ok) {
+      if (path.startsWith('/auth/email/')) throw emailOTPFailure(response.status, response.headers.get('Retry-After'));
+      throw new Error(serverErrorMessage(response.status, result?.detail));
+    }
     return result as T;
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') throw new Error('The request timed out. Check your connection and retry.');

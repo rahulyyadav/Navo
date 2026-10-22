@@ -1,5 +1,29 @@
 # Phone connectivity, discovery and map update
 
+## AI chat setup update (19 October)
+
+`/chat` no longer needs Firebase Admin credentials or Firestore. It validates the
+signed-in user's Firebase ID token through Google's end-user `accounts:lookup`
+API using `FIREBASE_WEB_API_KEY` (or the existing `EXPO_PUBLIC_FIREBASE_API_KEY`
+in `backend/.env`). Sign-in and verified email remain required. The Nebius key
+stays server-only. Shared groups, account deletion and itinerary generation still
+use the Admin-backed services described below.
+
+Chat reserves its daily global/per-user allowance atomically in SQLite before
+calling the model, including failed provider attempts. `AI_ENABLED` still pauses
+chat. `CHAT_BUDGET_PATH` defaults to `backend/.local/chat-budgets.sqlite3`, which
+is ignored by Git. Keep this file on durable storage for hosting. Processes on
+one host share these limits; separate replicas/files do not share a global limit.
+Chat and itinerary allowances are now separate. Do not deploy multiple replicas
+assuming their chat allowances are coordinated.
+
+For local development, set `EXPO_PUBLIC_API_BASE_URL=http://localhost:8000`, run
+the backend on `0.0.0.0:8000`, and restart/reload Expo after environment changes.
+Native LAN development resolves localhost to Expo's current Wi-Fi host; web uses
+localhost directly. Both Expo and the backend must remain running. A healthy
+`/health` endpoint does not establish shared-service readiness: `/ready` still
+checks Firestore and may return 503 while standalone chat works.
+
 ## What the screenshots revealed
 
 The phone's AI endpoint was laptop-local; the group endpoint was unset. A Nemotron key configures the server but cannot make a phone reach that server. The map tab began at a broad Nepal-region view, and place search relied only on Photon spellings. Trek galleries displayed three enlarged crops of the same photograph.

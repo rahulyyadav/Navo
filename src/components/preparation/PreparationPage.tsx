@@ -3,6 +3,7 @@ import { ActivityIndicator, Animated, Linking, PanResponder, Pressable, ScrollVi
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
+import { useTheme } from '@/context/ThemeContext';
 import { colors } from '@/theme/tokens';
 import { Text, TextInput } from '@/components/Typography';
 import { TabIcon } from '@/components/TabIcon';
@@ -65,12 +66,13 @@ function SwipeCard({ item, index, prepared, onDecision }: { item: Item; index: n
   </>;
 }
 export function PreparationPage(props: Props) {
+  const { scheme, palette } = useTheme();
   const insets = useSafeAreaInsets();
   const compact = useWindowDimensions().width < 360;
   const scrollRef = useRef<ScrollView>(null);
   const reduced = useReducedMotion();
   const focusDeck = useCallback(() => scrollRef.current?.scrollTo({ y: 0, animated: !reduced }), [reduced]);
-  return <View style={styles.page}><LinearGradient colors={[colors.homeTop, colors.homeMiddle, colors.homeBottom]} locations={[0, .4, 1]} style={StyleSheet.absoluteFill} />
+  return <View style={[styles.page, scheme === 'dark' && { backgroundColor: palette.background }]}><LinearGradient colors={scheme === 'dark' ? ['#000000', '#000000', '#000000'] : [colors.homeTop, colors.homeMiddle, colors.homeBottom]} locations={[0, .4, 1]} style={StyleSheet.absoluteFill} />
     <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 14, paddingBottom: Math.max(insets.bottom, 20) + 20 }]}>
       <View style={[styles.header, compact && { marginBottom: 16 }]}><Pressable accessibilityRole="button" accessibilityLabel="Back to trek" onPress={props.onBack} style={styles.back}><Text style={styles.backArrow}>←</Text></Pressable><Text style={styles.headerTitle}>TREK PREPARATION</Text><TabIcon name="route" color="white" size={23} /></View>
       <View style={styles.trekHeading}><Text style={styles.overline}>{props.trek.region.toUpperCase()} / YOUR NEXT JOURNEY</Text><Text style={[styles.trekName, compact && { fontSize: 26, lineHeight: 30 }]}>{props.trek.name}</Text><Text style={styles.metadata}>{props.trek.days} · {props.trek.maxElevation.toLocaleString()} m · {props.trek.difficulty}</Text></View>

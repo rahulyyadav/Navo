@@ -1,18 +1,32 @@
 import { AIReply } from './AIReply';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import Animated, { FadeInDown, ReduceMotion, interpolateColor, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { router } from 'expo-router';
 import { Text, TextInput } from '@/components/Typography';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { actionError } from '@/lib/api';
-import { colors } from '@/theme/tokens';
-import { Reveal } from '@/components/ui';
+import { useTheme } from '@/context/ThemeContext';
+import { createThemedStyles } from '@/theme/create-styles';
+import { HomePressable } from './journeys/HomeMotion';
 
 type Message = { role: 'user' | 'assistant'; content: string };
-const suggestions = ['Help me choose a trek', 'What should I pack?', 'Plan a gentle first trek'];
-type Props = { ready: boolean; retry?: () => void; request: (messages: Message[]) => Promise<{ reply: string }> };
-export function AIChatPage({ ready, retry, request }: Props) {
+type Props = { ready: boolean; name?: string; retry?: () => void; request: (messages: Message[]) => Promise<{ reply: string }> };
+
+const bubbleEnter = FadeInDown.duration(240).reduceMotion(ReduceMotion.System);
+const composerEnter = FadeInDown.duration(380).delay(120).reduceMotion(ReduceMotion.System);
+function greeting(date = new Date()) {
+  const hour = date.getHours();
+  if (hour < 5) return 'Good night';
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  if (hour < 21) return 'Good evening';
+  return 'Good night';
+}
+export function AIChatPage({ ready, name, retry, request }: Props) {
+  const styles = useStyles();
+  const { palette } = useTheme();
   const insets = useSafeAreaInsets();
   const scroll = useRef<ScrollView>(null);
   const lock = useRef(false);
@@ -20,12 +34,11 @@ export function AIChatPage({ ready, retry, request }: Props) {
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState('');
   const [error, setError] = useState('');
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
-  useEffect(() => {
-    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardOpen(true));
-    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardOpen(false));
-    return () => { show.remove(); hide.remove(); };
-  }, []);
+  const [focused, setFocused] = useState(false);
+  const showGreeting = messages.length === 0 && !pending;
+  const ring = useSharedValue(0);
+  useEffect(() => { ring.value = withTiming(focused ? 1 : 0, { duration: 180, reduceMotion: ReduceMotion.System }); }, [focused, ring]);
+  const composerMotion = useAnimatedStyle(() => ({ borderColor: interpolateColor(ring.value, [0, 1], [palette.border, palette.green]) }));
   async function send(text = draft) {
     const content = text.trim();
     if (!content || lock.current) return;
@@ -40,23 +53,52 @@ export function AIChatPage({ ready, retry, request }: Props) {
     finally { lock.current = false; setPending(''); }
   }
   return <View style={styles.page}>
-    <LinearGradient colors={[colors.homeTop, colors.homeMiddle, colors.homeBottom]} style={StyleSheet.absoluteFill} />
+    {router.canGoBack() ? <Animated.View entering={FadeInDown.duration(380).reduceMotion(ReduceMotion.System)} style={[styles.backBtn, { top: insets.top + 10 }]}>
+      <HomePressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => router.back()} style={styles.backInner}>
+        <Text style={styles.backText}>← Back</Text>
+      </HomePressable>
+    </Animated.View> : null}
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-      <View style={[styles.header, { paddingTop: insets.top + 18 }]}><View><Text style={styles.title}>Navo AI</Text><Text style={styles.subtitle}>Your mountain companion</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Start a new chat" disabled={Boolean(pending)} onPress={() => { setMessages([]); setDraft(''); setError(''); }} style={styles.newChat}><Text style={styles.newChatText}>＋</Text></Pressable></View>
-      <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.conversation} onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: true })}>
-        {!messages.length && !pending && <Reveal><View style={styles.welcome}><Text style={styles.welcomeTitle}>Where will we go?</Text><Text style={styles.welcomeCopy}>Find your trail, prepare your pack, or talk through a trek. Let’s take it one step at a time.</Text>{suggestions.map(text => <Pressable key={text} accessibilityRole="button" onPress={() => void send(text)} style={({ pressed }) => [styles.suggestion, pressed && styles.pressed]}><Text style={styles.suggestionText}>{text}</Text><Text style={styles.suggestionText}>↗</Text></Pressable>)}</View></Reveal>}
-        {messages.map((message, index) => <View key={index} style={[styles.bubble, message.role === 'user' ? styles.userBubble : styles.aiBubble]}><Text style={styles.sender}>{message.role === 'user' ? 'YOU' : 'NAVO AI'}</Text>{message.role === 'assistant' ? <AIReply content={message.content} style={styles.message} /> : <Text selectable style={styles.message}>{message.content}</Text>}</View>)}
-        {pending && <><View style={[styles.bubble, styles.userBubble]}><Text style={styles.message}>{pending}</Text></View><View accessibilityLiveRegion="polite" style={styles.thinking}><ActivityIndicator color="white" size="small" /><Text style={styles.subtitle}>Connecting & thinking… First connection may take a minute.</Text></View></>}
+      <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false} contentContainerStyle={[styles.conversation, { paddingTop: insets.top + 14 }]} onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: true })}>
+        {showGreeting ? <Animated.View entering={FadeInDown.duration(380).reduceMotion(ReduceMotion.System)} style={styles.greetingWrap}>
+          <Text style={styles.greeting} accessibilityRole="header">{name ? `${greeting()}, ${name}` : greeting()}</Text>
+        </Animated.View> : null}
+        {messages.map((message, index) => <Animated.View key={index} entering={bubbleEnter} style={[styles.bubble, message.role === 'user' ? styles.userBubble : styles.aiBubble]}><Text style={[styles.sender, message.role === 'user' && { color: palette.green }]}>{message.role === 'user' ? 'YOU' : 'NAVO AI'}</Text>{message.role === 'assistant' ? <AIReply content={message.content} style={styles.message} /> : <Text selectable style={styles.message}>{message.content}</Text>}</Animated.View>)}
+        {Boolean(pending) && <><Animated.View entering={bubbleEnter} style={[styles.bubble, styles.userBubble]}><Text style={styles.message}>{pending}</Text></Animated.View><View accessibilityLiveRegion="polite" style={styles.thinking}><ActivityIndicator color={palette.green} size="small" /><Text style={styles.subtitle}>Connecting & thinking… First connection may take a minute.</Text></View></>}
       </ScrollView>
-      <View style={[styles.composerArea, { paddingBottom: Math.max(insets.bottom, 12) + (keyboardOpen ? 0 : 80) }]}>
+      <Animated.View entering={composerEnter} style={[styles.composerArea, { paddingBottom: Math.max(insets.bottom - 8, 10) + 58 + 14 }]}>
         {!ready && (retry ? <Pressable accessibilityRole="button" onPress={retry}><Text style={styles.status}>Chat is offline · Tap to reconnect</Text></Pressable> : <Text style={styles.status}>Chat connection is not configured yet.</Text>)}
         {error ? <Text accessibilityLiveRegion="polite" style={styles.error}>{error}</Text> : null}
-        <View style={styles.composer}><TextInput accessibilityLabel="Message Navo AI" placeholder="Ask about your next adventure…" placeholderTextColor="rgba(255,255,255,0.55)" multiline maxLength={2000} value={draft} editable={!pending} onChangeText={setDraft} style={styles.input} /><Pressable accessibilityRole="button" accessibilityLabel="Send message" disabled={!draft.trim() || Boolean(pending)} onPress={() => void send()} style={[styles.send, (!draft.trim() || Boolean(pending)) && styles.disabled]}><Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#18251A" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><Path d="M12 19V5m-6 6 6-6 6 6" /></Svg></Pressable></View>
-        <Text style={styles.caption}>AI can make mistakes. Verify trail conditions with a qualified guide.</Text>
-      </View>
+        <Animated.View style={[styles.composer, composerMotion]}>
+          <TextInput accessibilityLabel="Message Navo AI" placeholder="Ask Navo anything…" multiline maxLength={2000} value={draft} editable={!pending} onChangeText={setDraft} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} style={styles.input}/>
+          <HomePressable accessibilityRole="button" accessibilityLabel="Send message" disabled={!draft.trim() || Boolean(pending)} onPress={() => void send()} style={[styles.send, (!draft.trim() || Boolean(pending)) && styles.disabled]}>
+            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={palette.onPrimary} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><Path d="M12 19V5m-6 6 6-6 6 6"/></Svg>
+          </HomePressable>
+        </Animated.View>
+      </Animated.View>
     </KeyboardAvoidingView>
   </View>;
 }
-const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: colors.homeMiddle }, header: { paddingHorizontal: 24, paddingBottom: 18, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, title: { color: 'white', fontSize: 28, fontWeight: '600', letterSpacing: -0.7 }, subtitle: { color: colors.muted, fontSize: 13, marginTop: 4 }, newChat: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }, newChatText: { color: 'white', fontSize: 26 }, conversation: { padding: 20, gap: 14, flexGrow: 1 }, welcome: { paddingTop: 32, gap: 14 }, welcomeTitle: { color: 'white', fontSize: 33, fontWeight: '600', letterSpacing: -1 }, welcomeCopy: { color: colors.muted, fontSize: 16, lineHeight: 25, marginBottom: 14 }, suggestion: { flexDirection: 'row', justifyContent: 'space-between', padding: 18, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.13)' }, suggestionText: { color: 'white', fontSize: 14 }, bubble: { maxWidth: '92%', borderRadius: 24, padding: 17, gap: 7 }, userBubble: { alignSelf: 'flex-end', backgroundColor: 'rgba(206,229,246,0.22)', borderBottomRightRadius: 7 }, aiBubble: { alignSelf: 'flex-start', backgroundColor: 'rgba(28,56,79,0.42)', borderBottomLeftRadius: 7 }, sender: { color: 'rgba(255,255,255,0.6)', fontSize: 10, letterSpacing: 1.2, fontWeight: '600' }, message: { color: 'white', fontSize: 15, lineHeight: 23 }, thinking: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12 }, composerArea: { paddingHorizontal: 20, paddingTop: 12 }, composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, backgroundColor: 'rgba(255,255,255,0.13)', borderRadius: 28, padding: 8 }, input: { flex: 1, color: 'white', minHeight: 42, maxHeight: 120, paddingHorizontal: 10, paddingTop: 11, paddingBottom: 10, fontSize: 14 }, send: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#E4FF89', alignItems: 'center', justifyContent: 'center' }, disabled: { opacity: 0.4 }, caption: { color: colors.faint, fontSize: 10, textAlign: 'center', marginTop: 9 }, error: { color: '#FFE1DB', fontSize: 13, lineHeight: 19, marginBottom: 10 }, status: { color: colors.muted, fontSize: 12, marginBottom: 10 }, pressed: { opacity: 0.75 },
-});
+const useStyles = createThemedStyles(t => StyleSheet.create({
+  page: { flex: 1, backgroundColor: t.background },
+  conversation: { flexGrow: 1, padding: 18, gap: 12 },
+  greetingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 70 },
+  greeting: { color: t.muted, fontSize: 28, lineHeight: 34, fontWeight: '600', letterSpacing: -0.5, textAlign: 'center' },
+  backBtn: { position: 'absolute', left: 16, zIndex: 3 },
+  backInner: { height: 40, paddingHorizontal: 14, borderRadius: 20, backgroundColor: t.elevated, borderWidth: 1, borderColor: t.border, alignItems: 'center', justifyContent: 'center', shadowColor: '#153B2A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 3 },
+  backText: { color: t.ink, fontSize: 14, fontWeight: '600' },
+  bubble: { maxWidth: '92%', borderRadius: 22, padding: 15, gap: 6 },
+  userBubble: { alignSelf: 'flex-end', backgroundColor: t.mint, borderBottomRightRadius: 8 },
+  aiBubble: { alignSelf: 'flex-start', backgroundColor: t.surface, borderWidth: 1, borderColor: t.border, borderBottomLeftRadius: 8 },
+  sender: { color: t.muted, fontSize: 10, letterSpacing: 1.2, fontWeight: '700' },
+  message: { color: t.ink, fontSize: 15, lineHeight: 23 },
+  subtitle: { color: t.muted, fontSize: 13 },
+  thinking: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10 },
+  composerArea: { paddingHorizontal: 16, paddingTop: 10, gap: 8 },
+  composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, backgroundColor: t.elevated, borderRadius: 28, borderWidth: 1, borderColor: t.border, padding: 7, paddingLeft: 18, shadowColor: '#153B2A', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 18, elevation: 3 },
+  input: { flex: 1, color: t.ink, minHeight: 46, maxHeight: 120, paddingTop: 13, paddingBottom: 12, fontSize: 16 },
+  send: { width: 46, height: 46, borderRadius: 23, backgroundColor: t.primary, alignItems: 'center', justifyContent: 'center' },
+  disabled: { opacity: 0.45 },
+  status: { color: t.muted, fontSize: 12 },
+  error: { color: t.danger, fontSize: 13, lineHeight: 19 },
+}));

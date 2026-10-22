@@ -4,6 +4,7 @@ import { treks, type MapRegion } from '@/data/treks';
 import { colorForTrek } from '@/data/map-style';
 
 export type NepalMapProps = {
+  hideCatalogue?: boolean;
   focusPoint?: { latitude: number; longitude: number; label: string } | null;
   trailPlaces?: { id: string; name: string; kind: string; latitude: number; longitude: number }[];
   basemap?: 'terrain' | 'streets' | 'satellite';
@@ -12,7 +13,7 @@ export type NepalMapProps = {
   selectedId: string | null;
   onSelectTrek: (id: string) => void;
   myCoords: Coords | null;
-  walkingRoutes?: { id: string; geometry: { latitude: number; longitude: number }[] }[];
+  walkingRoutes?: { id: string; label?: string; geometry: { latitude: number; longitude: number }[] }[];
   walkingRouteId?: string;
   endpoints?: { start?: { latitude: number; longitude: number }; end: { latitude: number; longitude: number } };
   onSelectCoordinate?: (point: { latitude: number; longitude: number }) => void;
@@ -26,7 +27,7 @@ export const mapPayload = ({ focusPoint, trailPlaces = [], basemap, region, regi
 export const scriptJSON = (value: unknown) => JSON.stringify(value).replace(/</g, '\\u003c');
 
 export function mapDocument(props: NepalMapProps) {
-  const data = treks.map(t => ({ id: t.id, name: t.name, color: colorForTrek(t.id), points: t.route }));
+  const data = (props.hideCatalogue ? [] : treks).map(t => ({ id: t.id, name: t.name, color: colorForTrek(t.id), points: t.route }));
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="strict-origin-when-cross-origin">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <style>html,body,#map{height:100%;width:100%;margin:0;background:#19293a;font-family:system-ui}#status{position:absolute;z-index:1000;left:12px;right:12px;top:12px;background:#0d141a;color:white;padding:12px;border-radius:12px;font-size:13px}button{padding:8px;margin-left:8px}.leaflet-control-attribution{font-size:10px!important}.leaflet-popup-content{line-height:1.5}.leaflet-tooltip{white-space:normal;width:max-content;max-width:190px;line-height:1.4}.leaflet-control-layers{font-size:14px}.leaflet-control-zoom a{width:44px!important;height:44px!important;line-height:44px!important}.leaflet-control-layers-toggle{width:44px!important;height:44px!important}.leaflet-control-layers label{padding:6px 0}</style></head><body><div id="map" aria-label="Interactive Nepal map"></div><div id="status" role="status">Loading online map…</div>
@@ -55,6 +56,7 @@ if(interactive)L.control.layers(baseLayers,null,{collapsed:true}).addTo(map);
 const data=${scriptJSON(data)};
 map.on('click',event=>{const value=JSON.stringify({type:'select-coordinate',latitude:event.latlng.lat,longitude:event.latlng.lng});if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(value);else parent.postMessage(value,'*')});
 const markers=L.layerGroup().addTo(map);let position;let lastCamera=null;
+function routeTooltip(value){const label=document.createElement('span');label.textContent=String(value);return label;}
 window.updateNavoPosition=function(payload){
  if(payload.myCoords){const p=payload.myCoords;if(position){position.setLatLng([p.latitude,p.longitude]);position.setRadius(Math.max(p.accuracy||10,10))}else{position=L.circle([p.latitude,p.longitude],{radius:Math.max(p.accuracy||10,10),color:'#168de2',fillOpacity:.25}).addTo(map);position.bindTooltip('Your GPS position (accuracy circle)')}}else if(position){map.removeLayer(position);position=null}
  if(payload.followUser && payload.myCoords){const p=payload.myCoords;map.panTo([p.latitude,p.longitude],{animate:true,duration:.8});}
@@ -62,7 +64,7 @@ window.updateNavoPosition=function(payload){
 window.updateNavoMap=function(payload){
  if(payload.basemap && payload.basemap!==activeBase){activeBase=payload.basemap;for(const layer of [osm,topo,...(satellite?[satellite]:[])])map.removeLayer(layer);(activeBase==='streets'?osm:activeBase==='satellite'&&satellite?satellite:topo).addTo(map);loading()}
  markers.clearLayers();
- for(const route of (payload.walkingRoutes||[])){const selected=route.id===payload.walkingRouteId;const line=route.geometry.map(p=>[p.latitude,p.longitude]);L.polyline(line,{color:'#19293A',weight:selected?8:5,opacity:selected?.85:.4}).addTo(markers);L.polyline(line,{color:selected?'#E4FF89':'#168DE2',weight:selected?4:3,opacity:selected?1:.7}).addTo(markers).bindTooltip(selected?'Selected route':'Alternative route');}
+ for(const route of (payload.walkingRoutes||[])){const selected=route.id===payload.walkingRouteId;const line=route.geometry.map(p=>[p.latitude,p.longitude]);L.polyline(line,{color:'#19293A',weight:selected?8:5,opacity:selected?.85:.4}).addTo(markers);L.polyline(line,{color:selected?'#E4FF89':'#168DE2',weight:selected?4:3,opacity:selected?1:.7}).addTo(markers).bindTooltip(route.label ? routeTooltip(route.label) : selected?'Selected route':'Alternative route');}
  if(payload.endpoints){const e=payload.endpoints;if(e.start)L.circleMarker([e.start.latitude,e.start.longitude],{radius:8,color:'#9BE89B',fillOpacity:1}).addTo(markers).bindTooltip('Routed start');L.circleMarker([e.end.latitude,e.end.longitude],{radius:8,color:'#FF9D8A',fillOpacity:1}).addTo(markers).bindTooltip(payload.walkingRoutes?.length?'Routed endpoint':'Selected destination');}
  for(const segment of (payload.importedSegments||[])){L.polyline(segment.map(p=>[p.latitude,p.longitude]),{color:'#E4FF89',weight:4}).addTo(markers).bindTooltip('Imported GPX — not verified');}
  for(const trek of ((payload.importedSegments?.length||payload.walkingRoutes?.length||payload.endpoints)?[]:data)){

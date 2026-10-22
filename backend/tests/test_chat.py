@@ -132,12 +132,11 @@ def test_unknown_ascent_timing_does_not_call_model(monkeypatch):
 
 
 def test_authenticated_chat_reserves_budget_before_provider(monkeypatch):
-    from app import ai_budget
-    from app.auth import current_user
+    from app.chat_access import chat_user
     calls = []
-    main.app.dependency_overrides[current_user] = lambda: 'verified-user'
-    monkeypatch.setattr(main, 'database', lambda: 'test-db')
-    monkeypatch.setattr(ai_budget, 'reserve_chat', lambda db, uid: calls.append(('budget', db, uid)))
+    main.app.dependency_overrides[chat_user] = lambda: 'verified-user'
+    monkeypatch.setattr(main, 'database', lambda: (_ for _ in ()).throw(AssertionError('Chat must not use Firestore')))
+    monkeypatch.setattr(main, 'reserve_local_chat', lambda uid: calls.append(('budget', uid)))
     async def answer(value):
         calls.append(('provider',))
         return {'reply': 'Ready'}
@@ -145,7 +144,7 @@ def test_authenticated_chat_reserves_budget_before_provider(monkeypatch):
     try:
         response = TestClient(main.app).post('/chat', json={'messages': [{'role': 'user', 'content': 'Packing?'}]})
         assert response.status_code == 200
-        assert calls == [('budget', 'test-db', 'verified-user'), ('provider',)]
+        assert calls == [('budget', 'verified-user'), ('provider',)]
     finally:
         main.app.dependency_overrides.clear()
 

@@ -10,6 +10,8 @@ import {
   type TextInputProps,
   type ViewStyle,
 } from 'react-native';
+import { useTheme } from '@/context/ThemeContext';
+import { tapHaptic } from '@/services/tap-haptics';
 import { Text, TextInput } from '@/components/Typography';
 import Animated, {
   FadeIn,
@@ -46,15 +48,17 @@ export function Reveal({ children, delay = 0, distance = 18 }: PropsWithChildren
 }
 
 export function Backdrop({ children }: PropsWithChildren) {
+  const { scheme } = useTheme();
   return <View style={ui.backdropRoot}>
-    <LinearGradient colors={[...gradients.night]} style={StyleSheet.absoluteFill} />
+    <LinearGradient colors={scheme === 'dark' ? ['#000000', '#000000', '#000000'] : [...gradients.night]} style={StyleSheet.absoluteFill} />
 
     {children}
   </View>;
 }
 
 export function Card({ children, style, padded = true }: PropsWithChildren<{ style?: StyleProp<ViewStyle>; padded?: boolean }>) {
-  return <View style={[ui.card, padded && ui.cardPadded, style]}>{children}</View>;
+  const { palette, scheme } = useTheme();
+  return <View style={[ui.card, scheme === 'dark' && { backgroundColor: palette.surface, borderColor: palette.border }, padded && ui.cardPadded, style]}>{children}</View>;
 }
 
 export function Brand({ compact = false }: { compact?: boolean }) {
@@ -99,6 +103,7 @@ type ButtonProps = {
 };
 
 export function Button({ label, onPress, variant = 'primary', busy = false, disabled = false, icon, style }: ButtonProps) {
+  const { palette, scheme } = useTheme();
   const reduced = useReducedMotion();
   const scale = useSharedValue(1);
   const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
@@ -108,26 +113,26 @@ export function Button({ label, onPress, variant = 'primary', busy = false, disa
     scale.value = withSpring(value, { damping: 16, stiffness: 320, mass: 0.7 });
   };
   const tone = variant === 'danger' ? ui.buttonDanger : variant === 'outline' ? ui.buttonOutline : variant === 'quiet' ? ui.buttonQuiet : ui.buttonPrimary;
-  const labelStyle = variant === 'primary' || variant === 'danger' ? ui.buttonTextDark : ui.buttonTextLight;
+  const labelStyle = scheme === 'dark' && variant === 'primary' ? { color: palette.onPrimary } : variant === 'primary' || variant === 'danger' ? ui.buttonTextDark : ui.buttonTextLight;
 
   if (variant === 'primary' || variant === 'danger') {
-    const gradientColors: readonly [string, string] = variant === 'danger' ? gradients.danger : gradients.lime;
+    const gradientColors: readonly [string, string] = variant === 'danger' ? gradients.danger : scheme === 'dark' ? [palette.primary, palette.primary] : gradients.lime;
     return <Pressable
       accessibilityRole="button"
       accessibilityState={{ disabled: inactive, busy }}
       disabled={inactive}
-      onPress={onPress}
+      onPress={() => { tapHaptic(); onPress(); }}
       onPressIn={() => press(0.965)}
       onPressOut={() => press(1)}
-      style={({ pressed }) => [ui.buttonBase, variant === 'danger' ? ui.buttonDangerWrap : ui.buttonPrimaryWrap, inactive && ui.inactive, pressed && !reduced && { opacity: 0.92 }, style]}
+      style={({ pressed }) => [ui.buttonBase, variant === 'danger' ? ui.buttonDangerWrap : ui.buttonPrimaryWrap, scheme === 'dark' && variant === 'primary' && { shadowOpacity: 0, elevation: 0 }, inactive && ui.inactive, pressed && !reduced && { opacity: 0.92 }, style]}
     >
       <Animated.View style={[StyleSheet.absoluteFill, animated]}>
         <LinearGradient colors={gradientColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={ui.gradientFill} />
       </Animated.View>
       <View style={ui.buttonInner}>
-        {busy ? <ActivityIndicator color={colors.onAccent} /> : icon ? <Text style={[labelStyle, ui.buttonIcon]}>{icon}</Text> : null}
+        {busy ? <ActivityIndicator color={scheme === 'dark' && variant === 'primary' ? palette.onPrimary : colors.onAccent} /> : icon ? <Text style={[labelStyle, ui.buttonIcon]}>{icon}</Text> : null}
         <Text style={[labelStyle, ui.buttonLabel]} >{label}</Text>
-        {!busy && !icon && <Text style={[labelStyle, ui.buttonArrow]}>→</Text>}
+        {!busy && !icon && <Text style={[ui.buttonArrow, labelStyle]}>→</Text>}
       </View>
     </Pressable>;
   }
@@ -136,10 +141,10 @@ export function Button({ label, onPress, variant = 'primary', busy = false, disa
     accessibilityRole="button"
     accessibilityState={{ disabled: inactive, busy }}
     disabled={inactive}
-    onPress={onPress}
+    onPress={() => { tapHaptic(); onPress(); }}
     onPressIn={() => press(0.97)}
     onPressOut={() => press(1)}
-    style={({ pressed }) => [ui.buttonBase, tone, inactive && ui.inactive, pressed && !reduced && { opacity: 0.8 }, style]}
+    style={({ pressed }) => [ui.buttonBase, tone, scheme === 'dark' && variant === 'outline' && { backgroundColor: palette.surface, borderColor: palette.border }, inactive && ui.inactive, pressed && !reduced && { opacity: 0.8 }, style]}
   >
     <Animated.View style={[ui.buttonInner, animated]}>
       {busy ? <ActivityIndicator color={colors.lime} /> : icon ? <Text style={[labelStyle, ui.buttonIcon]}>{icon}</Text> : null}
@@ -166,14 +171,15 @@ export function Field({
   hint,
   ...input
 }: TextInputProps & { label: string; error?: string; hint?: string }) {
+  const { palette, scheme } = useTheme();
   const reduced = useReducedMotion();
   const [focused, setFocused] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const ring = useSharedValue(0);
   useEffect(() => { ring.value = withTiming(focused ? 1 : 0, { duration: reduced ? 0 : 180 }); }, [focused, ring, reduced]);
   const animatedRing = useAnimatedStyle(() => ({
-    borderColor: focused ? colors.lime : colors.line,
-    backgroundColor: focused ? colors.slate : colors.navy,
+    borderColor: scheme === 'dark' ? focused ? palette.green : palette.border : focused ? colors.lime : colors.line,
+    backgroundColor: scheme === 'dark' ? palette.elevated : focused ? colors.slate : colors.navy,
     transform: [{ scale: reduced ? 1 : 1 + ring.value * 0.006 }],
   }));
   return <View style={ui.fieldBlock}>

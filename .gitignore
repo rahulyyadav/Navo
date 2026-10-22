@@ -59,5 +59,6 @@ tmp/
 **/service-account*.json
 **/*firebase-adminsdk*.json
 backend/.venv/
+backend/.local/
 __pycache__/
 .pytest_cache/
