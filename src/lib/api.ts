@@ -10,10 +10,12 @@ export async function withTimeout<T>(task: Promise<T>, milliseconds: number, mes
   try { return await Promise.race([task, new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error(message)), milliseconds); })]); }
   finally { if (timer) clearTimeout(timer); }
 }
-export const apiBase = (process.env.EXPO_PUBLIC_API_BASE_URL ?? '').replace(/\/$/, '');
-export const chatBase = (process.env.EXPO_PUBLIC_CHAT_BASE_URL?.trim() || apiBase).replace(/\/$/, '');
+export const apiBase = (process.env.EXPO_PUBLIC_API_BASE_URL ?? '').trim().replace(/\/+$/, '');
+export const chatBase = (process.env.EXPO_PUBLIC_CHAT_BASE_URL?.trim() || apiBase).replace(/\/+$/, '');
 export async function requestAPI<T>(getToken: () => Promise<string | null>, path: string, body?: unknown, method = 'POST'): Promise<T> {
   if (!apiBase) throw new Error('Connect the Navo backend: set EXPO_PUBLIC_API_BASE_URL and restart Expo.');
+  const environment = networkEnvironment();
+  resolveBackendAddress(apiBase, environment.platform, environment.development, environment.expoHost);
   const token = await withTimeout(getToken().catch(() => { throw new Error('Could not refresh your sign-in. Check your connection and try again.'); }), 15000, 'Your session could not reconnect. Check your internet and try again.');
   if (!token) throw new Error('Your session expired. Sign in again.');
   return requestJSON<T>(path, body, method, token);
@@ -51,6 +53,15 @@ export async function verifyEmailOTP(email: string, challengeId: string, code: s
   return result.customToken;
 }
 
+const CONNECTION_FAILURE = 'Could not connect to Navo. Check your connection and try again.';
+// A loopback base means Navo's own backend is down, which is not the user's connection problem.
+function connectionFailureMessage(base: string, development: boolean) {
+  if (!development) return CONNECTION_FAILURE;
+  let loopback = false;
+  try { loopback = ['localhost', '127.0.0.1', '[::1]'].includes(new URL(base).hostname); } catch { /* an invalid base already reports its own configuration error */ }
+  return loopback ? 'Navo’s own service is not answering on this device. Start the Navo backend, then retry — your internet connection is fine.' : CONNECTION_FAILURE;
+}
+
 async function requestJSON<T>(path: string, body: unknown, method: string, token?: string, base = apiBase) {
   if (!base) throw new Error(path.startsWith('/auth/email/') ? 'Email sign-in is unavailable on this connection. Please continue with Google.' : 'Navo AI is unavailable on this connection. Please retry later.');
   const environment = networkEnvironment();
@@ -63,7 +74,7 @@ async function requestJSON<T>(path: string, body: unknown, method: string, token
       response = await fetch(base + path, { method, headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body), signal: controller.signal });
     } catch (error) {
       if (controller.signal.aborted || (error instanceof Error && error.name === 'AbortError')) throw new Error('The request timed out. Check your connection and retry.');
-      throw new Error('Could not connect to Navo. Check your connection and try again.');
+      throw new Error(connectionFailureMessage(base, environment.development));
     }
     let result;
     try { result = await response.json(); }

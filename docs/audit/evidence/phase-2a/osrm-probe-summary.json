@@ -1,0 +1,15 @@
+{
+  "fetchedAt": "2026-10-21T06:22:10.606476+00:00",
+  "requestURL": "https://routing.openstreetmap.de/routed-foot/route/v1/foot/85.383258,27.597047;85.406692,27.571287?overview=full&geometries=geojson&steps=true&alternatives=true&annotations=nodes",
+  "httpStatus": 200,
+  "code": "Ok",
+  "route_count": 1,
+  "distanceM": 6756.6,
+  "durationS": 5405.3,
+  "vertices": 269,
+  "steps": 27,
+  "annotation_nodes": 269,
+  "responseSha256": "1df0ba7f286bfd478a93e1e982da37bb64d914d8a45387a2ba95f1cefa848f38",
+  "storedResponseHintFieldsRemoved": true,
+  "storedResponseSha256": "81612ebb18afc7b0197a4f05cc04b3f051aa36f2f888d6177747a162f0d9d3ae"
+}

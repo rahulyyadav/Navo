@@ -12,6 +12,8 @@ export type Trek = {
   bestSeason: string;
   summary: string;
   permit: string;
+  routeType: string;
+  highlights: string[];
   image: ImageSourcePropType;
   // Illustrative geometry for the demo. Verify against a licensed GPX source
   // before anyone relies on it in the field.
@@ -31,6 +33,8 @@ export const treks: Trek[] = [
     bestSeason: 'Mar–May · Sep–Nov',
     summary: 'A short ridge walk to the base of Mardi Himal with close views of Machhapuchhre.',
     permit: 'ACAP + TIMS',
+    routeType: 'Out & back',
+    highlights: ['Machhapuchhre sunrise', 'Rhododendron forest', 'High Camp ridge'],
     image: require('../../assets/trek-mardi-himal.jpg'),
     route: [
       { name: 'Kande', latitude: 28.2233, longitude: 83.8406, elevation: 1770 },
@@ -53,6 +57,8 @@ export const treks: Trek[] = [
     bestSeason: 'Mar–May · Oct–Nov',
     summary: 'Into the Annapurna Sanctuary, ringed by a wall of 7,000 m and 8,000 m peaks.',
     permit: 'ACAP + TIMS',
+    routeType: 'Out & back',
+    highlights: ['Ghorepani sunrise', 'Sanctuary amphitheatre', 'Jhinu hot springs'],
     image: require('../../assets/trek-annapurna-base-camp.jpg'),
     route: [
       { name: 'Nayapul', latitude: 28.2960, longitude: 83.7290, elevation: 1070 },
@@ -75,6 +81,8 @@ export const treks: Trek[] = [
     bestSeason: 'Mar–May · Sep–Dec',
     summary: 'A glacial valley north of Kathmandu, close to the Tibetan border and rich in Tamang culture.',
     permit: 'Langtang National Park + TIMS',
+    routeType: 'Out & back',
+    highlights: ['Kyanjin Gompa', 'Langtang glacier views', 'Tamang villages'],
     image: require('../../assets/trek-langtang-valley.jpg'),
     route: [
       { name: 'Syabrubesi', latitude: 28.0830, longitude: 85.2660, elevation: 1460 },
@@ -94,6 +102,8 @@ export const treks: Trek[] = [
     bestSeason: 'Mar–May · Oct–Nov',
     summary: 'The classic Khumbu walk to Everest Base Camp via Namche Bazaar and Tengboche.',
     permit: 'Sagarmatha NP + Khumbu permit',
+    routeType: 'Out & back',
+    highlights: ['Namche Bazaar', 'Tengboche monastery', 'Kala Patthar viewpoint'],
     image: require('../../assets/trek-everest-base-camp.jpg'),
     route: [
       { name: 'Lukla', latitude: 27.6869, longitude: 86.7297, elevation: 2860 },
@@ -110,6 +120,10 @@ export const treks: Trek[] = [
 
 export const trekById = (id: string) => treks.find(trek => trek.id === id) ?? null;
 
+export function trekMeta(trek: Trek) {
+  return `${trek.days} suggested · ${trek.difficulty} · walking distance not verified`;
+}
+
 export function trekBounds(route: TrekPoint[]) {
   const latitudes = route.map(point => point.latitude);
   const longitudes = route.map(point => point.longitude);
@@ -117,6 +131,16 @@ export function trekBounds(route: TrekPoint[]) {
     southwest: { latitude: Math.min(...latitudes), longitude: Math.min(...longitudes) },
     northeast: { latitude: Math.max(...latitudes), longitude: Math.max(...longitudes) },
   };
+}
+
+export function cumulativeKm(route: TrekPoint[]): number[] {
+  const distances: number[] = [];
+  let meters = 0;
+  for (let index = 0; index < route.length; index++) {
+    if (index > 0) meters += haversineMeters(route[index - 1], route[index]);
+    distances.push(Math.round(meters / 100) / 10);
+  }
+  return distances;
 }
 
 export function trekStats(route: TrekPoint[]) {
@@ -127,7 +151,17 @@ export function trekStats(route: TrekPoint[]) {
     if (delta > 0) ascent += delta;
     else descent -= delta;
   }
-  return { ascent, descent, stops: route.length };
+  const distances = cumulativeKm(route);
+  return { ascent, descent, stops: route.length, km: distances[distances.length - 1] ?? 0 };
+}
+
+function haversineMeters(from: TrekPoint, to: TrekPoint) {
+  const earth = 6371000;
+  const toRadians = (value: number) => (value * Math.PI) / 180;
+  const dLat = toRadians(to.latitude - from.latitude);
+  const dLng = toRadians(to.longitude - from.longitude);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRadians(from.latitude)) * Math.cos(toRadians(to.latitude)) * Math.sin(dLng / 2) ** 2;
+  return 2 * earth * Math.asin(Math.min(1, Math.sqrt(a)));
 }
 
 export type MapRegion = { latitude: number; longitude: number; latitudeDelta: number; longitudeDelta: number };

@@ -70,7 +70,8 @@
     "test:rules": "node --test tests/firestore/*.test.mjs",
     "check:release": "node scripts/check-release.mjs",
     "eas-build-pre-install": "node scripts/check-eas.mjs",
-    "start:app": "expo start"
+    "start:app": "expo start",
+    "check:services": "node scripts/check-services.mjs"
   },
   "private": true,
   "overrides": {

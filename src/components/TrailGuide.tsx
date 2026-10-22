@@ -2,18 +2,19 @@ import { useEffect, useRef, useState } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { Text } from './Typography';
 import { Button, Card, Notice, SectionTitle } from './ui';
-import { fetchTrailPlaces, type TrailPlace } from '@/services/trail/places';
+import { fetchTrailPlaceSnapshot, type TrailPlace, type TrailPlaceSnapshot } from '@/services/trail/places';
 import type { Coordinate } from '@/services/places/types';
 import type { WalkingRoute } from '@/services/routing/types';
 import { colors, radius, space } from '@/theme/tokens';
 export function TrailGuide({ route, onPlaces, onFocus }: {route: WalkingRoute; onPlaces:(places:TrailPlace[])=>void; onFocus:(point:Coordinate,label:string)=>void}) {
   const [places,setPlaces]=useState<TrailPlace[]>([]), [busy,setBusy]=useState(false), [loaded,setLoaded]=useState(false), [error,setError]=useState(''), [steps,setSteps]=useState(8), [selectedStep,setSelectedStep]=useState<number|null>(null);
   const pending=useRef<AbortController|null>(null);
+  const [snapshot,setSnapshot]=useState<TrailPlaceSnapshot|null>(null);
   useEffect(()=>{ onPlaces([]); return ()=>pending.current?.abort(); },[onPlaces]);
   async function load() {
     if(pending.current)return;
     const controller=new AbortController();pending.current=controller;setBusy(true);setError('');
-    try {const items=await fetchTrailPlaces(route.geometry,controller.signal);if(!controller.signal.aborted){setPlaces(items);onPlaces(items);setLoaded(true);}}
+    try {const result=await fetchTrailPlaceSnapshot(route.geometry,controller.signal,loaded);if(!controller.signal.aborted){setSnapshot(result);setPlaces(result.places);onPlaces(result.places);setLoaded(true);}}
     catch (failure) {if(!controller.signal.aborted)setError(failure instanceof Error ? failure.message : 'Could not load mapped stops. Your walking route is still available.');}
     finally {pending.current=null;if(!controller.signal.aborted)setBusy(false);}
   }
@@ -21,6 +22,7 @@ export function TrailGuide({ route, onPlaces, onFocus }: {route: WalkingRoute; o
     <Card><SectionTitle title="Along your trail" /><Text style={{color:colors.muted,lineHeight:22,marginVertical:12}}>Find mapped rest options, water, toilets, viewpoints and cautions within 300 m of this route. Nearby does not guarantee a walkable detour. The route area is sent to OpenStreetMap’s Overpass service when you load stops.</Text>
       <Button label={loaded?'Refresh mapped stops':'Find stops & viewpoints'} busy={busy} disabled={busy} onPress={()=>void load()} />
       <Notice message={error} />
+      {snapshot&&<Notice tone={snapshot.stale?'warning':'info'} message={`${snapshot.stale?'Provider unavailable · showing previously fetched map data':'Map data fetched'} ${new Date(snapshot.fetchedAt).toLocaleString()}. This is not a live check of facilities or hazards.`} />}
       {loaded && <Text style={{color:colors.muted,lineHeight:22,marginVertical:12}}>{places.length ? `${places.length} mapped places nearby.` : 'No mapped facilities returned. Carry what you need; the map may be incomplete.'} Danger coverage is incomplete. No warning on this map is not evidence that an area is safe.</Text>}
       {places.map(p=><View key={p.id} style={{marginTop:16,gap:6}}><Text style={{color:p.kind==='Mapped caution'?colors.danger:colors.lime,fontSize:13}}>{p.kind} · {Math.round(p.offsetM)} m from route</Text><Button label={p.name} variant="outline" onPress={()=>onFocus(p,p.name)} /><Text style={{color:colors.muted,lineHeight:21}}>{p.detail}</Text><Button label="View map source" variant="quiet" onPress={()=>void Linking.openURL(p.source).catch(()=>setError('Could not open the map source.'))} /></View>)}
     </Card>

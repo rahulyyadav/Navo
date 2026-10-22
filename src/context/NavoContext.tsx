@@ -12,6 +12,7 @@ import {
 import { unregisterPush } from '@/services/push';
 import { useCloud } from '@/context/CloudContext';
 import { friendlyAuthError } from '@/services/auth-errors';
+import { resolveOnboarding, restoreOnboarding } from '@/services/onboarding-state';
 
 type NavoState = {
   authLoaded: boolean;
@@ -41,6 +42,7 @@ type SessionData = {
   profile: Profile | null;
   answers: OnboardingAnswers;
   groups: TrekGroup[];
+  storageAvailable: boolean;
 };
 
 const NavoContext = createContext<NavoState | null>(null);
@@ -64,25 +66,35 @@ export function NavoProvider({ children }: PropsWithChildren) {
     (async () => {
       try {
         const [storedProfile, storedAnswers, storedGroups] = await Promise.all([
-          loadProfile(userId),
+          loadProfile(userId).catch(() => null), // A derived-cache failure must not hide saved completion.
           loadOnboarding(userId),
           Promise.resolve([] as TrekGroup[]),
         ]);
         if (!active) return;
-        setSession({ userId, profile: storedProfile, answers: storedAnswers, groups: storedGroups });
+        setSession({ userId, profile: storedProfile, answers: restoreOnboarding(storedAnswers, storedProfile), groups: storedGroups, storageAvailable: true });
       } catch (failure) {
         if (!active) return;
         setError(friendlyAuthError(failure, 'We couldn’t load your Navo data.'));
-        setSession({ userId, profile: null, answers: emptyOnboarding, groups: [] });
+        setSession({ userId, profile: null, answers: emptyOnboarding, groups: [], storageAvailable: false });
       }
     })();
     return () => { active = false; };
   }, [isLoaded, isSignedIn, userId]);
 
   const syncingProfile = useRef('');
+  const resolvedAnswers = resolveOnboarding(data?.answers ?? emptyOnboarding, cloud.remoteProfile?.onboarding);
+  // Cache restored cloud completion before the next offline launch. Account switching cancels state updates.
   useEffect(() => {
-    if (!cloud.ready || !cloud.remoteProfile || cloud.remoteProfile.onboarding || !data?.answers.completed) return;
-    const syncKey = `${userId}/${data.answers.completedAt ?? 'local'}`;
+    if (!data || !resolvedAnswers.completed || JSON.stringify(data.answers) === JSON.stringify(resolvedAnswers)) return;
+    let active = true;
+    void saveOnboarding(userId, resolvedAnswers).then(() => {
+      if (active) setSession(current => current?.userId === userId ? { ...current, answers: resolvedAnswers } : current);
+    }).catch(() => { if (active) setError('Your profile is restored online, but could not be saved on this device. Check device storage before going offline.'); });
+    return () => { active = false; };
+  }, [data, resolvedAnswers, userId]);
+  useEffect(() => {
+    if (!cloud.ready || !cloud.remoteProfile || !data?.answers.completed || JSON.stringify(resolveOnboarding(data.answers, cloud.remoteProfile.onboarding)) !== JSON.stringify(data.answers) || JSON.stringify(cloud.remoteProfile.onboarding) === JSON.stringify(data.answers)) return;
+    const syncKey = `${userId}/${JSON.stringify(data.answers)}`;
     if (syncingProfile.current === syncKey) return;
     syncingProfile.current = syncKey;
     void cloud.api('/profile', data.answers, 'PUT').catch(() => {
@@ -100,10 +112,11 @@ export function NavoProvider({ children }: PropsWithChildren) {
       answers: next,
       createdAt: data?.profile?.createdAt,
     });
-    if (cloud.ready) await cloud.api('/profile', next, 'PUT');
-    await Promise.all([saveOnboarding(userId, next), saveProfile(built)]);
-    setSession(current => (current?.userId === userId ? { ...current, answers: next, profile: built } : current));
-  }, [userId, user, data?.profile?.createdAt, cloud]);
+    // Local completion commits first. A failed network request cannot undo it or trap the user.
+    await saveOnboarding(userId, next);
+    setSession(current => (current?.userId === userId ? { ...current, answers: next, profile: built, storageAvailable: true } : current));
+    await saveProfile(built).catch(() => undefined); // Derived cache; answers above remain canonical.
+  }, [userId, user, data?.profile?.createdAt]);
 
   const completeOnboarding = useCallback(async (next: OnboardingAnswers) => {
     await persist({ ...next, completed: true, completedAt: new Date().toISOString() });
@@ -111,7 +124,8 @@ export function NavoProvider({ children }: PropsWithChildren) {
 
   const updateAnswers = useCallback(async (patch: Partial<OnboardingAnswers>) => {
     if (!data) return;
-    await persist({ ...(cloud.remoteProfile?.onboarding ?? data.answers), ...patch });
+    const previous = resolveOnboarding(data.answers, cloud.remoteProfile?.onboarding);
+    await persist({ ...previous, ...patch, ...(previous.completed ? { completed: true, completedAt: new Date().toISOString() } : {}) });
   }, [data, persist, cloud.remoteProfile]);
 
   const updateGroups = useCallback(async () => {
@@ -131,14 +145,14 @@ export function NavoProvider({ children }: PropsWithChildren) {
   }, [signOut, cloud]);
 
   const value = useMemo<NavoState>(() => {
-    const answers = cloud.remoteProfile?.onboarding ?? data?.answers ?? emptyOnboarding;
+    const answers = resolveOnboarding(data?.answers ?? emptyOnboarding, cloud.remoteProfile?.onboarding);
     return {
       authLoaded: isLoaded,
       isSignedIn: Boolean(isSignedIn),
       userId: userId ?? '',
       email: user?.email ?? data?.profile?.email ?? '',
       imageUrl: user?.photoURL ?? data?.profile?.imageUrl ?? null,
-      profile: user && cloud.remoteProfile?.onboarding ? buildProfile({ userId, email: user.email ?? '', imageUrl: user.photoURL, answers: cloud.remoteProfile.onboarding, createdAt: data?.profile?.createdAt }) : data?.profile ?? null,
+      profile: user && answers.completed ? buildProfile({ userId, email: user.email ?? '', imageUrl: user.photoURL, answers, createdAt: data?.profile?.createdAt }) : data?.profile ?? null,
       answers,
       hydrated: data !== null,
       needsOnboarding: false, // Journey setup now collects only the details needed for the selected trip.
