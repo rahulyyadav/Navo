@@ -15,7 +15,7 @@ def packet(statuses, *, closure=False, published_at='2026-10-01'):
     calls = []
     prompts = []
     gateway = {'name': 'Pokhara', 'placeQuery': 'Pokhara, Nepal'}
-    peak = {'name': 'Mardi Himal High Camp', 'placeQuery': 'Mardi Himal High Camp, Nepal'}
+    peak = {'name': 'Mardi Himal Base Camp', 'placeQuery': 'Mardi Himal Base Camp, Nepal'}
     option = {'id': 'walk', 'mode': 'walk', 'label': 'Trek', 'minutes': None, 'note': 'Source-backed hiking stage.', 'sourceIds': ['hank-0']}
     draft = {'title': 'Mardi Himal route', 'gateway': gateway, 'segments': [
         {'destination': peak, 'options': [option]},
@@ -109,6 +109,43 @@ def test_map_choice_resume_reuses_saved_route_without_recalling_hank_or_julia(mo
         assert leg.selected == leg.options[0].id
 
 
+def test_invalid_saved_endpoint_regenerates_route_without_repeating_research(monkeypatch):
+    destination = Point(id='mardi', name='Mardi Himal Trek', latitude=28.48, longitude=83.94, destinationMeaning='Mardi Himal Base Camp endpoint')
+    calls, _, search, page, complete, geocode = packet(['unconfirmed'])
+    source = {'id': 'hank-0', 'title': 'Travel reference', 'url': 'https://example.com/route',
+              'checkedAt': '2026-10-21T00:00:00+00:00', 'publishedAt': '2026-10-20'}
+    option = {'id': 'walk', 'mode': 'walk', 'label': 'Trek', 'minutes': None,
+              'note': 'Source-backed hiking stage.', 'sourceIds': ['hank-0']}
+    gateway = {'name': 'Pokhara', 'placeQuery': 'Pokhara, Nepal'}
+    peak = {'name': 'Mardi Himal High Camp', 'placeQuery': 'Mardi Himal High Camp, Nepal'}
+    route_checkpoint = {
+        'sources': [source],
+        'evidence': [{'id': 'hank-0', 'title': source['title'], 'url': source['url'],
+                     'checkedAt': source['checkedAt'], 'publishedAt': source['publishedAt'],
+                     'text': 'Public travel evidence. ' * 30}],
+        'hank': {'gateway': 'Pokhara', 'gatewayQuery': 'Pokhara Nepal', 'gatewaySourceIds': ['hank-0'],
+                 'claims': [], 'destinationMeaning': 'Mardi Himal High Camp',
+                 'destinationMeaningSourceIds': ['hank-0']},
+        'draft': {'title': 'Mardi Himal route', 'gateway': gateway, 'segments': [
+            {'destination': peak, 'options': [option]}, {'destination': gateway, 'options': [option]},
+        ]},
+    }
+    monkeypatch.setattr(research, 'search', search)
+    monkeypatch.setattr(research, 'page', page)
+    monkeypatch.setattr(research, 'complete', complete)
+    monkeypatch.setattr(research, 'geocode', geocode)
+    saved = []
+    result = asyncio.run(research.research(destination, 'a' * 24, provider='openrouter',
+        route_checkpoint=route_checkpoint, save_route_checkpoint=saved.append))
+    assert len(result.legs) == 2
+    assert len(calls) == 3
+    assert sum('You are Julia,' in call for call in calls) == 1
+    assert all('You are Hank,' not in call for call in calls)
+    assert 'draft' not in saved[0]
+    assert saved[1]['draft']['segments'][0]['destination']['name'] == 'Mardi Himal Base Camp'
+    assert result.legs[0].end is destination or result.legs[0].end == destination
+
+
 @pytest.mark.parametrize('has_hank_result', [False, True])
 def test_partial_checkpoint_resumes_at_first_missing_agent(monkeypatch, has_hank_result):
     destination = Point(id='mardi', name='Mardi Himal Trek', latitude=28.48, longitude=83.94)
@@ -156,10 +193,11 @@ def test_bad_source_references_are_rejected(monkeypatch):
     assert len(calls) == 0
 
 
-def test_thompson_cannot_confirm_access_from_undated_or_stale_sources(monkeypatch):
+@pytest.mark.parametrize('claimed_status', ['open-confirmed', 'closed-confirmed'])
+def test_thompson_cannot_confirm_access_from_undated_or_stale_sources(monkeypatch, claimed_status):
     destination = Point(id='mardi', name='Mardi Himal Trek', latitude=28.48, longitude=83.94)
     stale_date = (datetime.now(timezone.utc).date() - timedelta(days=60)).isoformat()
-    calls, prompts, search, page, complete, geocode = packet(['open-confirmed'], published_at=stale_date)
+    calls, prompts, search, page, complete, geocode = packet([claimed_status], published_at=stale_date)
     monkeypatch.setattr(research, 'search', search)
     monkeypatch.setattr(research, 'page', page)
     monkeypatch.setattr(research, 'complete', complete)
@@ -167,6 +205,8 @@ def test_thompson_cannot_confirm_access_from_undated_or_stale_sources(monkeypatc
     result = asyncio.run(research.research(destination, 'a' * 24, provider='openrouter'))
     assert result.legs[0].options[0].verification == 'unconfirmed'
     assert 'published within the last 30 days' in result.legs[0].options[0].warning
+    assert len(calls) == 4  # Unsupported closure must not trigger a route revision.
+    assert any('no supported travel claims' in warning for warning in result.warnings)
 
 
 def test_ambiguous_map_candidates_require_user_selection_and_use_navo_ids():
@@ -439,3 +479,31 @@ def test_twelve_segment_route_with_duplicate_transport_ids_converts_without_fail
     assert all(len(leg.options) == 2 and len({o.id for o in leg.options}) == 2 for leg in legs)
     assert all(leg.selected in {o.id for o in leg.options} for leg in legs)
     assert all(left.end == right.start for left, right in zip(legs, legs[1:]))
+
+
+def test_endpoint_binding_preserves_return_checkpoints():
+    destination = Point(id='mardi', name='Mardi Himal Trek', latitude=28.48, longitude=83.94, destinationMeaning='Mardi Himal Base Camp endpoint')
+    gateway = Point(id='gateway', name='Pokhara', latitude=28.2, longitude=83.9, coordinatesApproximate=True)
+    stops = [research.ResearchStop(name=name, placeQuery=name + ', Nepal') for name in ['Pokhara', 'Kande', 'Mardi Himal Base Camp', 'Low Camp', 'Kande', 'Pokhara']]
+    points = research.resolve_checkpoint_identities(stops, gateway, destination)
+    assert points[2] is destination
+    assert points[-2].name == 'Kande'
+    assert points[-2].coordinatesApproximate is True
+    assert points[-1] is gateway
+
+
+def test_high_camp_cannot_be_substituted_for_base_camp():
+    destination = Point(id='mardi', name='Mardi Himal Trek', latitude=28.48, longitude=83.94, destinationMeaning='Mardi Himal Base Camp endpoint')
+    gateway = Point(id='gateway', name='Pokhara', latitude=28.2, longitude=83.9)
+    stops = [research.ResearchStop(name=name, placeQuery=name) for name in ['Pokhara', 'Mardi Himal High Camp', 'Pokhara']]
+    with pytest.raises(HTTPException) as error:
+        research.resolve_checkpoint_identities(stops, gateway, destination)
+    assert error.value.status_code == 422
+
+
+@pytest.mark.parametrize('name', ['Pokhara is the practical public departure hub for reaching the trailhead.', ' '.join(['long'] * 15)])
+def test_research_rejects_advice_in_checkpoint_identity(name):
+    with pytest.raises(ValueError):
+        research.ResearchStop(name=name, placeQuery='Pokhara, Nepal')
+    with pytest.raises(ValueError):
+        research.HankPacket(gateway=name, gatewayQuery='Pokhara', gatewaySourceIds=['hank-0'], destinationMeaning='Base Camp', destinationMeaningSourceIds=['hank-0'])

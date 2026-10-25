@@ -66,6 +66,13 @@ class Leg(BaseModel):
             raise ValueError('unknown_selected_transport_option')
         return self
 
+class AgentReview(BaseModel):
+    agent: Literal['Hank', 'Julia', 'Thompson', 'Paul']
+    summary: str = Field(max_length=500)
+    sourceIds: list[str] = Field(default_factory=list, max_length=20)
+    legIds: list[str] = Field(default_factory=list, max_length=40)
+
+
 class Template(BaseModel):
     version: Literal[1] = 1
     id: str
@@ -79,12 +86,16 @@ class Template(BaseModel):
     provenance: Literal['curated', 'researched']
     readiness: Literal['ready', 'needs-user-choice', 'blocked'] = 'ready'
     warnings: list[str] = Field(default_factory=list, max_length=20)
+    agentReview: list[AgentReview] = Field(default_factory=list, max_length=4)
 
     @model_validator(mode='after')
     def connected(self):
         if len({l.id for l in self.legs}) != len(self.legs):
             raise ValueError('Duplicate leg')
         known = {s.id for s in self.sources}
+        for review in self.agentReview:
+            if not set(review.sourceIds) <= known or not set(review.legIds) <= {leg.id for leg in self.legs}:
+                raise ValueError('Review references an unknown source or stage')
         for index, leg in enumerate(self.legs):
             if index and leg.start != self.legs[index - 1].end:
                 raise ValueError('Disconnected itinerary')
@@ -168,6 +179,8 @@ class PersonalJourney(BaseModel):
         if self.id == self.template.id:
             raise ValueError('Personal and shared itinerary identifiers must differ.')
         known = {leg.id for leg in [*self.approach, *self.template.legs]}
+        if len(known) != len(self.approach) + len(self.template.legs):
+            raise ValueError('Approach and itinerary stage identifiers must be unique.')
         if self.completed > len(known):
             raise ValueError('Journey progress exceeds the number of stages.')
         approach_sources = {source.id for source in self.approachSources}

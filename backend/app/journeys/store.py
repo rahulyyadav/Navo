@@ -23,7 +23,7 @@ def destination_key(point, origin=None, start_date=None):
     # A selected Photon place and a curated trek hint can share nearby coordinates
     # while referring to different endpoints; include the user-visible geography
     # so an old cached draft cannot override a more precise selection.
-    raw += '|departure-access-v2|context:' + '|'.join(filter(None, [
+    raw += '|reviewed-stages-v3|context:' + '|'.join(filter(None, [
         (point.fullName or '').casefold(), (point.region or '').casefold(),
         (point.country or '').casefold(), (point.placeType or '').casefold(),
     ]))
