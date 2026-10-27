@@ -37,11 +37,25 @@ class Source(BaseModel):
     checkedAt: str
     publishedAt: str | None = None
 
+class EstimateRange(BaseModel):
+    minimum: int = Field(ge=0, le=10000000)
+    maximum: int = Field(ge=1, le=10000000)
+    sourceIds: list[str] = Field(min_length=1, max_length=5)
+
+    @model_validator(mode="after")
+    def ordered(self):
+        if self.maximum < self.minimum:
+            raise ValueError("estimate_range_order")
+        return self
+
+
 class Option(BaseModel):
     id: str = Field(min_length=1, max_length=80)
     mode: Literal['taxi', 'bus', 'jeep', 'flight', 'walk']
     label: str = Field(min_length=1, max_length=120)
     minutes: int | None = Field(default=None, ge=1, le=20000)
+    durationRange: EstimateRange | None = None
+    costNprPerPerson: EstimateRange | None = None
     note: str = Field(default='', max_length=1000)
     sourceIds: list[str] = Field(min_length=1, max_length=10)
     verification: Literal['open-confirmed', 'closed-confirmed', 'unconfirmed'] = 'unconfirmed'

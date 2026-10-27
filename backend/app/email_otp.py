@@ -45,7 +45,7 @@ class VerifyRequest(EmailRequest):
 def configured():
     config = settings()
     if not config.brevo_api_key or not re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+', config.brevo_sender_email) or len(config.auth_otp_secret) < 32:
-        raise HTTPException(503, 'Email sign-in is not available yet. Please try Google or contact support.')
+        raise HTTPException(503, 'email_otp_configuration_missing')
     return config
 
 

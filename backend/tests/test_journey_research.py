@@ -308,7 +308,7 @@ def test_map_transport_timeout_is_retryable_not_misreported_as_missing_checkpoin
 
 
 def test_intermediate_map_miss_is_skipped_with_an_explicit_unverified_connection():
-    source_option = research.Option(id='jeep', mode='jeep', label='Jeep', sourceIds=['hank-0'])
+    source_option = research.ResearchOption(note='Source-backed transfer for this stage.', id='jeep', mode='jeep', label='Jeep', sourceIds=['hank-0'])
     gateway = research.ResearchStop(name='Pokhara', placeQuery='Pokhara, Nepal')
     kande = research.ResearchStop(name='Kande', placeQuery='Kande, Nepal')
     forest = research.ResearchStop(name='Forest Camp', placeQuery='Forest Camp, Nepal')
@@ -467,7 +467,7 @@ def test_transport_identifiers_are_local_and_preserve_distinct_researched_option
 def test_twelve_segment_route_with_duplicate_transport_ids_converts_without_failure():
     gateway = research.ResearchStop(name='Kathmandu', placeQuery='Kathmandu, Nepal')
     destination = Point(id='mardi', name='Mardi Himal', latitude=28.48, longitude=83.94)
-    option = research.Option(id='transfer', mode='bus', label='Bus', minutes=420, sourceIds=['hank-0'])
+    option = research.ResearchOption(note='Source-backed transfer for this stage.', id='transfer', mode='bus', label='Bus', minutes=420, sourceIds=['hank-0'])
     alternative = option.model_copy(update={'mode': 'taxi', 'label': 'Private transfer', 'minutes': 360})
     stops = [gateway] + [research.ResearchStop(name=f'Stop {i}', placeQuery=f'Stop {i}, Nepal') for i in range(11)] + [gateway]
     draft = research.RouteDraft(title='Twelve-stage journey', gateway=gateway, segments=[
@@ -507,3 +507,71 @@ def test_research_rejects_advice_in_checkpoint_identity(name):
         research.ResearchStop(name=name, placeQuery='Pokhara, Nepal')
     with pytest.raises(ValueError):
         research.HankPacket(gateway=name, gatewayQuery='Pokhara', gatewaySourceIds=['hank-0'], destinationMeaning='Base Camp', destinationMeaningSourceIds=['hank-0'])
+
+@pytest.mark.parametrize('indices,expected', [([0, 0, -1, 99], [True, False]), ([], [False, False])])
+def test_paul_decisions_link_only_existing_unconfirmed_stages(monkeypatch, indices, expected):
+    destination = Point(id='mardi', name='Mardi Himal Trek', latitude=28.48, longitude=83.94,
+                        destinationMeaning='Mardi Himal Base Camp endpoint')
+    _, _, search, page, complete, geocode = packet(['unconfirmed'])
+
+    async def audited(messages, schema, **kwargs):
+        if 'You are Paul,' in messages[0]['content']:
+            value = {'decision': 'needs-user-choice', 'issues': ['Confirm access with the local park office.'],
+                     'decisionLegIndices': indices}
+            return SimpleNamespace(content=json.dumps(value), provider='openrouter', model='test-model',
+                                   prompt_tokens=10, completion_tokens=10)
+        return await complete(messages, schema, **kwargs)
+
+    monkeypatch.setattr(research, 'search', search)
+    monkeypatch.setattr(research, 'page', page)
+    monkeypatch.setattr(research, 'complete', audited)
+    monkeypatch.setattr(research, 'geocode', geocode)
+    result = asyncio.run(research.research(destination, 'b' * 24, provider='openrouter'))
+    assert result.readiness == 'needs-user-choice'
+    assert [leg.options[0].requiresUserDecision for leg in result.legs] == expected
+    assert all(leg.options[0].verification == 'unconfirmed' for leg in result.legs)
+    assert result.agentReview[-1].legIds == ([result.legs[0].id] if indices else [])
+
+
+def test_research_rejects_empty_titles_and_stage_explanations():
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        research.ResearchOption(id='walk', mode='walk', label='Walk', note='', sourceIds=['hank-0'])
+    with pytest.raises(ValidationError):
+        research.RouteDraft(title='', gateway={'name': 'Kathmandu', 'placeQuery': 'Kathmandu Nepal'}, segments=[])
+
+
+def test_qualified_endpoint_does_not_accept_nearby_viewpoint():
+    gateway = Point(id='start', name='Kathmandu', latitude=27.7, longitude=85.3)
+    destination = Point(id='langtang', name='Langtang Valley · Kyanjin Gompa', latitude=28.242, longitude=85.623)
+    def stops(name):
+        return [research.ResearchStop(name=value, placeQuery=value + ', Nepal') for value in ['Kathmandu', name, 'Kathmandu']]
+    assert research.resolve_checkpoint_identities(stops('Kyanjin Gompa'), gateway, destination)[1] is destination
+    assert research.resolve_checkpoint_identities(stops('Langtang Valley • Kyanjin Gompa'), gateway, destination)[1] is destination
+    with pytest.raises(HTTPException):
+        research.resolve_checkpoint_identities(stops('Kyanjin Ri'), gateway, destination)
+
+
+def test_invalid_return_is_repaired_once_without_manual_retry(monkeypatch):
+    destination = Point(id='mardi', name='Mardi Himal Trek', latitude=28.48, longitude=83.94,
+                        destinationMeaning='Mardi Himal Base Camp endpoint')
+    calls, _, search, page, complete, geocode = packet(['unconfirmed'])
+    attempts = []
+    async def malformed_first(messages, schema, **kwargs):
+        response = await complete(messages, schema, **kwargs)
+        if 'You are Julia,' in messages[0]['content']:
+            attempts.append(messages)
+            if len(attempts) == 1:
+                value = json.loads(response.content)
+                value['segments'][-1]['destination']['name'] = 'Wrong return hub'
+                response.content = json.dumps(value)
+        return response
+    monkeypatch.setattr(research, 'search', search)
+    monkeypatch.setattr(research, 'page', page)
+    monkeypatch.setattr(research, 'complete', malformed_first)
+    monkeypatch.setattr(research, 'geocode', geocode)
+    result = asyncio.run(research.research(destination, 'c' * 24, provider='openrouter'))
+    assert len(attempts) == 2
+    assert len(calls) == 5
+    assert 'correctionRequired' in attempts[1][1]['content']
+    assert result.legs[0].start.name == result.legs[-1].end.name

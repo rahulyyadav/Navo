@@ -27,7 +27,7 @@ export default function TabsLayout() {
     >
       <Tabs.Screen name="discover" options={{ title: 'Home' }} />
       <Tabs.Screen name="journeys" options={{ title: 'Journeys' }} />
-      <Tabs.Screen name="ai" options={{ title: 'Ask Navo', href: null }} />
+      <Tabs.Screen name="ai" options={{ title: 'Ask Navo' }} />
       <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
     </Tabs>
   );

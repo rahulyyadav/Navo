@@ -58,7 +58,7 @@ function NavigationItem({ name, accessibilityLabel, testID, active, onPress, onL
   </HomePressable>;
 }
 
-export function BottomNav({ state, descriptors, navigation, blurTarget }: TabBarProps & { blurTarget?: BlurViewProps['blurTarget'] }) {
+export function BottomNav({ state, descriptors, emitter, navigateToTab, blurTarget }: TabBarProps & { blurTarget?: BlurViewProps['blurTarget'] }) {
   const { scheme } = useTheme();
   const insets = useSafeAreaInsets();
   const [keyboardOpen, setKeyboardOpen] = useState(false);
@@ -88,10 +88,10 @@ export function BottomNav({ state, descriptors, navigation, blurTarget }: TabBar
           testID={options.tabBarButtonTestID}
           active={active}
           onPress={() => {
-            const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-            if (!active && !event.defaultPrevented) navigation.navigate(route.name, route.params);
+            const event = emitter.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+            if (!active && !event.defaultPrevented) navigateToTab(route.key);
           }}
-          onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
+          onLongPress={() => emitter.emit({ type: 'tabLongPress', target: route.key })}
         />;
       })}
     </View>

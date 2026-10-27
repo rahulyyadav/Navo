@@ -1,4 +1,5 @@
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
+import { useNavo } from '@/context/NavoContext';
 import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -22,7 +23,13 @@ const manasluImage = require('../../assets/navo-onboarding-himalaya.png');
 const CONTROL_SIZE = 62;
 
 
-export default function OnboardingScreen() {
+export default function EntryScreen() {
+  const { isSignedIn, needsOnboarding } = useNavo();
+  if (isSignedIn) return <Redirect href={needsOnboarding ? '/welcome' : '/(tabs)/discover'} />;
+  return <OnboardingScreen />;
+}
+
+function OnboardingScreen() {
   const { width } = useWindowDimensions();
   const reduced = useReducedMotion();
   const screenRef = useRef({ width, reduced });

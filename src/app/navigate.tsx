@@ -14,12 +14,8 @@ import {
   router,
   useFocusEffect,
   useLocalSearchParams,
-  useNavigation,
-} from "expo-router";
-import {
   usePreventRemove,
-  type NavigationAction,
-} from "expo-router/react-navigation";
+} from "expo-router";
 import { useNetworkState } from "expo-network";
 import { RouteSketch } from "@/components/trekking/RouteSketch";
 import * as Crypto from "expo-crypto";
@@ -173,8 +169,7 @@ function LiveNavigation({
     network.isConnected === false || network.isInternetReachable === false;
   const [sketch, setSketch] = useState(false);
   const { page } = usePageLayout();
-  const navigation = useNavigation();
-  const leaveAction = useRef<NavigationAction | null>(null);
+  const leaveRepeat = useRef<(() => void) | null>(null);
   const [plan, setPlan] = useState(initial),
     [phase, setPhase] = useState<"ready" | "active" | "paused" | "ended">(
       draft?.phase === "ended" ? "ended" : draft ? "paused" : "ready",
@@ -193,7 +188,8 @@ function LiveNavigation({
     [requestAfter, setRequestAfter] = useState(0),
     [clock, setClock] = useState(() => Date.now()),
     [mapNonce, setMapNonce] = useState(0),
-    [leavePrompt, setLeavePrompt] = useState(false);
+    [leavePrompt, setLeavePrompt] = useState(false),
+    [allowLeave, setAllowLeave] = useState(false);
   const started = useRef<string | null>(draft?.history.startedAt ?? null),
     track = useRef({
       ...emptyTrack(),
@@ -277,8 +273,8 @@ function LiveNavigation({
     },
     [plan.route, pathEnabled, phase],
   );
-  usePreventRemove(phase !== "ready" && !saved, ({ data }) => {
-    leaveAction.current = data.action;
+  usePreventRemove(phase !== "ready" && !saved && !allowLeave, ({ repeat }) => {
+    leaveRepeat.current = repeat;
     setLeavePrompt(true);
   });
   const location = useTrekLocation(phase === "active", receive);
@@ -641,8 +637,8 @@ function LiveNavigation({
                     variant="quiet"
                     onPress={() => {
                       setLeavePrompt(false);
-                      if (leaveAction.current)
-                        navigation.dispatch(leaveAction.current);
+                      setAllowLeave(true);
+                      leaveRepeat.current?.();
                     }}
                   />
                 )}

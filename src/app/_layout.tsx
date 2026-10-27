@@ -61,14 +61,17 @@ function Routes() {
     contentStyle: { backgroundColor: palette.background },
     animation,
   }}>
-    <Stack.Protected guard={!isSignedIn}>
-      <Stack.Screen name="index" options={{ headerShown: false }} />
+    <Stack.Screen name="index" options={{ headerShown: false }} />
+    <Stack.Screen name="+not-found" options={{ headerShown: false }} />
+    <Stack.Protected guard={!isSignedIn} redirectTo="/">
       <Stack.Screen name="login" options={{ headerShown: false }} />
     </Stack.Protected>
 
-    <Stack.Protected guard={isSignedIn && !needsOnboarding}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: reduced ? 'none' : 'fade' }} />
+    <Stack.Protected guard={isSignedIn} redirectTo="/">
       <Stack.Screen name="welcome" options={{ headerShown: false }} />
+    </Stack.Protected>
+    <Stack.Protected guard={isSignedIn && !needsOnboarding} redirectTo="/">
+      <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: reduced ? 'none' : 'fade' }} />
       <Stack.Screen name="journey-setup" options={{ headerShown: false }} />
       <Stack.Screen name="journey-levels" options={{ headerShown: false }} />
       <Stack.Screen name="journey" options={{ headerShown: false, gestureEnabled: false }} />
