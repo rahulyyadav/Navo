@@ -50,6 +50,8 @@ function JourneyDetails({ journey: j, uid, cached, retrying, onReload }: {
     const s = useJourneyStyles();
     const [selected, setSelected] = useState<number | null>(null), [error, setError] = useState(''), [busy, setBusy] = useState(false);
     const [showNotes, setShowNotes] = useState(false);
+    const [previewPath, setPreviewPath] = useState(false);
+    useEffect(() => { if (!previewPath) return; const timer = setTimeout(() => setPreviewPath(false), 2200); return () => clearTimeout(timer); }, [previewPath]);
     const [saved, setSaved] = useState('');
     const [reviewError, setReviewError] = useState('');
     const summary = journeySummary(j);
@@ -86,6 +88,9 @@ function JourneyDetails({ journey: j, uid, cached, retrying, onReload }: {
     const proposalTemplate = proposal?.template;
     const current = legs[j.completed];
     const activeOption = current ? selectedOption(current, j.selections) : null;
+    const pricedOptions = legs.map(leg => selectedOption(leg, j.selections));
+    const knownTransportMax = pricedOptions.reduce((sum, option) => sum + (option.costNprPerPerson?.maximum ?? 0), 0);
+    const unknownFares = pricedOptions.filter(option => option.mode !== 'walk' && !option.costNprPerPerson).length;
     const gps = useTrekLocation(j.phase === 'travelling' && focused);
     const liveModel = useMemo(() => {
         if (!current || current.geometry.length < 2 || current.geometryKind === 'schematic' || activeOption?.mode === 'flight') return null;
@@ -157,6 +162,7 @@ function JourneyDetails({ journey: j, uid, cached, retrying, onReload }: {
        {summary.attention.length ? <JourneyButton label="Open next stage needing attention" variant="outline" disabled={busy} onPress={() => { const next = summary.attention.find(leg => legs.indexOf(leg) >= j.completed) ?? summary.attention[0]; openStage(legs.indexOf(next)); }}/>: null}
        <JourneyButton label="Ask Navo about this journey" variant="quiet" onPress={askNavo}/>
      </View>
+     {j.preferences.budget ? <View style={s.card}><Text style={s.eyebrow}>YOUR BUDGET</Text><Text style={s.cardTitle}>NPR {Number(j.preferences.budget).toLocaleString()} per person</Text><Text style={s.small}>{knownTransportMax ? `Known transport estimates: up to NPR ${knownTransportMax.toLocaleString()}. ` : 'No sourced transport fares are available yet. '}{unknownFares} {unknownFares === 1 ? 'transport stage needs' : 'transport stages need'} a fare. Meals, stays and permits are additional.</Text>{knownTransportMax > Number(j.preferences.budget) ? <Text style={s.error}>Known transport estimates exceed your budget. Review the travel choices below.</Text> : null}</View> : null}
      {cached ? <View style={s.card}><Text style={s.small}>Showing your saved copy. Account sync is unavailable; edits need a successful server connection.</Text><JourneyButton label="Retry account sync" variant="outline" busy={retrying} onPress={onReload}/></View> : null}
      {Boolean(error) ? <Animated.View entering={FadeIn.duration(200)} style={s.card}><Text accessibilityLiveRegion="polite" style={s.error}>{error}</Text></Animated.View> : null}
      {missingDeparture ? <View style={s.card}><Text style={s.eyebrow}>STARTING FROM</Text><Text style={s.cardTitle}>{j.preferences.origin.name}</Text><Text style={s.small}>This saved plan is missing the travel leg from your starting point. Prepare it again to include the journey to the trailhead.</Text><JourneyButton label="Prepare from my starting point" busy={busy} onPress={() => void prepareFromOrigin()}/></View> : null}
@@ -186,7 +192,8 @@ function JourneyDetails({ journey: j, uid, cached, retrying, onReload }: {
       </> : null}
     </View>}
     {reviewError ? <View style={s.card}><Text style={s.error}>{reviewError}</Text><JourneyButton label="Retry conditions review" variant="quiet" onPress={() => { setReviewError(''); void requestJourneyReview(j.id).catch(() => setReviewError('Conditions review could not be requested. Check your connection and try again.')); }}/></View> : null}
-    <JourneyBoard legs={legs} selections={j.selections} completed={j.completed} previewIndex={null} liveRatio={liveRatio} onLeg={openStage}/>
+    {legs.length && j.phase !== 'travelling' ? <View style={s.card}><Text style={s.small}>Preview the first stage on the planning path. This animation does not show a live location.</Text><JourneyButton label={previewPath ? "Previewing first stage…" : "Preview first stage"} variant="outline" disabled={previewPath} onPress={() => setPreviewPath(true)}/></View> : null}
+    <JourneyBoard legs={legs} selections={j.selections} completed={j.completed} previewIndex={previewPath ? 0 : null} liveRatio={liveRatio} onLeg={openStage}/>
     </JourneyShell>
     {detail && chosen && selected !== null ? <StageTravelSheet key={detail.id} leg={detail} provenance={j.template.provenance} chosen={chosen} index={selected} total={legs.length} sources={sources} completed={selected < j.completed} busy={busy} error={error} saved={saved} accepted={Boolean(j.acceptedUnverified?.includes(`${detail.id}:${chosen.id}`))}
       onClose={() => { if (!lock.current) { setSelected(null); setSaved(''); } }}

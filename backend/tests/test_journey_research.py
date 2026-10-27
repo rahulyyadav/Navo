@@ -575,3 +575,28 @@ def test_invalid_return_is_repaired_once_without_manual_retry(monkeypatch):
     assert len(calls) == 5
     assert 'correctionRequired' in attempts[1][1]['content']
     assert result.legs[0].start.name == result.legs[-1].end.name
+
+
+def test_research_downloads_sources_concurrently_without_reordering_citations(monkeypatch):
+    destination = Point(id='mardi', name='Mardi Himal Trek', latitude=28.48, longitude=83.94,
+                        destinationMeaning='Mardi Himal Base Camp endpoint')
+    _, _, search, _, complete, geocode = packet(['unconfirmed'])
+    active = 0
+    peak = 0
+    async def page(client, url):
+        nonlocal active, peak
+        active += 1
+        peak = max(peak, active)
+        try:
+            await asyncio.sleep(0.02 if url.endswith('/0') else 0.005)
+            return SimpleNamespace(parts=['Public travel evidence. ' * 30], published_at='2026-10-01'), url
+        finally:
+            active -= 1
+    monkeypatch.setattr(research, 'search', search)
+    monkeypatch.setattr(research, 'page', page)
+    monkeypatch.setattr(research, 'complete', complete)
+    monkeypatch.setattr(research, 'geocode', geocode)
+    result = asyncio.run(research.research(destination, 'd' * 24, provider='openrouter'))
+    assert peak > 1
+    assert [(source.id, source.url.rsplit('/', 1)[-1]) for source in result.sources[:3]] == [
+        ('hank-0', '0'), ('hank-1', '1'), ('hank-2', '2')]

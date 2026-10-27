@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, LinearTransition, ReduceMotion, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import { Text } from '@/components/Typography';
 import { useReducedMotion } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
@@ -12,6 +12,13 @@ import { useJourneyStyles } from './journey-styles';
 
 const entrance = (delay = 0) => FadeInDown.duration(380).delay(delay).reduceMotion(ReduceMotion.System);
 const relayout = LinearTransition.duration(220).reduceMotion(ReduceMotion.System);
+
+function TravelIcon({ mode }: { mode: string }) {
+    const outline = '#263440';
+    return <Svg width={23} height={23} viewBox="0 0 24 24" fill="none" stroke={outline} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+      {mode === 'walk' ? <><Path fill="#C57B42" d="M4 5h5l2 6 4 2 4 1c1.1.3 2 1.2 2 2.4V19H4c-1.1 0-2-.9-2-2v-4l2-2z"/><Path fill="#F4D59A" d="M2 16h19v3H4c-1.1 0-2-.9-2-2z"/><Path d="M8 7l2 2M7 10l2 2"/></> : mode === 'flight' ? <><Path fill="#9ED9F2" d="M2 14l8-2 3-9 2 1-1 8 6 2 2 3-8-1-3 4-2-1 1-4-5 1z"/><Path d="M11 12l3 .5"/></> : <><Rect x={3} y={4} width={18} height={14} rx={3} fill={mode === 'bus' ? '#F2C15B' : mode === 'taxi' ? '#F8D45F' : '#83C5E9'}/><Path fill="#BEE8F3" d="M4 6h16v5H4z"/><Path d="M12 6v5M7 18v2M17 18v2"/><Circle cx={7} cy={15} r={0.8} fill="#E77866"/><Circle cx={17} cy={15} r={0.8} fill="#E77866"/></>}
+    </Svg>;
+}
 
 function MovingPoint({ ratio, from, to, visible, preview }: {
     ratio: number;
@@ -79,8 +86,8 @@ export function JourneyBoard({ legs, selections, completed, previewIndex, liveRa
             const done = previewIndex === null && index < completed;
             return <Animated.View key={leg.id} entering={reduced ? undefined : entrance(Math.min(index * 55, 500))} layout={reduced ? undefined : relayout} style={{ minHeight: 230, paddingBottom: 112 }}>
         <View style={[styles.nodeRow, { left: left ? 0 : undefined, right: left ? undefined : 0, flexDirection: left ? 'row' : 'row-reverse' }]}>
-          <StageNode done={done} current={index === current} onPress={() => onLeg(index)} label={`${checkpointLabel(leg.start)}. ${option.label}. ${optionDurationLabel(option)}. Tap for transport options.`}><Text style={[styles.number, done && styles.numberDone]}>{done ? '✓' : String(index + 1).padStart(2, '0')}</Text><View style={styles.vehicle}><Text style={s.pillText}>{option.mode === 'walk' ? '↗' : '→'}</Text></View></StageNode>
-          <HomePressable accessibilityRole="button" accessibilityLabel={`Open stage ${index + 1} details`} onPress={() => onLeg(index)} style={{ flex: 1, minWidth: 0, gap: 8, alignItems: left ? 'flex-start' : 'flex-end' }}><Text numberOfLines={2} style={[s.cardTitle, { fontSize: 18, textAlign: left ? 'left' : 'right' }]}>{checkpointLabel(leg.start)}</Text><Text style={[s.small, styles.stageState]}>{done ? 'COMPLETED' : index === current ? 'CURRENT STAGE' : stageAttention(leg, selections) ? 'NEEDS REVIEW' : 'NEXT CHECKPOINT'}</Text><View style={[s.pill, { minHeight: 44, justifyContent: 'center', maxWidth: '100%' }]}><Text style={s.pillText}>{option.label} {leg.options.length > 1 ? '⌄' : '↗'}</Text></View></HomePressable>
+          <StageNode done={done} current={index === current} onPress={() => onLeg(index)} label={`${checkpointLabel(leg.start)}. ${option.label}. ${optionDurationLabel(option)}. Tap for transport options.`}><Text style={[styles.number, done && styles.numberDone]}>{done ? '✓' : String(index + 1).padStart(2, '0')}</Text><View style={styles.vehicle}><TravelIcon mode={option.mode}/></View></StageNode>
+          <HomePressable accessibilityRole="button" accessibilityLabel={`Open stage ${index + 1} details`} onPress={() => onLeg(index)} style={{ flex: 1, minWidth: 0, gap: 8, alignItems: left ? 'flex-start' : 'flex-end' }}><Text numberOfLines={2} style={[s.cardTitle, { fontSize: 18, textAlign: left ? 'left' : 'right' }]}>{checkpointLabel(leg.start)}</Text><Text style={[s.small, styles.stageState]}>{done ? 'COMPLETED' : index === current ? 'CURRENT STAGE' : stageAttention(leg, selections) ? stageAttention(leg, selections)?.toUpperCase() : 'NEXT CHECKPOINT'}</Text><View style={[s.pill, { minHeight: 44, justifyContent: 'center', maxWidth: '100%' }]}><Text style={s.pillText}>{option.label} {leg.options.length > 1 ? '⌄' : '↗'}</Text></View></HomePressable>
         </View>
         <View pointerEvents="none" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 150 }}>
           <Svg width={width} height={150}><Path d={`M ${x} 0 C ${x} 75 ${nextX} 75 ${nextX} 150`} stroke={done ? palette.green : palette.border} strokeWidth={done ? 3 : 2.5} strokeDasharray={done ? undefined : '5 8'} fill="none" strokeLinecap="round"/></Svg>

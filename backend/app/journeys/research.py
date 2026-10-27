@@ -556,26 +556,47 @@ async def research(destination, key, *, provider=None, uid=None, origin=None, st
             with stage(key, 'search', provider='brave' if settings().journey_search_key else 'duckduckgo_with_fallbacks', query_index=query_index):
                 results = await search(client, current_query, journey_key=key, context_query=context_query)
             event(key, 'search', 'results', query_index=query_index, count=len(results))
-            for url, title in results:
-                if len(evidence) >= limit: break
-                if url in seen_urls: continue
-                seen_urls.add(url)
+            async def download(url, title, source_index):
                 try:
-                    with stage(key, 'source_download', source_index=len(evidence)):
+                    with stage(key, 'source_download', source_index=source_index):
                         parser, final_url = await page(client, url)
                     text = ' '.join(parser.parts)
                     if len(text) < 250:
-                        event(key, 'source_download', 'insufficient_text', characters=len(text)); continue
-                    source_id = f'{prefix}-{len(evidence)}'
-                    item = Source(id=source_id, title=title[:300], url=final_url, checkedAt=datetime.now(timezone.utc).isoformat(), publishedAt=parser.published_at)
-                    sources.append(item)
-                    evidence.append({'id': source_id, 'title': title[:300], 'url': final_url, 'checkedAt': item.checkedAt, 'publishedAt': item.publishedAt, 'text': text[:4000]})
+                        event(key, 'source_download', 'insufficient_text', characters=len(text))
+                        return None
+                    return title, final_url, parser.published_at, text
                 except httpx.HTTPStatusError as error:
                     event(key, 'source_download', 'http_error', status=error.response.status_code)
                 except httpx.TimeoutException as error:
                     event(key, 'source_download', 'timeout', error_type=type(error).__name__)
                 except (httpx.HTTPError, ValueError, OSError) as error:
                     event(key, 'source_download', 'request_error', error_type=type(error).__name__)
+                return None
+
+            candidates = []
+            for url, title in results:
+                if url not in seen_urls:
+                    seen_urls.add(url)
+                    candidates.append((url, title))
+            # Fetch at most the number still needed at once. Process results in
+            # search order so stable source IDs and citation checks do not change.
+            offset = 0
+            while offset < len(candidates):
+                remaining = limit - len(evidence)
+                if remaining <= 0:
+                    break
+                batch = candidates[offset:offset + remaining]
+                offset += len(batch)
+                downloaded = await asyncio.gather(*(download(url, title, len(evidence) + index) for index, (url, title) in enumerate(batch)))
+                for item in downloaded:
+                    if item is None:
+                        continue
+                    title, final_url, published_at, source_text = item
+                    source_id = f'{prefix}-{len(evidence)}'
+                    source = Source(id=source_id, title=title[:300], url=final_url, checkedAt=datetime.now(timezone.utc).isoformat(), publishedAt=published_at)
+                    sources.append(source)
+                    evidence.append({'id': source_id, 'title': source.title, 'url': final_url, 'checkedAt': source.checkedAt, 'publishedAt': published_at, 'text': source_text[:4000]})
+
         return evidence
 
     client = httpx.AsyncClient(timeout=18, follow_redirects=False, headers={'User-Agent': 'NavoJourneyResearch/1.0'})

@@ -55,16 +55,17 @@ export async function verifyEmailOTP(email: string, challengeId: string, code: s
 
 const CONNECTION_FAILURE = 'Could not connect to Navo. Check your connection and try again.';
 // A loopback base means Navo's own backend is down, which is not the user's connection problem.
-function connectionFailureMessage(base: string, development: boolean) {
+function connectionFailureMessage(base: string, development: boolean, platform: string) {
   if (!development) return CONNECTION_FAILURE;
   let loopback = false;
   try { loopback = ['localhost', '127.0.0.1', '[::1]'].includes(new URL(base).hostname); } catch { /* an invalid base already reports its own configuration error */ }
-  return loopback ? 'Navo’s own service is not answering on this device. Start the Navo backend, then retry. Check the configured API port and local network access.' : CONNECTION_FAILURE;
+  return loopback ? (platform === 'web' ? 'Navo’s local service is not responding. Start the Navo backend, then retry.' : 'Cannot reach the Navo service on your laptop. Keep the backend running and connect your phone and laptop to the same Wi-Fi, then retry.') : CONNECTION_FAILURE;
 }
 
 async function requestJSON<T>(path: string, body: unknown, method: string, token?: string, base = apiBase) {
   if (!base) throw new Error(path.startsWith('/auth/email/') ? 'Email sign-in needs the Navo backend. Set EXPO_PUBLIC_API_BASE_URL in .env.local and restart Expo.' : 'Navo AI is unavailable on this connection. Please retry later.');
   const environment = networkEnvironment();
+  const configuredBase = base;
   base = resolveBackendAddress(base, environment.platform, environment.development, environment.expoHost);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), backendRequestTimeout(path, base));
@@ -74,7 +75,7 @@ async function requestJSON<T>(path: string, body: unknown, method: string, token
       response = await fetch(base + path, { method, headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body), signal: controller.signal });
     } catch (error) {
       if (controller.signal.aborted || (error instanceof Error && error.name === 'AbortError')) throw new Error('The request timed out. Check your connection and retry.');
-      throw new Error(connectionFailureMessage(base, environment.development));
+      throw new Error(connectionFailureMessage(configuredBase, environment.development, environment.platform));
     }
     let result;
     try { result = await response.json(); }
