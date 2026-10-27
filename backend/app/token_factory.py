@@ -82,6 +82,14 @@ async def complete(messages, schema, transport=None, *, provider="nebius", fallb
                 return httpx.Response(response.status_code, content=bytes(body))
     try:
         response = await asyncio.wait_for(send(), timeout=max(0.05, deadline - perf_counter()))
+        # A temporary overload can occur after several successful agent calls.
+        # Prefer the configured fallback; otherwise retry once inside the same
+        # absolute deadline. Authentication/schema failures are never retried.
+        can_fallback = not fallback and fallback_reserve and getattr(config, 'openrouter_api_key', '')
+        if response.status_code in (502, 503, 529) and not can_fallback and deadline - perf_counter() > 1.05:
+            logging.getLogger('uvicorn.error').warning('AI provider=%s outcome=transient_retry upstream_status=%s', provider, response.status_code)
+            await asyncio.sleep(1)
+            response = await asyncio.wait_for(send(), timeout=max(0.05, deadline - perf_counter()))
     except TimeoutError:
         logging.getLogger('uvicorn.error').error('AI provider=%s outcome=total_timeout limit_seconds=%s', provider, round(timeout_seconds))
         replacement = await use_fallback('timeout')
@@ -108,8 +116,8 @@ async def complete(messages, schema, transport=None, *, provider="nebius", fallb
         replacement = await use_fallback('upstream_error', status=response.status_code)
         if replacement is not None:
             return replacement
-    if response.status_code in (402, 429):
-        raise HTTPException(503, f'{provider} is busy or its quota is reached. Please try again later.')
+    if response.status_code in (402, 408, 425, 429) or 500 <= response.status_code < 600:
+        raise HTTPException(503, f'{provider} is temporarily unavailable or busy. Your preparation is saved; please try again shortly.')
     if response.status_code != 200:
         raise HTTPException(502, f'{provider} rejected the request. Check model access and structured-output support on the server.')
     try:

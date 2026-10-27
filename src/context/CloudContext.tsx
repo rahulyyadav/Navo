@@ -1,3 +1,4 @@
+import { traceFirebaseListener } from '@/services/firebase-diagnostics';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
 import { useFirebaseAuth } from '@/context/AuthContext';
 import { collection, doc, limit, onSnapshot, orderBy, query, where, Timestamp } from 'firebase/firestore';
@@ -25,9 +26,12 @@ export function CloudProvider({ children }: PropsWithChildren) {
   // Existing Firestore rules still enforce ownership and verified accounts.
   useEffect(() => {
     if (!userId || !firestore) return;
-    return onSnapshot(doc(firestore, 'users', userId), result => {
+    const trace = traceFirebaseListener('profile');
+    const stop = onSnapshot(doc(firestore, 'users', userId), result => {
+      trace.next();
       setProfileSnapshot({ uid: userId, value: result.exists() ? decodeCloud(result.data()) as CloudProfile : null });
-    }, () => { /* Keep this account's last successful snapshot during an outage. */ });
+    }, error => { trace.error(error); /* Retain this account's last successful snapshot. */ });
+    return () => trace.stop(stop);
   }, [userId]);
   const getToken = useCallback(() => user ? user.getIdToken() : Promise.resolve(null), [user]);
   const [attempt, setAttempt] = useState(0);
@@ -52,12 +56,18 @@ export function CloudProvider({ children }: PropsWithChildren) {
         setSnapshot({ ...initial, ready: true, status: 'Connecting to Firestore' });
         let streamFailed = false;
         const failure = () => { streamFailed = true; if (active) setSnapshot(current => ({ ...current, ready: false, status: 'Connection interrupted', error: 'Could not sync Firebase data. Check your connection, Firestore rules and backend setup, then retry.' })); };
-        cleanups.push(onSnapshot(query(collection(firestore, 'groups'), where('memberIds', 'array-contains', uid), orderBy('updatedAt', 'desc'), limit(50)), { includeMetadataChanges: true }, result => {
+        const groupsTrace = traceFirebaseListener('groups');
+        const notificationsTrace = traceFirebaseListener('notifications');
+        const stopGroups = onSnapshot(query(collection(firestore, 'groups'), where('memberIds', 'array-contains', uid), orderBy('updatedAt', 'desc'), limit(50)), { includeMetadataChanges: true }, result => {
+          groupsTrace.next();
           if (active && !streamFailed) setSnapshot(current => ({ ...current, groups: result.docs.map(item => ({ ...decodeCloud(item.data()) as TrekGroup, id: item.id })), status: result.metadata.fromCache ? 'Cached · reconnecting' : 'Connected', error: '' }));
-        }, failure));
-        cleanups.push(onSnapshot(query(collection(firestore, 'users', uid, 'notifications'), orderBy('createdAt', 'desc'), limit(50)), { includeMetadataChanges: true }, result => {
+        }, error => { groupsTrace.error(error); failure(); });
+        cleanups.push(() => groupsTrace.stop(stopGroups));
+        const stopNotifications = onSnapshot(query(collection(firestore, 'users', uid, 'notifications'), orderBy('createdAt', 'desc'), limit(50)), { includeMetadataChanges: true }, result => {
+          notificationsTrace.next();
           if (active && !streamFailed) setSnapshot(current => ({ ...current, notificationsLoaded: true, notificationsCached: result.metadata.fromCache, notifications: result.docs.map(item => ({ ...decodeCloud(item.data()) as CloudNotification, id: item.id })) }));
-        }, failure));
+        }, error => { notificationsTrace.error(error); failure(); });
+        cleanups.push(() => notificationsTrace.stop(stopNotifications));
       } catch (error) { if (active) setSnapshot({ ...initial, status: 'Connection unavailable', error: actionError(error) }); }
     });
     return () => { active = false; cleanups.forEach(stop => stop()); };

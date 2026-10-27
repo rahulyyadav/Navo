@@ -59,11 +59,11 @@ function connectionFailureMessage(base: string, development: boolean) {
   if (!development) return CONNECTION_FAILURE;
   let loopback = false;
   try { loopback = ['localhost', '127.0.0.1', '[::1]'].includes(new URL(base).hostname); } catch { /* an invalid base already reports its own configuration error */ }
-  return loopback ? 'Navo’s own service is not answering on this device. Start the Navo backend, then retry — your internet connection is fine.' : CONNECTION_FAILURE;
+  return loopback ? 'Navo’s own service is not answering on this device. Start the Navo backend, then retry. Check the configured API port and local network access.' : CONNECTION_FAILURE;
 }
 
 async function requestJSON<T>(path: string, body: unknown, method: string, token?: string, base = apiBase) {
-  if (!base) throw new Error(path.startsWith('/auth/email/') ? 'Email sign-in is unavailable on this connection. Please continue with Google.' : 'Navo AI is unavailable on this connection. Please retry later.');
+  if (!base) throw new Error(path.startsWith('/auth/email/') ? 'Email sign-in needs the Navo backend. Set EXPO_PUBLIC_API_BASE_URL in .env.local and restart Expo.' : 'Navo AI is unavailable on this connection. Please retry later.');
   const environment = networkEnvironment();
   base = resolveBackendAddress(base, environment.platform, environment.development, environment.expoHost);
   const controller = new AbortController();
@@ -80,7 +80,7 @@ async function requestJSON<T>(path: string, body: unknown, method: string, token
     try { result = await response.json(); }
     catch { throw new Error(response.ok ? 'Navo received an unexpected server reply. Please try again.' : serverErrorMessage(response.status)); }
     if (!response.ok) {
-      if (path.startsWith('/auth/email/')) throw emailOTPFailure(response.status, response.headers.get('Retry-After'));
+      if (path.startsWith('/auth/email/')) throw emailOTPFailure(response.status, response.headers.get('Retry-After'), result?.detail);
       throw new Error(serverErrorMessage(response.status, result?.detail));
     }
     return result as T;

@@ -125,3 +125,16 @@ def test_concurrent_first_requests_initialize_only_once(monkeypatch):
         results = list(executor.map(lambda _: request(), range(4)))
     assert all(result is results[0] for result in results)
     initializer.assert_called_once()
+
+
+@pytest.mark.parametrize('enabled', [False, True])
+def test_diagnostics_are_opt_in_and_never_log_exception_contents(monkeypatch, caplog, enabled):
+    if enabled:
+        monkeypatch.setenv('NAVO_FIREBASE_DIAGNOSTICS', '1')
+    else:
+        monkeypatch.delenv('NAVO_FIREBASE_DIAGNOSTICS', raising=False)
+    storage.credentials.ApplicationDefault.return_value.get_credential.side_effect = ValueError('secret-value-must-not-appear')
+    with pytest.raises(storage.FirebaseSetupError):
+        storage.firebase_app()
+    assert 'secret-value-must-not-appear' not in caplog.text
+    assert ('stage=credential_validation exception_class=ValueError' in caplog.text) is enabled

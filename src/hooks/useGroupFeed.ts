@@ -1,3 +1,4 @@
+import { traceFirebaseListener } from '@/services/firebase-diagnostics';
 import { useFirebaseAuth } from '@/context/AuthContext';
 import { useEffect, useState } from 'react';
 import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
@@ -13,7 +14,9 @@ export function useGroupFeed<T>(groupId: string, name: 'members' | 'messages' | 
     if (!ready || !firestore || !groupId) return;
     const base = collection(firestore, 'groups', groupId, name);
     const feed = name === 'members' ? query(base, limit(50)) : query(base, orderBy('createdAt', 'desc'), limit(100));
-    return onSnapshot(feed, { includeMetadataChanges: true }, result => setState({ key, items: result.docs.map(item => ({ ...decodeCloud(item.data()) as object, id: item.id }) as T), loading: false, cached: result.metadata.fromCache, error: '' }), () => setState({ key, items: [], loading: false, cached: false, error: 'Could not load this group feed. Check membership and connection, then retry.' }));
+    const trace = traceFirebaseListener('group-feed');
+    const stop = onSnapshot(feed, { includeMetadataChanges: true }, result => { trace.next(); setState({ key, items: result.docs.map(item => ({ ...decodeCloud(item.data()) as object, id: item.id }) as T), loading: false, cached: result.metadata.fromCache, error: '' }); }, error => { trace.error(error); setState({ key, items: [], loading: false, cached: false, error: 'Could not load this group feed. Check membership and connection, then retry.' }); });
+    return () => trace.stop(stop);
   }, [ready, groupId, name, key, retry]);
   return { items: ready && state.key === key ? state.items : [], loading: ready && state.key !== key ? true : ready && state.loading, cached: state.cached, error: state.error, retry: () => setRetry(value => value + 1) };
 }

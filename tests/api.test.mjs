@@ -140,3 +140,22 @@ test('trimmed main address also supplies chat when the optional override is blan
  assert.equal(normalized.apiBase,'http://test.local:8000');assert.equal(normalized.chatBase,normalized.apiBase);
  await withFetch(async(url)=>{assert.equal(url,'http://test.local:8000/chat');return new Response(JSON.stringify({reply:'Fixture reply'}));},async()=>assert.equal((await normalized.requestChatAPI([{role:'user',content:'Fixture question'}],null)).reply,'Fixture reply'));
 });
+
+test('OTP setup errors are actionable and arbitrary server details stay private', async () => {
+  for (const [detail, expected] of [
+    ['email_otp_configuration_missing', /BREVO_API_KEY/],
+    ['Server Firebase credentials are unavailable.', /Firebase Admin/],
+    ['private-provider-response-secret', /temporarily unavailable/],
+  ]) {
+    await withFetch(async () => new Response(JSON.stringify({ detail }), { status: 503 }), async () => {
+      await assert.rejects(requestEmailOTP('hiker@example.com'), error => expected.test(error.message) && !error.message.includes('private-provider-response-secret'));
+    });
+  }
+});
+
+
+test('journey setup failure is actionable without exposing backend details', async () => {
+  await withFetch(async () => new Response(JSON.stringify({detail:{code:'firebase_web_key_missing', private:'secret'}}), {status:503}), async () => {
+    await assert.rejects(requestJourneyAPI('/journey-itineraries/prepare', {}), {message:'Journey planning and AI sign-in are not configured yet. Navo needs a server setup fix before retrying. Your answers are saved.'});
+  });
+});

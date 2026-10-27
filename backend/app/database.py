@@ -1,3 +1,5 @@
+import logging
+import os
 from functools import lru_cache
 from threading import Lock
 import firebase_admin
@@ -31,6 +33,7 @@ def firebase_app():
             return firebase_admin.get_app()
         except ValueError:
             pass  # The default app has not been initialized yet.
+        stage = 'credential_selection'
         try:
             # Preserve the intended inline-pair precedence without first trying an
             # unrelated, possibly stale file path. Never fall back after a failure.
@@ -41,9 +44,14 @@ def firebase_app():
             else:
                 credential = credentials.ApplicationDefault()
             # Validate local/ADC credentials before treating a setup failure as an invalid user token.
+            stage = 'credential_validation'
             credential.get_credential()
+            stage = 'app_initialization'
             return firebase_admin.initialize_app(credential, {'projectId': config.firebase_project_id})
-        except Exception:
+        except Exception as error:
+            # Opt-in local diagnostics: never include exception text, paths or secrets.
+            if os.environ.get('NAVO_FIREBASE_DIAGNOSTICS') == '1':
+                logging.getLogger(__name__).warning('firebase_setup_failed stage=%s exception_class=%s', stage, type(error).__name__)
             raise FirebaseSetupError('firebase_credentials_unavailable', 'Server Firebase credentials are unavailable.', 'Configure approved server ADC or a service-account file. Restart after environment changes; check project access separately. Client Firebase configuration is not an Admin credential.') from None
 
 @lru_cache

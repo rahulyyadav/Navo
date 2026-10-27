@@ -40,8 +40,11 @@ export type TravelOption = {
     mode: TravelMode;
     label: string;
     minutes: number | null;
+    durationRange?: { minimum: number; maximum: number; sourceIds: string[] } | null;
+    costNprPerPerson?: { minimum: number; maximum: number; sourceIds: string[] } | null;
     note: string;
     sourceIds: string[];
+    verificationSourceIds?: string[];
     verification?: 'open-confirmed' | 'closed-confirmed' | 'unconfirmed';
     requiresUserDecision?: boolean;
     warning?: string | null;
@@ -68,6 +71,7 @@ export type Itinerary = {
     provenance: 'curated' | 'researched';
     readiness?: 'ready' | 'needs-user-choice' | 'blocked';
     warnings?: string[];
+    agentReview?: { agent: 'Hank' | 'Julia' | 'Thompson' | 'Paul'; summary: string; sourceIds: string[]; legIds: string[] }[];
 };
 export type JourneyPreferences = {
     origin: JourneyPoint;
@@ -102,7 +106,7 @@ export const modeIcon: Record<TravelMode, string> = { taxi: '🚕', bus: '🚌',
 export const selectedOption = (leg: JourneyLeg, selections: Record<string, string>) => leg.options.find(o => o.id === (selections[leg.id] ?? leg.selected)) ?? leg.options[0];
 export function durationLabel(minutes: number | null) {
     if (minutes === null)
-        return 'Time to confirm';
+        return 'Approx. time unavailable';
     const hours = Math.floor(minutes / 60), rest = minutes % 60;
     return hours ? `${hours}h${rest ? ` ${rest}m` : ''} est.` : `${rest} min est.`;
 }
@@ -128,6 +132,11 @@ export function decodeItinerary(value: unknown): Itinerary {
         throw new Error('The journey information is incomplete. Please retry.');
     if (!Array.isArray(v.legs) || !v.legs.length) throw new Error('No journey stages were found.');
     decodeLegs(v.legs, v.sources);
+    if (v.agentReview != null && (!Array.isArray(v.agentReview) || v.agentReview.length > 4 || !v.agentReview.every(entry =>
+        entry && ['Hank', 'Julia', 'Thompson', 'Paul'].includes(entry.agent) && typeof entry.summary === 'string' && entry.summary.length <= 500 &&
+        Array.isArray(entry.sourceIds) && entry.sourceIds.every(id => v.sources.some(source => source.id === id)) &&
+        Array.isArray(entry.legIds) && entry.legIds.every(id => v.legs.some(leg => leg.id === id)))))
+        throw new Error('The journey review references an unavailable stage or source. Please reload.');
     v.destination = toJourneyPoint(v.destination);
     return v;
 }
@@ -173,6 +182,61 @@ export function journeyReview(journey: PersonalJourney) {
     });
     const hasSpecificChoice = legs.some(leg => { const option = selectedOption(leg, journey.selections); return option.requiresUserDecision && option.verification === 'unconfirmed'; });
     const needsAcknowledgement = journey.template.readiness === 'needs-user-choice' && !journey.reviewAcknowledged && !hasSpecificChoice;
-    return { closed, pending, needsAcknowledgement,
-        canStart: journey.template.readiness !== 'blocked' && !closed.length && !pending.length && !needsAcknowledgement };
+    const invalidIdentity = legs.some(leg => [leg.start, leg.end].some(point => point && invalidCheckpointName(point.name)));
+    return { closed, pending, needsAcknowledgement, invalidIdentity,
+        canStart: !invalidIdentity && journey.template.readiness !== 'blocked' && !closed.length && !pending.length && !needsAcknowledgement };
+}
+
+/** Old saved research may contain prose in identity fields. Never guess a place from it. */
+export function checkpointLabel(point: JourneyPoint) {
+    return invalidCheckpointName(point.name) ? 'Checkpoint needs review' : point.name;
+}
+export function invalidCheckpointName(name: string) {
+    return name.length > 85 || name.split(/\s+/).length > 12 || /\b(is the|from here|you should|practical public|for reaching)\b/i.test(name);
+}
+export function stageAttention(leg: JourneyLeg, selections: Record<string, string>) {
+    const option = selectedOption(leg, selections);
+    if (invalidCheckpointName(leg.start.name) || invalidCheckpointName(leg.end.name)) return 'Checkpoint identity needs review';
+    if (option.verification === 'closed-confirmed') return 'Reported closure';
+    if (option.requiresUserDecision) return 'Decision needed';
+    if (option.verification !== 'open-confirmed') return 'Current access unverified';
+    return null;
+}
+export function chooseTravel(journey: PersonalJourney, legId: string, optionId: string): PersonalJourney {
+    const legs = [...journey.approach, ...journey.template.legs];
+    const index = legs.findIndex(leg => leg.id === legId);
+    if (index < journey.completed || index < 0) throw new Error('Completed stages cannot be changed.');
+    const option = legs[index].options.find(item => item.id === optionId);
+    if (!option || option.verification === 'closed-confirmed') throw new Error('Choose an available travel option.');
+    return { ...journey, ...(journey.completed === 0 ? { phase: 'draft' as const } : {}), selections: { ...journey.selections, [legId]: optionId } };
+}
+export function journeySummary(journey: PersonalJourney) {
+    const legs = [...journey.approach, ...journey.template.legs];
+    const options = legs.map(leg => selectedOption(leg, journey.selections));
+    return { stages: legs.length, unknownDurations: options.filter(o => o.minutes === null && !o.durationRange).length,
+        minutes: options.every(o => o.minutes !== null) ? options.reduce((n, o) => n + (o.minutes ?? 0), 0) : null,
+        attention: legs.filter(leg => stageAttention(leg, journey.selections)),
+        expired: Date.parse(journey.template.expiresAt) < Date.now() };
+}
+
+/** Source estimates are planning ranges, independent of current-access status. */
+export function optionDurationLabel(option: TravelOption) {
+    const range = option.durationRange;
+    return range ? `Approx. time: ${durationLabel(range.minimum).replace(' est.', '')}–${durationLabel(range.maximum).replace(' est.', '')}` : option.minutes === null ? 'Approx. time unavailable' : `Approx. time: ${durationLabel(option.minutes).replace(' est.', '')}`;
+}
+
+export function budgetSelections(legs: JourneyLeg[], budget: string) {
+    const amount = Number(budget);
+    const selections: Record<string, string> = {};
+    let knownMaximum = 0, unknown = 0;
+    if (!budget || !Number.isFinite(amount) || amount <= 0) return { selections, knownMaximum, unknown: legs.length };
+    for (const leg of legs) {
+        const priced = leg.options.filter(option => option.verification !== 'closed-confirmed' && option.costNprPerPerson && option.costNprPerPerson.maximum <= amount - knownMaximum)
+            .sort((a, b) => a.costNprPerPerson!.maximum - b.costNprPerPerson!.maximum);
+        if (!priced.length) { unknown++; continue; }
+        const option = priced[0];
+        selections[leg.id] = option.id;
+        knownMaximum += option.costNprPerPerson!.maximum;
+    }
+    return { selections, knownMaximum, unknown };
 }

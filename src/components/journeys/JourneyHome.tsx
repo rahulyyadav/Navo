@@ -15,6 +15,7 @@ import { useJourneys } from '@/hooks/useJourneys';
 import { treks } from '@/data/treks';
 import { discoverTreks, destinationForTrek } from '@/services/trail-discovery';
 import { cataloguePoint, journeyDestinations, matchingDestinations, queryMatchesPlaceName } from '@/services/journeys/catalogue';
+import { hikingReferences } from '@/services/places/hiking-references';
 import { searchPlaces } from '@/services/places/search';
 import type { JourneyPoint } from '@/services/journeys/types';
 import type { Place } from '@/services/places/types';
@@ -71,7 +72,7 @@ export function JourneyHome() {
       void searchPlaces(query, { signal: controller.signal }).then(items => {
         if (!controller.signal.aborted) setRemote({ query, items, busy: false, error: '' });
       }).catch(() => {
-        if (!controller.signal.aborted) setRemote({ query, items: [], busy: false, error: 'Place search is unavailable. You can still explore the trek overviews.' });
+        if (!controller.signal.aborted) setRemote({ query, items: [], busy: false, error: 'Online search is unavailable. Saved place references are still available below.' });
       });
     }, 400);
     return () => { clearTimeout(timer); controller.abort(); };
@@ -95,7 +96,7 @@ export function JourneyHome() {
     };
     router.push({ pathname: '/journey-setup', params: { destination: JSON.stringify(toJourneyPoint(destination)) } });
   }
-  const localMapped = useMemo(() => matchingDestinations(query).map(cataloguePoint), [query]);
+  const localMapped = useMemo(() => [...matchingDestinations(query).map(cataloguePoint), ...hikingReferences(query)], [query]);
   const mappedPlaces = useMemo(() => {
     const remoteItems = remote.query === query ? remote.items.filter(point => queryMatchesPlaceName(query, point)) : [];
     return [...localMapped, ...remoteItems.filter(point => !localMapped.some(local => local.name.toLowerCase() === point.name.toLowerCase()))].slice(0, 8);
@@ -122,7 +123,7 @@ export function JourneyHome() {
         <Text style={s.cardTitle}>Search mapped places</Text>
         {remote.query === query && remote.busy ? <ActivityIndicator color={green} accessibilityLabel="Searching mapped places"/> : null}
         {remote.query === query && remote.error ? <Text style={s.error}>{remote.error}</Text> : null}
-         {remote.query === query && !remote.busy && !remote.error ? mappedPlaces.map(point => <HomePressable key={point.id} accessibilityRole="button" accessibilityLabel={`Plan a journey to ${point.name}`} onPress={() => choose(point)} style={s.place}><TabIcon name="pin" color={green}/><View style={{ flex: 1, gap: 3 }}><Text style={s.greenCopy}>{point.name}</Text><Text style={s.meta}>{point.fullName || ('region' in point ? point.region : '')}</Text></View><Text style={s.greenCopy}>↗</Text></HomePressable>) : null}
+         {mappedPlaces.map(point => <HomePressable key={point.id} accessibilityRole="button" accessibilityLabel={`Plan a journey to ${point.name}`} onPress={() => choose(point)} style={s.place}><TabIcon name="pin" color={green}/><View style={{ flex: 1, gap: 3 }}><Text style={s.greenCopy}>{point.name}</Text><Text style={s.meta}>{point.fullName || ('region' in point ? point.region : '')}</Text></View><Text style={s.greenCopy}>↗</Text></HomePressable>)}
          {remote.query === query && !remote.busy && !remote.error && !mappedPlaces.length ? <Text style={s.meta}>No mapped place matched yet. Add its region or country, or choose a trek overview below.</Text> : null}
       </Animated.View> : null}
       <Animated.View entering={entrance(105)} style={s.hero}>
@@ -134,7 +135,7 @@ export function JourneyHome() {
       </HomePressable></Animated.View> : null}
       {journeys.error ? <View style={s.notice}><Text style={s.error}>{journeys.error}</Text><HomePressable accessibilityRole="button" onPress={() => void journeys.reload()} style={s.retry}><Text style={s.greenCopy}>Retry saved journey</Text></HomePressable></View> : null}
       {applied ? <View style={s.activeFilters}>{[region, difficulty].filter(value => value !== 'All regions' && value !== 'Any difficulty').map(value => <HomePressable key={value} accessibilityRole="button" accessibilityLabel={`Remove ${value} filter`} onPress={() => value === region ? setRegion('All regions') : setDifficulty('Any difficulty')} style={s.selectedChip}><Text style={s.greenCopy}>{value} ×</Text></HomePressable>)}</View> : null}
-      {!results.length ? <Animated.View entering={entrance()} style={s.empty}><TabIcon name="compass" color={green} size={32}/><Text style={s.cardTitle}>A different trail awaits</Text><Text style={s.subtitle}>Try another destination or adjust your filters.</Text><HomePressable accessibilityRole="button" onPress={reset} style={s.retry}><Text style={s.greenCopy}>Show all routes →</Text></HomePressable></Animated.View> : null}
+      {!results.length && !mappedPlaces.length ? <Animated.View entering={entrance()} style={s.empty}><TabIcon name="compass" color={green} size={32}/><Text style={s.cardTitle}>A different trail awaits</Text><Text style={s.subtitle}>Try another destination or adjust your filters.</Text><HomePressable accessibilityRole="button" onPress={reset} style={s.retry}><Text style={s.greenCopy}>Show all routes →</Text></HomePressable></Animated.View> : null}
       {results.map((trek, index) => {
         const destination = journeyDestinations.find(point => point.id === trek.id) ?? destinationForTrek(trek);
         return <Animated.View key={trek.id} entering={entrance(Math.min(index * 55, 165))} layout={transition} style={s.card}>

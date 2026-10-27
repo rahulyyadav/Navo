@@ -19,13 +19,15 @@ function decode(raw: string | null): JourneyLibrary {
         if (j.version !== 1 || typeof j.id !== 'string' || !validPoint(j.preferences?.origin) || !validDate(j.preferences.startDate) || typeof j.preferences.budget !== 'string' || !['draft', 'ready', 'travelling', 'paused', 'completed'].includes(j.phase) || !Number.isInteger(j.completed) || j.completed < 0 || j.completed > j.approach.length + j.template.legs.length || !j.selections || typeof j.selections !== 'object')
             throw new Error('Saved journey is incomplete. Your data has been kept.');
         j.preferences.origin = toJourneyPoint(j.preferences.origin);
-        for (const leg of [...j.approach, ...j.template.legs])
+        const allLegs = [...j.approach, ...j.template.legs];
+        if (new Set(allLegs.map(leg => leg.id)).size !== allLegs.length) throw new Error('Journey stages have duplicate identifiers. Your data has been kept.');
+        for (const leg of allLegs)
             if (j.selections[leg.id] && !leg.options.some(o => o.id === j.selections[leg.id]))
                 throw new Error('A saved transport option is unavailable.');
     }
     return v;
 }
-export async function readJourneys(uid: string) {
+export async function readJourneys(uid: string, onAvailability?: (available: boolean) => void) {
     const local = decode(await AsyncStorage.getItem(key(uid)));
     const tombstones = new Set(JSON.parse(await AsyncStorage.getItem(deletedKey(uid)) ?? '[]') as string[]);
     try {
@@ -46,15 +48,17 @@ export async function readJourneys(uid: string) {
             await Promise.all([...tombstones].map(async id => { try { await requestJourneyAPI(`/journeys/${id}`, undefined, 'DELETE'); remaining.delete(id); } catch { /* Retry the deletion on next open. */ } }));
             await AsyncStorage.setItem(deletedKey(uid), JSON.stringify([...remaining]));
         }
+        onAvailability?.(true);
         return merged;
     }
     catch {
+        onAvailability?.(false);
         // Firestore is the source of truth when online; the device cache remains usable offline.
         return local;
     }
 }
 export function subscribeJourneys(fn: () => void) { listeners.add(fn); return () => { listeners.delete(fn); }; }
-export function changeJourneys(uid: string, mutate: (value: JourneyLibrary) => JourneyLibrary) {
+export function changeJourneys(uid: string, mutate: (value: JourneyLibrary) => JourneyLibrary, persist?: (value: JourneyLibrary) => Promise<unknown>) {
     const task = (queues.get(uid) ?? Promise.resolve()).catch(() => undefined).then(async () => {
         const previous = await readJourneys(uid);
         const next = mutate(previous);
@@ -62,6 +66,8 @@ export function changeJourneys(uid: string, mutate: (value: JourneyLibrary) => J
         if (raw.length > 3000000)
             throw new Error('Journey storage is full. Remove an older journey first.');
         decode(raw);
+        // A confirmed edit must reach the authenticated API before the cache or UI changes.
+        if (persist) await persist(next);
         await AsyncStorage.setItem(key(uid), raw);
         const removed = previous.journeys.filter(journey => !next.journeys.some(item => item.id === journey.id)).map(journey => journey.id);
         if (removed.length) {
@@ -92,7 +98,10 @@ export function saveJourney(uid: string, journey: PersonalJourney) {
     });
 }
 export function editJourney(uid: string, id: string, edit: (value: PersonalJourney) => PersonalJourney) {
-    return changeJourneys(uid, v => ({ ...v, journeys: v.journeys.map(j => j.id === id ? { ...edit(j), updatedAt: new Date().toISOString() } : j) }));
+    return changeJourneys(uid, v => {
+        if (!v.journeys.some(j => j.id === id)) throw new Error('This journey is no longer available. Reopen your journeys.');
+        return { ...v, journeys: v.journeys.map(j => j.id === id ? { ...edit(j), updatedAt: new Date().toISOString() } : j) };
+    }, value => requestJourneyAPI(`/journeys/${id}`, value.journeys.find(j => j.id === id), 'PUT'));
 }
 export async function readJourneyDraft(uid: string, destinationId: string): Promise<Partial<JourneyPreferences> | null> {
     const raw = await AsyncStorage.getItem(`${key(uid)}:draft:${destinationId}`);

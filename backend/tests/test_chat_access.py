@@ -100,3 +100,12 @@ def test_journey_does_not_fallback_when_ai_is_paused(config):
     with pytest.raises(HTTPException) as raised:
         chat_access.reserve_journey_ai('a')
     assert raised.value.status_code == 503
+
+
+def test_missing_web_key_reports_safe_setup_code(config, monkeypatch):
+    config.firebase_web_api_key = ''
+    monkeypatch.setattr(chat_access.httpx, 'post', lambda *a, **kw: pytest.fail('No lookup without configuration'))
+    with pytest.raises(HTTPException) as failure:
+        chat_access.chat_user(HTTPAuthorizationCredentials(scheme='Bearer', credentials='signed-token'))
+    assert failure.value.status_code == 503
+    assert failure.value.detail == {'code': 'firebase_web_key_missing'}

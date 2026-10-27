@@ -5,7 +5,7 @@ import Svg, { Path } from 'react-native-svg';
 import { Text } from '@/components/Typography';
 import { useReducedMotion } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
-import { durationLabel, modeIcon, selectedOption, type JourneyLeg } from '@/services/journeys/types';
+import { optionDurationLabel, checkpointLabel, stageAttention, selectedOption, type JourneyLeg } from '@/services/journeys/types';
 import { createThemedStyles } from '@/theme/create-styles';
 import { HomePressable } from './HomeMotion';
 import { useJourneyStyles } from './journey-styles';
@@ -77,24 +77,24 @@ export function JourneyBoard({ legs, selections, completed, previewIndex, liveRa
             const nextX = left ? width - 48 : 48;
             const option = selectedOption(leg, selections);
             const done = previewIndex === null && index < completed;
-            return <Animated.View key={leg.id} entering={reduced ? undefined : entrance(Math.min(index * 55, 500))} layout={reduced ? undefined : relayout} style={{ height: 230 }}>
+            return <Animated.View key={leg.id} entering={reduced ? undefined : entrance(Math.min(index * 55, 500))} layout={reduced ? undefined : relayout} style={{ minHeight: 230, paddingBottom: 112 }}>
         <View style={[styles.nodeRow, { left: left ? 0 : undefined, right: left ? undefined : 0, flexDirection: left ? 'row' : 'row-reverse' }]}>
-          <StageNode done={done} current={index === current} onPress={() => onLeg(index)} label={`${leg.start.name}. ${option.label}. ${durationLabel(option.minutes)}. Tap for transport options.`}><Text style={[styles.number, done && styles.numberDone]}>{done ? '✓' : String(index + 1).padStart(2, '0')}</Text><View style={styles.vehicle}><Text style={{ fontSize: 21 }}>{modeIcon[option.mode]}</Text></View></StageNode>
-          <View style={{ flex: 1, gap: 4, alignItems: left ? 'flex-start' : 'flex-end' }}><Text numberOfLines={2} style={[s.cardTitle, { fontSize: 18, textAlign: left ? 'left' : 'right' }]}>{leg.start.name}</Text><Text style={[s.small, styles.stageState]}>{done ? 'COMPLETED' : index === current ? 'CURRENT STAGE' : 'UP NEXT'}</Text><HomePressable accessibilityRole="button" accessibilityLabel={`Change ${option.label} from ${leg.start.name}`} onPress={() => onLeg(index)} style={s.pill}><Text style={s.pillText}>{option.label} {leg.options.length > 1 ? '⌄' : '↗'}</Text></HomePressable></View>
+          <StageNode done={done} current={index === current} onPress={() => onLeg(index)} label={`${checkpointLabel(leg.start)}. ${option.label}. ${optionDurationLabel(option)}. Tap for transport options.`}><Text style={[styles.number, done && styles.numberDone]}>{done ? '✓' : String(index + 1).padStart(2, '0')}</Text><View style={styles.vehicle}><Text style={s.pillText}>{option.mode === 'walk' ? '↗' : '→'}</Text></View></StageNode>
+          <HomePressable accessibilityRole="button" accessibilityLabel={`Open stage ${index + 1} details`} onPress={() => onLeg(index)} style={{ flex: 1, minWidth: 0, gap: 8, alignItems: left ? 'flex-start' : 'flex-end' }}><Text numberOfLines={2} style={[s.cardTitle, { fontSize: 18, textAlign: left ? 'left' : 'right' }]}>{checkpointLabel(leg.start)}</Text><Text style={[s.small, styles.stageState]}>{done ? 'COMPLETED' : index === current ? 'CURRENT STAGE' : stageAttention(leg, selections) ? 'NEEDS REVIEW' : 'NEXT CHECKPOINT'}</Text><View style={[s.pill, { minHeight: 44, justifyContent: 'center', maxWidth: '100%' }]}><Text style={s.pillText}>{option.label} {leg.options.length > 1 ? '⌄' : '↗'}</Text></View></HomePressable>
         </View>
-        <View pointerEvents="none" style={{ position: 'absolute', top: 81, left: 0, right: 0, height: 150 }}>
+        <View pointerEvents="none" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 150 }}>
           <Svg width={width} height={150}><Path d={`M ${x} 0 C ${x} 75 ${nextX} 75 ${nextX} 150`} stroke={done ? palette.green : palette.border} strokeWidth={done ? 3 : 2.5} strokeDasharray={done ? undefined : '5 8'} fill="none" strokeLinecap="round"/></Svg>
           <MovingPoint ratio={previewIndex !== null ? 0.5 : liveRatio ?? 0} from={x} to={nextX} preview={previewIndex !== null} visible={index === current && (previewIndex !== null || liveRatio !== null)}/>
-          <View style={styles.time}><Text style={[s.small, { color: palette.ink, textAlign: 'center' }]}>{durationLabel(option.minutes)}</Text>{option.mode === 'flight' ? <Text style={[s.small, { textAlign: 'center' }]}>flying time only</Text> : null}</View>
+          <View style={styles.time}><Text style={[s.small, { color: palette.ink, textAlign: 'center' }]}>{optionDurationLabel(option)}</Text>{option.mode === 'flight' ? <Text style={[s.small, { textAlign: 'center' }]}>flying time only</Text> : null}</View>
         </View>
       </Animated.View>;
         })}
-    {legs.length ? <View style={[styles.nodeRow, { position: 'relative', flexDirection: legs.length % 2 === 0 ? 'row' : 'row-reverse' }]}><View style={[styles.node, completed === legs.length && styles.done]}><Text style={[styles.number, completed === legs.length && styles.numberDone]}>⚑</Text></View><View style={{ flex: 1, gap: 5 }}><Text style={s.cardTitle}>{legs[legs.length - 1].end.name}</Text><Text style={s.small}>JOURNEY FINISH</Text></View></View> : null}
+    {legs.length ? <View style={[styles.nodeRow, { position: 'relative', flexDirection: legs.length % 2 === 0 ? 'row' : 'row-reverse' }]}><View style={[styles.node, completed === legs.length && styles.done]}><Text style={[styles.number, completed === legs.length && styles.numberDone]}>⚑</Text></View><View style={{ flex: 1, gap: 5 }}><Text style={s.cardTitle}>{checkpointLabel(legs[legs.length - 1].end)}</Text><Text style={s.small}>JOURNEY FINISH</Text></View></View> : null}
   </View>;
 }
 
 const useStyles = createThemedStyles(t => { return StyleSheet.create({
-    nodeRow: { position: 'absolute', top: 0, width: '100%', gap: 18, alignItems: 'center', paddingHorizontal: 8 },
+    nodeRow: { position: 'relative', width: '100%', gap: 18, alignItems: 'center', paddingHorizontal: 8 },
     node: { width: 80, height: 80, borderRadius: 40, borderWidth: 2, borderColor: t.border, backgroundColor: t.surface, alignItems: 'center', justifyContent: 'center' },
     current: { borderColor: t.green, borderWidth: 3, backgroundColor: t.elevated },
     nodeRing: { position: 'absolute', top: -7, bottom: -7, left: -7, right: -7, borderRadius: 47, borderWidth: 2, borderColor: t.green },

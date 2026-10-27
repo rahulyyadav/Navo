@@ -7,7 +7,8 @@ import { useMapPayload } from '@/hooks/useMapPayload';
 import { trekById } from '@/data/treks';
 
 export function NepalMap(props: NepalMapProps) {
-  const webview = useRef<WebView>(null);
+  // Explicit extra-props type avoids WebView 14 defaulting to an undefined intersection.
+  const webview = useRef<WebView<object>>(null);
   const [html] = useState(() => mapDocument(props));
   const [reload, setReload] = useState(0);
   const [failed, setFailed] = useState(false);
@@ -17,7 +18,7 @@ export function NepalMap(props: NepalMapProps) {
   }, [payload]);
   useEffect(() => { webview.current?.injectJavaScript(`window.updateNavoPosition && window.updateNavoPosition(${moving});true;`); }, [moving]);
   return <View style={styles.root}>
-    <WebView key={reload} ref={webview} source={{ html }} onLoadEnd={() => webview.current?.injectJavaScript(`window.updateNavoMap && window.updateNavoMap(${payload});window.updateNavoPosition && window.updateNavoPosition(${moving});true;`)} originWhitelist={['*']} applicationNameForUserAgent="Navo/1.0 (Nepal trek map)" javaScriptEnabled domStorageEnabled scrollEnabled={false} onError={() => setFailed(true)} onContentProcessDidTerminate={() => setFailed(true)} onMessage={event => {
+    <WebView<object> key={reload} ref={webview} source={{ html }} onLoadEnd={() => webview.current?.injectJavaScript(`window.updateNavoMap && window.updateNavoMap(${payload});window.updateNavoPosition && window.updateNavoPosition(${moving});true;`)} originWhitelist={['*']} applicationNameForUserAgent="Navo/1.0 (Nepal trek map)" javaScriptEnabled domStorageEnabled scrollEnabled={false} onError={() => setFailed(true)} onContentProcessDidTerminate={() => setFailed(true)} onMessage={event => {
       try {
         const message = JSON.parse(event.nativeEvent.data);
         if (message.type === 'map-status' && typeof message.failed === 'boolean') setFailed(message.failed);

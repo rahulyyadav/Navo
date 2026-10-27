@@ -37,7 +37,7 @@ function screen() {
     useSetupStyles: () => ({}), useTheme: () => ({ palette: { green: 'green' } }),
     useMyLocation: () => ({ state: 'idle' }), useSafeAreaInsets: () => ({}),
     useWindowDimensions: () => ({ height: 800 }), useReducedMotion: () => true,
-    nepalToday: () => '2026-10-22', validDate: value => /^\d{4}-\d{2}-\d{2}$/.test(value),
+    budgetSelections: () => ({ selections: {}, knownMaximum: 0, unknown: 0 }), nepalToday: () => '2026-10-22', validDate: value => /^\d{4}-\d{2}-\d{2}$/.test(value),
     toJourneyPoint: value => value, validPoint: value => Boolean(value?.id), selectedOption: leg => leg.options[0],
     readJourneyDraft: async () => null, saveJourneyDraft: async () => {},
     saveJourney: async (_uid, journey) => { saved.push(journey); }, router: { replace() {} },

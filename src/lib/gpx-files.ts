@@ -93,7 +93,7 @@ export async function shareGPX(xml: string) {
   const file = new File(Paths.cache, `navo-route-${Date.now()}.gpx`);
   try {
     file.create();
-    file.write(xml);
+    await file.write(xml);
     await Sharing.shareAsync(file.uri, {
       mimeType: "application/gpx+xml",
       UTI: "public.xml",

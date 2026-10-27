@@ -16,7 +16,7 @@ def chat_user(credentials: HTTPAuthorizationCredentials | None = Depends(bearer)
         raise HTTPException(401, 'Sign in to use Navo AI.')
     config = settings()
     if not config.firebase_web_api_key:
-        raise HTTPException(503, 'Chat sign-in is not configured on the server.')
+        raise HTTPException(503, {'code': 'firebase_web_key_missing'})
     # Firebase's end-user lookup validates the ID token using the existing public
     # project API key. No Admin SDK credentials or database permissions are needed.
     try:

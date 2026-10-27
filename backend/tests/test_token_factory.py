@@ -142,3 +142,26 @@ def test_total_deadline_stops_provider_even_without_network_timeout(monkeypatch,
     assert raised.value.status_code == 504
     assert 'total_timeout' in caplog.text
     assert cancelled == [True]
+
+
+def test_primary_overload_recovers_once_without_fallback():
+    calls = []
+    def handler(request):
+        calls.append(True)
+        return httpx.Response(529, json={}) if len(calls) == 1 else httpx.Response(200, json={'choices':[{'message':{'content':'{}'}}]})
+    result = asyncio.run(token_factory.complete([], {}, httpx.MockTransport(handler)))
+    assert result.content == '{}'
+    assert len(calls) == 2
+
+
+def test_persistent_overload_has_a_bounded_retry_and_accurate_error():
+    calls = []
+    def handler(request):
+        calls.append(True)
+        return httpx.Response(529, json={'secret':'private provider detail'})
+    with pytest.raises(HTTPException) as raised:
+        asyncio.run(token_factory.complete([], {}, httpx.MockTransport(handler)))
+    assert len(calls) == 2
+    assert raised.value.status_code == 503
+    assert 'temporarily unavailable' in raised.value.detail
+    assert 'private' not in raised.value.detail

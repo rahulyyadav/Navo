@@ -171,3 +171,14 @@ def test_request_schema_rejects_bad_email_and_client_chosen_code(setup):
     assert request(setup, 'not-an-email').status_code == 422
     assert setup.client.post('/auth/email/request', json={'email': 'hiker@example.com', 'code': '123456'}).status_code == 422
     setup.send.assert_not_called()
+
+
+def test_missing_firebase_credentials_prevents_provider_send(setup, monkeypatch):
+    from app.database import FirebaseSetupError
+    def unavailable():
+        raise FirebaseSetupError('firebase_credentials_unavailable', 'Server Firebase credentials are unavailable.', 'Configure approved credentials.')
+    monkeypatch.setattr(otp, 'firebase_app', unavailable)
+    response = request(setup)
+    assert response.status_code == 503
+    setup.send.assert_not_called()
+    setup.token.assert_not_called()
