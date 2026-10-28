@@ -24,6 +24,18 @@ def test_records_only_actual_provider_usage():
     absent = invoke(200, {'choices':[{'message':{'content':'{}'}}]})
     assert absent.prompt_tokens is None
 
+def test_structured_itinerary_can_disable_thinking_without_changing_other_calls():
+    import json
+    payloads = []
+    def handler(request):
+        payloads.append(json.loads(request.content))
+        return httpx.Response(200, json={'choices': [{'message': {'content': '{}'}, 'finish_reason': 'stop'}]})
+    transport = httpx.MockTransport(handler)
+    asyncio.run(token_factory.complete([], {}, transport, enable_thinking=False))
+    asyncio.run(token_factory.complete([], {}, transport))
+    assert payloads[0]['chat_template_kwargs'] == {'enable_thinking': False}
+    assert 'chat_template_kwargs' not in payloads[1]
+
 @pytest.mark.parametrize('status,body,expected', [
     (429, {'secret':'never show'}, 503),
     (401, {'secret':'never show'}, 502),

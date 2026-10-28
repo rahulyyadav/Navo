@@ -29,7 +29,7 @@ def token_count(value):
     return value if type(value) is int and value >= 0 else None
 
 async def complete(messages, schema, transport=None, *, provider="nebius", fallback_reserve=None,
-                   timeout_seconds=None):
+                   timeout_seconds=None, enable_thinking=None):
     if timeout_seconds is None:
         timeout_seconds = MODEL_TOTAL_TIMEOUT
     config = settings()
@@ -66,6 +66,8 @@ async def complete(messages, schema, transport=None, *, provider="nebius", fallb
                    'json_schema': {'name': 'trek_plan', 'schema': schema}}}
         if fallback:
             payload.update(provider={'require_parameters': True}, reasoning={'enabled': False})
+        elif enable_thinking is not None:
+            payload['chat_template_kwargs'] = {'enable_thinking': enable_thinking}
         remaining = max(0.05, deadline - perf_counter())
         async with waiting(label), httpx.AsyncClient(timeout=httpx.Timeout(min(PROVIDER_REQUEST_TIMEOUT, remaining), connect=min(15, remaining)), transport=transport) as client:
             async with client.stream('POST', f'{endpoint}/chat/completions',

@@ -72,6 +72,7 @@ export type Itinerary = {
     readiness?: 'ready' | 'needs-user-choice' | 'blocked';
     warnings?: string[];
     agentReview?: { agent: 'Hank' | 'Julia' | 'Thompson' | 'Paul'; summary: string; sourceIds: string[]; legIds: string[] }[];
+    modelEvidence?: { agent: 'Hank' | 'Julia' | 'Thompson' | 'Paul'; provider: 'nebius' | 'openrouter'; model: string; elapsedMs: number; promptTokens?: number | null; completionTokens?: number | null }[];
 };
 export type JourneyPreferences = {
     origin: JourneyPoint;
@@ -137,6 +138,11 @@ export function decodeItinerary(value: unknown): Itinerary {
         Array.isArray(entry.sourceIds) && entry.sourceIds.every(id => v.sources.some(source => source.id === id)) &&
         Array.isArray(entry.legIds) && entry.legIds.every(id => v.legs.some(leg => leg.id === id)))))
         throw new Error('The journey review references an unavailable stage or source. Please reload.');
+    if (v.modelEvidence != null && (!Array.isArray(v.modelEvidence) || v.modelEvidence.length > 100 || !v.modelEvidence.every(call =>
+        call && ['Hank', 'Julia', 'Thompson', 'Paul'].includes(call.agent) && ['nebius', 'openrouter'].includes(call.provider) &&
+        typeof call.model === 'string' && call.model.length > 0 && call.model.length <= 200 &&
+        Number.isInteger(call.elapsedMs) && call.elapsedMs >= 0)))
+        throw new Error('The journey model details are incomplete. Please reload.');
     v.destination = toJourneyPoint(v.destination);
     return v;
 }

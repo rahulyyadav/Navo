@@ -35,7 +35,8 @@ def audit(plan: Itinerary, request: PlanRequest, route: dict) -> list[str]:
     for index, day in enumerate(plan.days):
         if day.day != index + 1:
             issues.append('Days must be consecutive and start at one.')
-        if day.start not in places or day.end not in places:
+        stops = [day.start, *day.via, day.end]
+        if any(stop not in places for stop in stops):
             issues.append(f'Day {day.day}: stop is not in the curated route.')
         if previous and day.start != previous.end:
             issues.append(f'Day {day.day}: route is discontinuous.')
@@ -45,20 +46,24 @@ def audit(plan: Itinerary, request: PlanRequest, route: dict) -> list[str]:
             issues.append(f'Day {day.day}: ascent {day.ascentM} m exceeds {request.maxDailyAscent} m.')
         if day.distanceKm > request.maxDailyDistance:
             issues.append(f'Day {day.day}: distance exceeds the configured limit.')
-        if day.rest and (day.start != day.end or day.ascentM != 0):
+        if day.rest and (day.start != day.end or day.via or day.ascentM != 0):
             issues.append(f'Day {day.day}: rest day must stay at the same stop without ascent.')
-        if day.start in places and day.end in places and day.ascentM < max(0, places[day.end] - places[day.start]):
+        minimum_ascent = sum(max(0, places[b] - places[a]) for a, b in zip(stops, stops[1:]) if a in places and b in places)
+        if day.ascentM < minimum_ascent:
             issues.append(f'Day {day.day}: ascent is inconsistent with stop elevations.')
-        start, end = coordinates.get(day.start, {}), coordinates.get(day.end, {})
-        if all(key in point for point in (start, end) for key in ('latitude', 'longitude')):
+        direct_km = 0
+        for a, b in zip(stops, stops[1:]):
+            start, end = coordinates.get(a, {}), coordinates.get(b, {})
+            if not all(key in point for point in (start, end) for key in ('latitude', 'longitude')):
+                continue
             lat1, lat2 = math.radians(start['latitude']), math.radians(end['latitude'])
             dlat = lat2 - lat1
             dlon = math.radians(end['longitude'] - start['longitude'])
-            a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
-            direct_km = 6371 * 2 * math.asin(math.sqrt(min(1, max(0, a))))
-            # Conservative tolerance because supplied coordinates are approximate.
-            if day.distanceKm + 0.5 < direct_km:
-                issues.append(f'Day {day.day}: distance is shorter than the approximate straight-line separation of its stops; verify the estimate.')
+            h = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+            direct_km += 6371 * 2 * math.asin(math.sqrt(min(1, max(0, h))))
+        # Conservative lower bound: coordinates are approximate, never a trail length.
+        if day.distanceKm + 0.5 < direct_km:
+            issues.append(f'Day {day.day}: distance is shorter than the approximate straight-line separation of its stops; verify the estimate.')
         baseline = previous.sleepingElevationM if previous else places.get(day.start, 0)
         if day.sleepingElevationM > 3000 and day.sleepingElevationM - baseline > 500:
             issues.append(f'Day {day.day}: sleeping altitude gain above 3,000 m exceeds the configured 500 m review threshold.')
@@ -68,7 +73,7 @@ def audit(plan: Itinerary, request: PlanRequest, route: dict) -> list[str]:
         previous = day
     if request.experience == 'first-timer' and route['difficulty'] == 'Strenuous':
         issues.append('Strenuous high-altitude route requires review with a qualified guide for a first-time trekker.')
-    if not any(day.end == route['route'][-1]['name'] for day in plan.days):
+    if not any(route['route'][-1]['name'] in [*day.via, day.end] for day in plan.days):
         issues.append('The itinerary does not reach the requested destination.')
     return list(dict.fromkeys(issues))
 
@@ -79,7 +84,7 @@ async def generate(request: PlanRequest, call=None):
     started = perf_counter()
     if call is None:
         async def call(messages):
-            return await complete(messages, Itinerary.model_json_schema())
+            return await complete(messages, Itinerary.model_json_schema(), enable_thinking=False)
     messages = [{'role': 'system', 'content': SYSTEM_PROMPT}, {'role': 'user', 'content': json.dumps({'preferences': request.model_dump(), 'route': route, 'schema': Itinerary.model_json_schema()})}]
     history = []
     final = None

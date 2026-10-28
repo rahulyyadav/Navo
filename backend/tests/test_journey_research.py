@@ -39,7 +39,7 @@ def packet(statuses, *, closure=False, published_at='2026-10-01'):
             value = {'findings': [{'legIndex': i, 'status': current, 'sourceIds': [f'thompson-{attempt}-0'] if current != 'unconfirmed' else [], 'warning': 'Current status unclear.' if current == 'unconfirmed' else '', 'credibleDisruption': current == 'unconfirmed' and closure} for i in range(2)]}
         else:
             value = {'decision': 'ready', 'issues': []}
-        return SimpleNamespace(content=json.dumps(value), provider='openrouter', model='test-model', prompt_tokens=10, completion_tokens=10)
+        return SimpleNamespace(content=json.dumps(value), provider='openrouter', model='test-model', elapsed_ms=25, prompt_tokens=10, completion_tokens=10)
     async def geocode(client, stop, destination, index, choices=None, *, allow_unmapped=False):
         if index == 1: return destination
         return Point(id='pokhara', name='Pokhara', latitude=28.2, longitude=83.9)
@@ -58,10 +58,12 @@ def test_evidence_team_is_bounded_and_revises_only_once(monkeypatch, closed, exp
     result = asyncio.run(research.research(destination, 'a' * 24, provider='openrouter'))
     assert len(calls) == expected_calls
     assert sum('Julia' in role for role in calls) == (2 if closed else 1)
-    assert result.readiness == ('ready' if closed else 'ready')
+    assert result.readiness == 'needs-user-choice'  # No travel claims were extracted.
     assert result.legs[0].options[0].verification == ('open-confirmed' if closed else 'unconfirmed')
     assert result.destinationMeaning == 'Mardi Himal Base Camp endpoint'
     assert all(source.publishedAt == '2026-10-01' for source in result.sources)
+    assert len(result.modelEvidence) == expected_calls
+    assert all(call.provider == 'openrouter' and call.model == 'test-model' and call.elapsedMs == 25 for call in result.modelEvidence)
     serialized_prompts = json.dumps(prompts)
     assert '28.48' not in serialized_prompts and '83.94' not in serialized_prompts
 
@@ -78,6 +80,8 @@ def test_map_choice_resume_reuses_saved_route_without_recalling_hank_or_julia(mo
     peak = {'name': 'Mardi Himal High Camp', 'placeQuery': 'Mardi Himal High Camp, Nepal'}
     route_checkpoint = {
         'sources': [source],
+        'modelEvidence': [{'agent': 'Hank', 'provider': 'nebius', 'model': 'saved-model',
+                           'elapsedMs': 30, 'promptTokens': 10, 'completionTokens': 5}],
         'evidence': [{'id': 'hank-0', 'title': source['title'], 'url': source['url'],
                      'checkedAt': source['checkedAt'], 'publishedAt': source['publishedAt'],
                      'text': 'Public travel evidence. ' * 30}],
@@ -100,6 +104,7 @@ def test_map_choice_resume_reuses_saved_route_without_recalling_hank_or_julia(mo
         route_checkpoint=route_checkpoint, save_route_checkpoint=saved.append))
     assert len(result.legs) == 2
     assert len(calls) == 2
+    assert [call.agent for call in result.modelEvidence] == ['Hank', 'Thompson', 'Paul']
     assert all('You are Hank,' not in call and 'You are Julia,' not in call for call in calls)
     # The complete route checkpoint is already durable; no new checkpoint is needed.
     assert saved == []
@@ -181,7 +186,7 @@ def test_bad_source_references_are_rejected(monkeypatch):
     async def invalid(messages, schema, **kwargs):
         if 'You are Hank,' in messages[0]['content']:
             value = {'gateway': 'Pokhara', 'gatewayQuery': 'Pokhara Nepal', 'gatewaySourceIds': ['hank-0'], 'claims': [{'segment': 'gateway', 'claim': 'unsupported', 'sourceIds': ['missing']}], 'destinationMeaning': 'High Camp', 'destinationMeaningSourceIds': ['hank-0']}
-            return SimpleNamespace(content=json.dumps(value), provider='openrouter', model='test-model', prompt_tokens=1, completion_tokens=1)
+            return SimpleNamespace(content=json.dumps(value), provider='openrouter', model='test-model', elapsed_ms=25, prompt_tokens=1, completion_tokens=1)
         return await complete(messages, schema, **kwargs)
     monkeypatch.setattr(research, 'search', search)
     monkeypatch.setattr(research, 'page', page)
@@ -351,7 +356,7 @@ def test_research_uses_schematic_intermediate_checkpoints_without_map_lookup(mon
     ]}
     async def route_complete(messages, schema, **kwargs):
         if 'You are Julia,' in messages[0]['content']:
-            return SimpleNamespace(content=json.dumps(draft), provider='openrouter', model='test-model', prompt_tokens=1, completion_tokens=1)
+            return SimpleNamespace(content=json.dumps(draft), provider='openrouter', model='test-model', elapsed_ms=25, prompt_tokens=1, completion_tokens=1)
         return await complete(messages, schema, **kwargs)
     async def geocode(client, stop, _destination, index, choices=None, *, allow_unmapped=False):
         raise AssertionError(f'Route checkpoint {stop.name} should not be sent to map search')
@@ -363,7 +368,7 @@ def test_research_uses_schematic_intermediate_checkpoints_without_map_lookup(mon
     assert len(result.legs) == 4
     assert result.legs[0].end.name == 'Kande'
     assert result.legs[0].end.coordinatesApproximate is True
-    assert result.readiness == 'ready'
+    assert result.readiness == 'needs-user-choice'
     assert any('Kande' in warning for warning in result.warnings)
 
 
@@ -518,7 +523,7 @@ def test_paul_decisions_link_only_existing_unconfirmed_stages(monkeypatch, indic
         if 'You are Paul,' in messages[0]['content']:
             value = {'decision': 'needs-user-choice', 'issues': ['Confirm access with the local park office.'],
                      'decisionLegIndices': indices}
-            return SimpleNamespace(content=json.dumps(value), provider='openrouter', model='test-model',
+            return SimpleNamespace(content=json.dumps(value), provider='openrouter', model='test-model', elapsed_ms=25,
                                    prompt_tokens=10, completion_tokens=10)
         return await complete(messages, schema, **kwargs)
 

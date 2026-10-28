@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 from ..config import settings
 from ..token_factory import complete
 from ..chat_access import reserve_local_chat, reserve_journey_ai
-from .models import Point, Option, Source, Leg, Template
+from .models import Point, Option, Source, Leg, Template, ModelEvidence
 from .diagnostics import stage, event
 
 MODEL_BUDGET_SECONDS = 255
@@ -512,6 +512,7 @@ async def research(destination, key, *, provider=None, uid=None, origin=None, st
     model_deadline = monotonic() + MODEL_BUDGET_SECONDS
     sources: list[Source] = []
     calls = 0
+    model_evidence = []
 
     async def agent(name, messages, schema, progress_stage):
         nonlocal calls, provider
@@ -543,6 +544,10 @@ async def research(destination, key, *, provider=None, uid=None, origin=None, st
                 fallback_reserve=(lambda: reserve_local_chat(uid, 'openrouter')) if uid else None,
                 timeout_seconds=min(130, remaining))
         provider = result.provider
+        model_evidence.append({'agent': name, 'provider': result.provider, 'model': result.model,
+                               'elapsedMs': result.elapsed_ms, 'promptTokens': result.prompt_tokens,
+                               'completionTokens': result.completion_tokens})
+        del model_evidence[:-100]
         event(key, 'model_completion', 'usage', agent=name, model=result.model,
               prompt_tokens=result.prompt_tokens, completion_tokens=result.completion_tokens, calls=calls)
         return result.content
@@ -610,6 +615,7 @@ async def research(destination, key, *, provider=None, uid=None, origin=None, st
             value = {
                 'sources': [source.model_dump(mode='json') for source in sources],
                 'evidence': evidence,
+                'modelEvidence': model_evidence,
             }
             if hank is not None:
                 value['hank'] = hank.model_dump(mode='json')
@@ -629,6 +635,8 @@ async def research(destination, key, *, provider=None, uid=None, origin=None, st
                     hank = HankPacket.model_validate(route_checkpoint['hank'])
                 if 'draft' in route_checkpoint:
                     draft = RouteDraft.model_validate(route_checkpoint['draft'])
+                model_evidence = [ModelEvidence.model_validate(item).model_dump(mode='json')
+                                  for item in route_checkpoint.get('modelEvidence', [])]
                 event(key, 'route_checkpoint', 'resumed', phase='route' if draft else 'research' if hank else 'sources',
                       source_count=len(sources), segments=len(draft.segments) if draft else 0)
             except (KeyError, TypeError, ValueError):
@@ -638,6 +646,7 @@ async def research(destination, key, *, provider=None, uid=None, origin=None, st
                 hank = None
                 sources = []
                 evidence = []
+                model_evidence = []
 
         if not route_checkpoint:
             event(key, 'search_configuration', 'ready' if settings().journey_search_key else 'primary_unconfigured',
@@ -823,7 +832,7 @@ async def research(destination, key, *, provider=None, uid=None, origin=None, st
         selected = [leg.options[0] for leg in legs]
         deterministic_block = any(option.verification == 'closed-confirmed' for option in selected)
         deterministic_choice = any(option.requiresUserDecision and option.verification == 'unconfirmed' for option in selected)
-        readiness = 'blocked' if deterministic_block or paul.decision == 'blocked' else 'needs-user-choice' if deterministic_choice or paul.decision == 'needs-user-choice' else 'ready'
+        readiness = 'blocked' if deterministic_block or paul.decision == 'blocked' else 'needs-user-choice' if deterministic_choice or paul.decision == 'needs-user-choice' or not hank.claims else 'ready'
         warnings = [*map_gap_warnings, *(o.warning for leg in legs for o in leg.options if o.warning)]
         if not hank.claims:
             warnings.append('The research found references but extracted no supported travel claims. Confirm transport and stage details locally.')
@@ -835,7 +844,7 @@ async def research(destination, key, *, provider=None, uid=None, origin=None, st
                 {'agent': 'Hank', 'summary': f'{len(hank.claims)} source-backed claims extracted; gateway and destination meaning researched.', 'sourceIds': list(dict.fromkeys(hank.gatewaySourceIds + hank.destinationMeaningSourceIds)), 'legIds': []},
                 {'agent': 'Julia', 'summary': f'{len(legs)} connected planning stages. Intermediate coordinates are schematic, not navigable paths.', 'sourceIds': [], 'legIds': []},
                 {'agent': 'Thompson', 'summary': 'Current conditions checked against dated sources. Missing reports do not establish that a route is open.', 'sourceIds': list(dict.fromkeys(sid for leg in legs for option in leg.options for sid in option.verificationSourceIds)), 'legIds': [leg.id for leg in legs if any(option.verification != 'open-confirmed' for option in leg.options)]},
-                {'agent': 'Paul', 'summary': f'Final review: {readiness}. {len(paul.issues)} unresolved notes.', 'sourceIds': [], 'legIds': [legs[i].id for i in dict.fromkeys(paul.decisionLegIndices) if 0 <= i < len(legs)]},
-            ])
+                {'agent': 'Paul', 'summary': f'Final review: {readiness}. {len(paul.issues)} agent notes; {0 if hank.claims else 1} missing-evidence flag from Navo.', 'sourceIds': [], 'legIds': [legs[i].id for i in dict.fromkeys(paul.decisionLegIndices) if 0 <= i < len(legs)]},
+            ], modelEvidence=model_evidence)
     finally:
         await client.aclose()
