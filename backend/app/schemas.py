@@ -88,6 +88,7 @@ class PlanDay(Model):
     day: int = Field(ge=1, le=30)
     start: str = Field(min_length=1, max_length=100)
     end: str = Field(min_length=1, max_length=100)
+    via: list[str] = Field(default_factory=list, max_length=12)
     distanceKm: float = Field(ge=0, le=100)
     ascentM: int = Field(ge=0, le=5000)
     sleepingElevationM: int = Field(ge=0, le=7000)

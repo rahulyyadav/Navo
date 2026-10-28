@@ -1,5 +1,5 @@
 # Navo submission package
-Status: prepared draft. Do not submit until the live model, hosted demo and video evidence exist.
+Status: prepared draft. Local live model calls and their failed validation outcomes are documented; a judge-accessible hosted demo and public video are still unverified.
 
 ## Track and one-sentence pitch
 Best Apps and Agents.
@@ -8,13 +8,13 @@ Navo helps small groups plan Nepal treks by making Nemotron's proposals inspecta
 ## Project description draft
 Planning a group hike means coordinating route expectations, departure, transport, conditions and people across disconnected tools. Navo puts this journey into a mobile-first experience for Nepal.
 
-Our central AI feature is an inspectable itinerary loop. NVIDIA Nemotron, served through Nebius Token Factory, proposes a structured itinerary from a curated route and the user's limits. Independent Python checks inspect route continuity, known stops, return travel, elevation consistency, planning thresholds, and impossible distance estimates. Detected issues go back to the model for up to two repairs. The interface shows the violations and revised days, rather than presenting an unexamined chatbot answer as advice.
+Our central AI feature is inspectable journey research and itinerary review. NVIDIA Nemotron, served through Nebius Token Factory, researches public references and proposes structured stages. Independent Python checks inspect endpoint coverage, source IDs, route continuity, elevations, planning thresholds and distance estimates. Detected itinerary issues can go back to the model for up to two repairs. The interface shows missing evidence and decisions for human review instead of presenting an unexamined answer as navigation advice.
 
 The surrounding product includes Kathmandu day-hike planning, requested-day weather, external road/transit directions to the trailhead, group invitation approval, explicit foreground location sharing and offline plan snapshots. Curated waypoints are approximate; Navo does not claim verified navigation or emergency dispatch.
 
-Architecture: Expo 57 / React Native and Firebase identity; authenticated FastAPI / Firestore service; NVIDIA Nemotron inference through Token Factory's OpenAI-compatible endpoint; schema validation and route checks outside the model. Model keys stay on the server. Each completed inference run records model identity, measured latency, reported token usage, prompt/route hashes and audit outcomes.
+Architecture: Expo 58 / React Native and Firebase identity; authenticated FastAPI / Firestore service; NVIDIA Nemotron inference through Token Factory's OpenAI-compatible endpoint; schema validation and route checks outside the model. Model keys stay on the server. Completed inference runs record model identity, measured latency, provider-reported usage, prompt/route hashes and audit outcomes where the provider supplies them.
 
-Before submission, replace future/implementation claims with only what the recorded live build proves. Specifically, the adapter currently exists but a successful real Token Factory run has not yet been recorded in this workspace.
+The [28 October local evaluation](EVALUATION-2026-10-28.md) records nine completed structured copilot calls and three final validator rejections. Separate journey research returned a planning outline but no supported travel claims, so it now requires human review. This does not prove hosted availability, a reliable completion rate or verified trail access. Before submission, show the actual deployed build and update all claims to match its observed behavior.
 
 ## Why this can stand out
 - Technical: independent validation and bounded repair, not just a prompt wrapper.
@@ -25,23 +25,24 @@ Before submission, replace future/implementation claims with only what the recor
 These map to the four equally weighted judging criteria. No award outcome is guaranteed.
 
 ## What to demonstrate
-1. A real request with a real selected NVIDIA Nemotron model on Token Factory.
+1. A real request with a real selected NVIDIA Nemotron model on Token Factory, visible in the judge-accessible build.
 2. The initial issues, repair changes and remaining limitations.
-3. A constraint change that has a visible effect on the result.
-4. The downloaded plan readable after connectivity is removed.
+3. A constraint change and the actual validator outcome, including rejection if it remains invalid.
+4. A saved plan reopened after connectivity is removed, only if that behavior is tested on the demo build.
 5. Optional group invitation on a second device only after deployed verification.
 
-Use the existing multi-day AI copilot for the model demonstration. The separate day-hike wizard does not yet call Nemotron. Do not cut between the two in a way that implies it does.
+Use journey research and its per-call model record for the main model demonstration. The structured copilot can demonstrate a caught invalid itinerary, but the current evaluation does not support a successful-itinerary claim. The separate day-hike wizard does not yet call Nemotron.
 
 ## Existing-project disclosure draft
-Navo's existing mobile foundation was extended during the submission period with Firebase-backed authentication and group services, an authenticated Token Factory planner with deterministic draft–audit–repair checks, custom day-hike planning, weather, invitation approval, foreground group positions, proximity filtering, offline snapshots and test/evaluation tooling.
-Verify this statement against the actual project start and Git history. Include dates and commits for the team's work; do not claim work from before August 26, 2026 as new. Relevant recent commits include 5ebde99 and bf9b360, plus the final hackathon-preparation commit.
+The visible repository history begins on September 27, 2026, after the August 26 submission-period start. If an earlier Navo project existed outside this repository, explain the substantial updates made during the period. Do not claim a pre-existing feature was created during the competition. Recent journey improvements are on `codex/journey-agent-evidence` and must be included in the public default branch or explicitly linked in the submission.
 
 ## Submission inventory
 - [ ] Public working demo URL or installable test build; keep it available for judging.
 - [ ] Public repository with detectable MIT LICENSE (already present); confirm source attribution for photos.
 - [ ] README setup tested from a clean checkout.
-- [ ] Real NVIDIA model ID, successful runtime response and evaluation report.
+- [x] Local real NVIDIA Nemotron response recorded in the repository documentation.
+- [x] Local live evaluation report with actual outcomes.
+- [ ] Judge-accessible runtime response and smoke test.
 - [ ] Public YouTube demonstration shorter than 3 minutes.
 - [ ] Specific provider feedback based on actual usage.
 - [ ] Existing-project disclosure checked against history.
@@ -49,14 +50,13 @@ Verify this statement against the actual project start and Git history. Include 
 - [ ] City award entry only if actually attended.
 - [ ] No secrets, personal GPS or user data visible in the recording or repository.
 
-## Feedback template — fill after real runs
-- Exact model / date / request size:
-- What worked (structured output, latency, integration):
-- What failed (error category, reproducible sanitized request):
-- Workaround:
-- Suggested improvement and why it matters:
-- Supporting run report:
-Do not invent praise, outages or benchmarks before using the service.
+## Provider feedback based on the local run
+- Model: `nvidia/nemotron-3-super-120b-a12b`, tested 28 October 2026 through Token Factory.
+- Worked: all nine structured calls in the final three-case run returned, and the API supplied model identity and usage data for the app's review record.
+- Failed: none of the three itinerary cases passed the independent validator after two repairs. Earlier calls using the optional reasoning mode reached response-length failures.
+- Workaround: disable optional reasoning for short structured itinerary calls, retain bounded repairs, and reject plans that still violate constraints.
+- Requested improvement: clearer structured-output length budgeting and examples for long constrained JSON itineraries. This is product feedback from a small local sample, not a service-level benchmark.
+- Supporting report: [local evaluation](EVALUATION-2026-10-28.md).
 
 ## Sources checked 3 October 2026
 - Official rules: https://nebiusglobalaihackathon.devpost.com/rules

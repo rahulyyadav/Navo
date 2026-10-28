@@ -1,36 +1,17 @@
 # Under-three-minute demonstration
-Target 2:45, leaving a buffer. Record a real configured build. No copyrighted soundtrack needed.
 
-0:00–0:20 — Problem
-“Planning a Nepal trek means coordinating a route, pace and group. An AI answer can sound confident even when the itinerary doesn't fit. Navo makes the proposal inspectable.”
-Show Discover and the selected trek. Use your own voice and actual app footage.
+Record the actual deployed build. Keep the video under three minutes and show a live Token Factory call. Do not show keys, tokens, email codes or a precise personal location.
 
-0:20–0:45 — Constraints
-Open AI copilot, set duration, goal and ascent/distance limits. Explain that route waypoints are approximate and measured trail distances are not available.
-Show the exact NVIDIA model selected on Nebius only if the dashboard contains no secret.
+**0:00–0:20 — Problem.** “A trek plan can look confident even when transport, timing or trail access has not been checked. Navo makes those gaps visible.” Open Discover and select Mardi Himal.
 
-0:45–1:30 — The core proof
-Generate a real plan. You may cut out waiting time, visibly labelled “generation wait shortened.”
-Open the audit: explain one actual violation and show revised days or a rejected result. Never manufacture a spontaneous model error.
-If using the optional injected-error demo, keep “DEMO · INJECTED ASCENT ERROR” visible and explain it is a deliberate validator test; it is not the primary evidence of model quality.
-Open run details: provider, model, actual elapsed time and usage. Narration: “Nemotron proposes. Independent code checks. Up to two repairs, then human review.”
+**0:20–0:50 — Set the journey.** Choose a generic public starting city and date. Show a budget as a planning limit; say missing fares still need local confirmation. Explain that named mountain checkpoints are schematic planning references.
 
-1:30–2:00 — Useful handoff
-Save the trip pack, disconnect the device and reopen the saved itinerary. Explain it is a snapshot, not offline map tiles or live conditions.
-If this cannot be shown reliably, show the successful saved state and explicitly avoid claiming an airplane-mode test.
+**0:50–1:35 — Real AI work.** Run journey preparation. If shortening the wait in the edit, label it “generation wait shortened.” Open the stage list, source references, agent summaries and actual model-call record. Show the provider/model without opening the dashboard's secrets. Point to one missing duration, fare or trail-status decision. Do not narrate a source as verified if no claim was extracted from it.
 
-2:00–2:25 — Group / day-hike context
-Show the day-hike wizard with a selected date and actual forecast. Distinguish it from the multi-day AI flow.
-If two-device deployment has been proven, show invite → approve. Otherwise omit that segment rather than simulating a live group.
+**1:35–2:05 — Independent check.** Open the structured copilot with a deliberately constrained request. Show the real validator result. In the 28 October local evaluation all three final drafts were rejected, so an honest rejection is the expected demonstration unless a later recorded run passes. Explain that invalid output is withheld from navigation.
 
-2:25–2:45 — Architecture and honest close
-Show a simple diagram: Expo → authenticated FastAPI → Token Factory/Nemotron → deterministic audit → reviewed plan.
-State the actual evaluation sample size and results only after running the report. Close with the specific audience: “A clearer plan and shared expectations before the group leaves.”
-Mention verified route data and field validation as next steps.
+**2:05–2:30 — Useful handoff.** Save and reopen a plan. Show weather or a group review only if the deployed build is connected and verified in the same run. An offline plan snapshot is different from offline map tiles or live conditions.
 
-Final recording checklist
-- Public YouTube visibility; duration below 3:00.
-- Runtime call occurred on Nebius; selected model is NVIDIA Nemotron.
-- No .env files, private keys, access tokens, personal email notifications or precise personal location.
-- Do not say “safe,” “certified,” “guaranteed rescue,” “offline navigation,” or “live bus ETA” unless the actual capability supports the claim.
-- Hosted demo remains reachable; test judge instructions in a clean browser.
+**2:30–2:50 — Close.** Show Expo → authenticated FastAPI → Nebius Token Factory/Nemotron → deterministic checks → human review. State the actual deployed test result and the next limitation: source-backed trail access and field validation.
+
+Before publishing: test the public URL in a clean browser, confirm the real call reached Nebius, verify the public repository and MIT license, and upload the video publicly to YouTube. Avoid claims of certified safety, guaranteed rescue, measured trail geometry or live transport schedules.

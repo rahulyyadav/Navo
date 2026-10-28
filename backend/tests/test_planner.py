@@ -17,6 +17,15 @@ def draft():
 def test_safe_thresholds_do_not_mean_certification():
     assert audit(draft(), request(), ROUTE) == []
 
+def test_destination_can_be_visited_without_sleeping_at_the_high_point():
+    route = {**ROUTE, 'route': [*ROUTE['route'], {'name': 'C', 'elevation': 2700}]}
+    value = draft()
+    value.days[0].via = ['C']
+    value.days[0].ascentM = 700
+    assert audit(value, request(), route) == []
+    value.days[0].via = ['Imaginary summit']
+    assert any('curated route' in issue for issue in audit(value, request(), route))
+
 def test_excessive_ascent_and_invented_stop_rejected():
     value = draft(); value.days[0].ascentM = 1600; value.days[1].end = 'Invented'
     issues = audit(value, request(), ROUTE)

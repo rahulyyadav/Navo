@@ -86,6 +86,14 @@ class AgentReview(BaseModel):
     sourceIds: list[str] = Field(default_factory=list, max_length=20)
     legIds: list[str] = Field(default_factory=list, max_length=40)
 
+class ModelEvidence(BaseModel):
+    agent: Literal['Hank', 'Julia', 'Thompson', 'Paul']
+    provider: Literal['nebius', 'openrouter']
+    model: str = Field(min_length=1, max_length=200)
+    elapsedMs: int = Field(ge=0)
+    promptTokens: int | None = Field(default=None, ge=0)
+    completionTokens: int | None = Field(default=None, ge=0)
+
 
 class Template(BaseModel):
     version: Literal[1] = 1
@@ -101,6 +109,7 @@ class Template(BaseModel):
     readiness: Literal['ready', 'needs-user-choice', 'blocked'] = 'ready'
     warnings: list[str] = Field(default_factory=list, max_length=20)
     agentReview: list[AgentReview] = Field(default_factory=list, max_length=4)
+    modelEvidence: list[ModelEvidence] = Field(default_factory=list, max_length=100)
 
     @model_validator(mode='after')
     def connected(self):

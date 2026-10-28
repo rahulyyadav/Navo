@@ -12,9 +12,9 @@ Navo is not a rescue service, medical tool, replacement for a licensed guide, or
 
 ## Current implementation
 
-Expo SDK 57 mobile app with animated onboarding, Firebase authentication, trek discovery, online maps, trip preparation and local trip packs. The FastAPI backend verifies Firebase identity and provides Firestore group invitations, chat, check-ins, alerts and a bounded Nemotron draft–audit–repair planner. Background workers handle overdue check-ins and Expo push jobs.
+Expo SDK 58 mobile app with animated onboarding, Firebase authentication, trek discovery, online maps, trip preparation and local trip packs. The FastAPI backend verifies Firebase identity and provides Firestore group invitations, chat, check-ins, alerts and a bounded Nemotron draft–audit–repair planner. Background workers handle overdue check-ins and Expo push jobs.
 
-**This is not yet a verified production release.** Server secrets, Firebase rules/index deployment, native OAuth/push credentials, real model calls and two-device acceptance still need configuration and verification. The supplied route waypoints are approximate; offline maps and verified trail navigation are not implemented.
+**This is not yet a verified production release.** Local live Nemotron calls returned, but all three structured itinerary evaluation cases still failed route validation after repair. A hosted judge-accessible build, deployed service credentials, native OAuth/push behavior and two-device acceptance remain to be verified. The supplied route waypoints are approximate; offline maps and verified trail navigation are not implemented.
 
 Read [Production setup](docs/PRODUCTION-SETUP.md) for credential locations and deployment prerequisites, and [QA checklist](docs/QA-CHECKLIST.md) for tests and the two-phone walkthrough.
 
@@ -43,7 +43,6 @@ Then scan the QR code with Expo Go, or press `a`, `i`, or `w` for Android, iOS, 
 ```bash
 npm run lint
 npm run typecheck
-npm run lint
 npm test
 npm run doctor
 ```
@@ -66,14 +65,14 @@ output/pdf/              Shareable PDF version of the plan
 
 ## Configuration
 
-Copy `.env.example` to `.env` for Firebase client configuration and the backend URL. Never commit credentials. The mobile app must call our backend; it must not contain a Nebius API key.
-Use root `.env.local` for public client configuration and `backend/.env` for server secrets. Never commit credentials. The mobile app must call our backend; it must not contain a Nebius API key.
+Copy `.env.example` to root `.env.local` for public Firebase client configuration and the backend URL. Use `backend/.env` for server secrets. Never commit credentials or put a Nebius API key in an `EXPO_PUBLIC_*` variable.
 
 ## Hackathon judging quick start
 
 Track: **Best Apps and Agents**. The differentiator is a visible Nemotron draft → independent audit → bounded repair → human-review loop.
 
 - [Submission description and evidence checklist](docs/hackathon/SUBMISSION.md)
+- [Sanitized local model evaluation](docs/hackathon/EVALUATION-2026-10-28.md)
 - [2:45 demonstration script](docs/hackathon/DEMO-SCRIPT.md)
 - [Exact API/credential integration checklist](docs/hackathon/INTEGRATION-CHECKLIST.md)
 - [Product audit and next-build prompt](docs/PRODUCT-AUDIT-AND-BUILD-PLAN.md)
@@ -97,15 +96,14 @@ cp .env.example .env
 
 The evaluation preflight checks configuration only. After configuring the exact NVIDIA Nemotron model and Nebius key, run ` .venv/bin/python -m app.evaluate --live --case gradual-mardi ` from backend/. This makes up to three paid Token Factory calls and saves a report under output/evaluation. `--case all` runs three scenarios with at most nine calls. Firebase is not needed for the CLI evaluation or `/chat`; protected cloud and structured planning endpoints require Firebase identity.
 
-Reports include per-attempt violations, actual response model, latency, provider-reported usage and prompt/route hashes. Test adapters are explicitly labelled and do not count as live inference. No live results have yet been recorded; configure and run the evaluation before claiming model performance. The separate day-hike wizard currently uses deterministic planning and weather, not the multi-day Nemotron adapter.
+Reports include per-attempt violations, actual response model, latency, provider-reported usage and prompt/route hashes. Test adapters are explicitly labelled and do not count as live inference. The [28 October local evaluation](docs/hackathon/EVALUATION-2026-10-28.md) records nine completed calls and three final validator rejections; this is not a hosted reliability benchmark. Run the evaluation and inspect its report before claiming model performance. The separate day-hike wizard uses deterministic planning and weather, not the multi-day Nemotron adapter.
 
 ## Near-term milestones
 
-1. Confirm one Nemotron call through Nebius Token Factory.
-2. Render one legally sourced route on a physical Android phone.
-3. Connect request -> structured plan -> validation -> repair -> mobile UI.
-4. Add versioned offline packs and test them in airplane mode.
-5. Evaluate, deploy, freeze, and record the final demo.
+1. Make a configured HTTPS demo and authenticated backend available to judges.
+2. Review one complete Mardi journey against current source material and rehearse the flow on a phone.
+3. Run the live evaluation and record actual outcomes, latency and provider failures.
+4. Freeze the demonstrated build, verify a clean-browser run and record the public video.
 
 See [HACKATHON_EXECUTION_PLAN.md](./HACKATHON_EXECUTION_PLAN.md) for the complete schedule and [docs/TEAM_WORKFLOW.md](./docs/TEAM_WORKFLOW.md) before contributing.
 
