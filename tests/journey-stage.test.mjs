@@ -39,6 +39,18 @@ test('unknown durations and malformed names are explicit; totals never sum parti
   assert.equal(types.checkpointLabel(point('Budhanilkantha')), 'Budhanilkantha');
 });
 
+test('combined movement range includes sourced stage ranges and excludes unknown stages', () => {
+  const j = fixture();
+  j.template.legs[0].options[0].durationRange = { minimum: 120, maximum: 180, sourceIds: ['s'] };
+  j.template.legs[1].options[0].minutes = 60;
+  assert.equal(types.journeySummary(j).estimatedRange.minimum, 180);
+  assert.equal(types.journeySummary(j).estimatedRange.maximum, 240);
+  assert.equal(types.journeySummary(j).unknownDurations, 0);
+  assert.match(types.optionDurationLabel(j.template.legs[0].options[0]), /2h–3h/);
+  j.template.legs[1].options[0].minutes = null;
+  assert.equal(types.journeySummary(j).estimatedRange, null);
+});
+
 test('edit waits for cloud persistence, restores selections on reopening, and retains old choice after failed save', async () => {
   const j = fixture(), data = new Map();
   let remote = { version: 1, activeId: j.id, journeys: [j] }, fail = false, release, wait = false;

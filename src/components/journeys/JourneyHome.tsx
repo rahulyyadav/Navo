@@ -112,13 +112,13 @@ export function JourneyHome() {
           <HomePressable accessibilityRole="button" accessibilityLabel="Open profile" onPress={() => router.navigate('/(tabs)/profile')} style={s.avatar}><Text style={s.initials}>{initials}</Text></HomePressable>
         </View>
       </Animated.View>
-      <Animated.View entering={entrance(45)} style={[s.search, searchMotion]}>
+      <Animated.View entering={entrance(45)}><Animated.View style={[s.search, searchMotion]}>
         <HomeIcon name="search"/><TextInput accessibilityLabel="Search trails or places" placeholder="Find a trail or destination…" placeholderTextColor={palette.faint} value={query} onChangeText={setQuery} autoCorrect={false} maxLength={100} onFocus={() => { searchFocus.value = withTiming(1, { duration: 180, reduceMotion: ReduceMotion.System }); }} onBlur={() => { searchFocus.value = withTiming(0, { duration: 180, reduceMotion: ReduceMotion.System }); }} style={s.searchInput}/>
         <View style={s.searchTools}>
         {query ? <HomePressable accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => setQuery('')} style={s.clear}><HomeIcon name="close"/></HomePressable> : null}
         <HomePressable accessibilityRole="button" accessibilityLabel={`Filters${applied ? `, ${applied} active` : ''}`} onPress={() => setFiltersOpen(true)} style={[s.searchFilter, applied > 0 && s.searchFilterActive]}><HomeIcon name="filter"/></HomePressable>
         </View>
-      </Animated.View>
+      </Animated.View></Animated.View>
       {query.trim().length >= 2 ? <Animated.View entering={entrance(90)} style={s.placeSection}>
         <Text style={s.cardTitle}>Search mapped places</Text>
         {remote.query === query && remote.busy ? <ActivityIndicator color={green} accessibilityLabel="Searching mapped places"/> : null}

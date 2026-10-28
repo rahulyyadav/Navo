@@ -410,6 +410,39 @@ def test_destination_search_uses_short_destination_specific_queries():
     assert 'approximate planning point' not in ' '.join(research.destination_search_queries(approximate)).casefold()
 
 
+def test_known_references_are_limited_to_matching_nepal_endpoints():
+    phulchowki = Point(id='osm-reference:node:3490869705', name='Phulchowki hill', latitude=27.5710397, longitude=85.4067119)
+    abc = Point(id='annapurna-base-camp', name='Annapurna Base Camp', latitude=28.674, longitude=83.877)
+    unrelated = Point(id='other', name='Phulchowki hill', latitude=28.5, longitude=83.8)
+    assert len(research.known_route_sources(phulchowki)) == 3
+    assert len(research.known_route_sources(abc)) == 3
+    assert research.known_route_sources(unrelated) == []
+
+
+def test_research_uses_live_known_references_when_search_is_empty(monkeypatch):
+    destination = Point(id='mardi', name='Mardi Himal Trek', latitude=28.48, longitude=83.94)
+    calls, _, _, page, complete, geocode = packet(['unconfirmed'])
+    async def no_search(*args, **kwargs):
+        return []
+    monkeypatch.setattr(research, 'known_route_sources', lambda _: [(f'https://example.com/{index}', f'Route {index}') for index in range(3)])
+    monkeypatch.setattr(research, 'search', no_search)
+    monkeypatch.setattr(research, 'page', page)
+    monkeypatch.setattr(research, 'complete', complete)
+    monkeypatch.setattr(research, 'geocode', geocode)
+    result = asyncio.run(research.research(destination, 'e' * 24, provider='openrouter'))
+    assert len(calls) == 3  # No current sources means no unsupported Thompson model call.
+    assert [source.id for source in result.sources[:3]] == ['hank-0', 'hank-1', 'hank-2']
+
+
+def test_long_source_packet_keeps_stage_time_context():
+    article = 'Annapurna Base Camp trek introduction. ' + 'Background information. ' * 300
+    article += 'Drive from Pokhara to Jhinu Danda in 4-5 hours. Trek from Jhinu Danda to Chhomrong in 2 hours.'
+    excerpt = research.evidence_excerpt(article)
+    assert len(excerpt) <= 6000
+    assert 'Pokhara to Jhinu Danda in 4-5 hours' in excerpt
+    assert 'Jhinu Danda to Chhomrong in 2 hours' in excerpt
+
+
 def test_search_logs_transport_failures_separately_from_empty_results(monkeypatch):
     monkeypatch.setattr(research, 'settings', lambda: SimpleNamespace(journey_search_key=''))
     events = []
