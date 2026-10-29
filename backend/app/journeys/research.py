@@ -4,6 +4,7 @@ import hashlib
 import ipaddress
 import json
 import math
+import re
 import socket
 from time import monotonic
 from datetime import date, datetime, timedelta, timezone
@@ -183,6 +184,49 @@ def destination_search_queries(destination, origin=None, *, purpose='route'):
     if origin_name:
         queries.insert(0, f'{origin_name} to {place} transport route')
     return queries[:3]
+
+
+def known_route_sources(destination):
+    """Live-fetched references for a few unambiguous Nepal endpoints.
+
+    These are discovery hints, not cached evidence: failed or short pages are
+    discarded, and current access still needs a separate dated check.
+    """
+    name = destination.name.casefold()
+    if (any(alias in name for alias in ('phulchowki', 'phulchoki', 'pulchowki'))
+            and abs(destination.latitude - 27.571) < 0.08
+            and abs(destination.longitude - 85.407) < 0.08):
+        return [
+            ('https://www.nepalhimalayanhiker.com/tours/phulchowki-day-hike', 'Phulchowki day hike and walking times'),
+            ('https://www.tthimalaya.com/a-day-hiking-to-phulchowki/', 'Phulchowki route from Godawari'),
+            ('https://www.myrepublica.nagariknetwork.com/news/the-phulchowki-hilltop', 'Phulchowki hilltop walking report'),
+        ]
+    if ('annapurna' in name and 'base camp' in name
+            and abs(destination.latitude - 28.674) < 0.12
+            and abs(destination.longitude - 83.877) < 0.12):
+        return [
+            ('https://pokharatourism.org.np/major-trekking-destinations/', 'Pokhara Tourism Council ABC itineraries'),
+            ('https://visit.annapurnamunkaski.org/activities/annapurna-base-camp/', 'Annapurna Rural Municipality ABC overview'),
+            ('https://www.havenholidaysnepal.com/blogs/annapurna-base-camp-trek-from-pokhara', 'ABC walking and access itinerary'),
+        ]
+    return []
+
+
+def evidence_excerpt(text, limit=6000):
+    """Keep stage-time passages from long pages within the model's source budget."""
+    if len(text) <= limit:
+        return text
+    excerpts = []
+    for match in re.finditer(r'\b\d+(?:\s*[-–]\s*\d+)?\s*(?:hours?|hrs?|days?)\b', text, re.I):
+        passage = text[max(0, match.start() - 130):match.end() + 170]
+        lowered = passage.casefold()
+        if any(word in lowered for word in ('trek', 'walk', 'hike', 'drive', 'base camp', 'godawari', 'jhinu', 'chhomrong')):
+            score = (2 if 'hour' in match.group().casefold() or 'hr' in match.group().casefold() else 0)
+            score += 2 if any(word in lowered for word in ('jhinu', 'chhomrong', 'godawari', 'himalaya', 'deurali')) else 0
+            score += 1 if ' to ' in lowered else 0
+            excerpts.append((score, match.start(), passage))
+    chosen = sorted(sorted(excerpts, key=lambda item: (-item[0], item[1]))[:10], key=lambda item: item[1])
+    return (text[:2200] + '\n[Further time passages from this page]\n' + '\n'.join(item[2] for item in chosen))[:limit]
 
 def clean_checkpoint_name(value):
     name = ' '.join(value.split())
@@ -552,47 +596,38 @@ async def research(destination, key, *, provider=None, uid=None, origin=None, st
               prompt_tokens=result.prompt_tokens, completion_tokens=result.completion_tokens, calls=calls)
         return result.content
 
-    async def collect(query, limit=3, prefix='source', *, context_query=None):
+    async def collect(query, limit=3, prefix='source', *, context_query=None, reference_pages=()):
         queries = query if isinstance(query, (tuple, list)) else [query]
         evidence = []
         seen_urls = set()
-        for query_index, current_query in enumerate(queries[:4]):
-            if len(evidence) >= limit: break
-            with stage(key, 'search', provider='brave' if settings().journey_search_key else 'duckduckgo_with_fallbacks', query_index=query_index):
-                results = await search(client, current_query, journey_key=key, context_query=context_query)
-            event(key, 'search', 'results', query_index=query_index, count=len(results))
-            async def download(url, title, source_index):
-                try:
-                    with stage(key, 'source_download', source_index=source_index):
-                        parser, final_url = await page(client, url)
-                    text = ' '.join(parser.parts)
-                    if len(text) < 250:
-                        event(key, 'source_download', 'insufficient_text', characters=len(text))
-                        return None
-                    return title, final_url, parser.published_at, text
-                except httpx.HTTPStatusError as error:
-                    event(key, 'source_download', 'http_error', status=error.response.status_code)
-                except httpx.TimeoutException as error:
-                    event(key, 'source_download', 'timeout', error_type=type(error).__name__)
-                except (httpx.HTTPError, ValueError, OSError) as error:
-                    event(key, 'source_download', 'request_error', error_type=type(error).__name__)
-                return None
+        async def download(url, title, source_index):
+            try:
+                with stage(key, 'source_download', source_index=source_index):
+                    parser, final_url = await page(client, url)
+                text = ' '.join(parser.parts)
+                if len(text) < 250:
+                    event(key, 'source_download', 'insufficient_text', characters=len(text))
+                    return None
+                return title, final_url, parser.published_at, text
+            except httpx.HTTPStatusError as error:
+                event(key, 'source_download', 'http_error', status=error.response.status_code)
+            except httpx.TimeoutException as error:
+                event(key, 'source_download', 'timeout', error_type=type(error).__name__)
+            except (httpx.HTTPError, ValueError, OSError) as error:
+                event(key, 'source_download', 'request_error', error_type=type(error).__name__)
+            return None
 
-            candidates = []
-            for url, title in results:
-                if url not in seen_urls:
-                    seen_urls.add(url)
-                    candidates.append((url, title))
-            # Fetch at most the number still needed at once. Process results in
-            # search order so stable source IDs and citation checks do not change.
+        async def add(candidates):
+            batch = [(url, title) for url, title in candidates if url not in seen_urls]
+            for url, _ in batch:
+                seen_urls.add(url)
             offset = 0
-            while offset < len(candidates):
-                remaining = limit - len(evidence)
-                if remaining <= 0:
+            while offset < len(batch):
+                if len(evidence) >= limit:
                     break
-                batch = candidates[offset:offset + remaining]
-                offset += len(batch)
-                downloaded = await asyncio.gather(*(download(url, title, len(evidence) + index) for index, (url, title) in enumerate(batch)))
+                selected = batch[offset:offset + limit - len(evidence)]
+                offset += len(selected)
+                downloaded = await asyncio.gather(*(download(url, title, len(evidence) + index) for index, (url, title) in enumerate(selected)))
                 for item in downloaded:
                     if item is None:
                         continue
@@ -600,7 +635,17 @@ async def research(destination, key, *, provider=None, uid=None, origin=None, st
                     source_id = f'{prefix}-{len(evidence)}'
                     source = Source(id=source_id, title=title[:300], url=final_url, checkedAt=datetime.now(timezone.utc).isoformat(), publishedAt=published_at)
                     sources.append(source)
-                    evidence.append({'id': source_id, 'title': source.title, 'url': final_url, 'checkedAt': source.checkedAt, 'publishedAt': published_at, 'text': source_text[:4000]})
+                    evidence.append({'id': source_id, 'title': source.title, 'url': final_url, 'checkedAt': source.checkedAt, 'publishedAt': published_at, 'text': evidence_excerpt(source_text)})
+
+        if reference_pages:
+            await add(reference_pages)
+            event(key, 'reference_pages', 'fetched', usable_sources=len(evidence))
+        for query_index, current_query in enumerate(queries[:4]):
+            if len(evidence) >= limit: break
+            with stage(key, 'search', provider='brave' if settings().journey_search_key else 'duckduckgo_with_fallbacks', query_index=query_index):
+                results = await search(client, current_query, journey_key=key, context_query=context_query)
+            event(key, 'search', 'results', query_index=query_index, count=len(results))
+            await add(results)
 
         return evidence
 
@@ -652,7 +697,7 @@ async def research(destination, key, *, provider=None, uid=None, origin=None, st
             event(key, 'search_configuration', 'ready' if settings().journey_search_key else 'primary_unconfigured',
                   primary='brave', fallback='duckduckgo_wikipedia')
             # Hank narrows web material to source-backed gateway and transport claims.
-            evidence = await collect(destination_search_queries(destination, origin), 3, 'hank', context_query=' '.join(filter(None, [destination.name, destination.region, destination.country])))
+            evidence = await collect(destination_search_queries(destination, origin), 3, 'hank', context_query=' '.join(filter(None, [destination.name, destination.region, destination.country])), reference_pages=known_route_sources(destination))
             if len(evidence) < 2:
                 event(key, 'search_recovery', 'sources_unavailable', usable_sources=len(evidence), minimum=2)
                 raise HTTPException(503, 'Online travel sources are unavailable for this destination right now. Your destination, starting point and date are saved. Retry in a moment, or choose a mapped place with its region and country for a more precise search.')
@@ -767,6 +812,16 @@ async def research(destination, key, *, provider=None, uid=None, origin=None, st
             segment_queries = [destination_search_queries(destination, purpose='disruptions')[0],
                                f'{route_legs[0].start.name} to {route_legs[0].end.name} Nepal road closure notice']
             current = await collect(segment_queries or destination_search_queries(destination, purpose='disruptions'), 3, f'thompson-{attempt}', context_query=' '.join(filter(None, [destination.name, destination.region, destination.country])))
+            if not current:
+                for leg in route_legs:
+                    for option in leg.options:
+                        option.verification = 'unconfirmed'
+                        option.warning = 'Current access could not be verified from a recent source. Confirm this stage locally before departure.'
+                        if leg.id in map_gap_ids:
+                            option.requiresUserDecision = True
+                            option.warning = ('; '.join([option.warning, *map_gap_warnings]))[:500]
+                event(key, 'thompson_check', 'no_current_sources', attempt=attempt)
+                return {}
             packet = {'legs':[{'index':i,'from':leg.start.name,'to':leg.end.name,'options':[{'mode':o.mode,'label':o.label} for o in leg.options]} for i,leg in enumerate(route_legs)],'sources':current}
             prompt = 'You are Thompson, a current-disruption verifier. Check each exact segment, not just the destination. Only say open-confirmed or closed-confirmed when a directly relevant source published within the last 30 days explicitly establishes that status. If the source has no publication date, is older, or is an old itinerary, report unconfirmed. A search with no closure, unrelated place or ambiguous segment is unconfirmed. Use only provided source IDs. Missing reports are never proof of access. Return one finding for each leg index.'
             report = ThompsonReport.model_validate_json(await agent('Thompson', [{'role':'system','content':prompt},{'role':'user','content':json.dumps(packet)}], ThompsonReport.model_json_schema(), 'thompson_check' if attempt == 1 else 'thompson_recheck'))

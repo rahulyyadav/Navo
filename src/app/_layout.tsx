@@ -19,7 +19,7 @@ export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
   return <Backdrop><View style={styles.boot}><Heading title="Let’s try that again." subtitle="Navo could not display this screen. Your saved data has not been cleared." /><Button label="Reload this screen" onPress={() => void retry()} /></View></Backdrop>;
 }
 
-export const unstable_settings = { initialRouteName: 'index', screenErrorBoundary: ErrorBoundary };
+export const unstable_settings = { anchor: 'index', screenErrorBoundary: ErrorBoundary };
 
 function BootScreen({ title, detail }: { title: string; detail?: string }) {
   return <Backdrop>

@@ -219,8 +219,13 @@ export function chooseTravel(journey: PersonalJourney, legId: string, optionId: 
 export function journeySummary(journey: PersonalJourney) {
     const legs = [...journey.approach, ...journey.template.legs];
     const options = legs.map(leg => selectedOption(leg, journey.selections));
+    const allTimed = options.length > 0 && options.every(o => o.minutes !== null || o.durationRange);
     return { stages: legs.length, unknownDurations: options.filter(o => o.minutes === null && !o.durationRange).length,
         minutes: options.every(o => o.minutes !== null) ? options.reduce((n, o) => n + (o.minutes ?? 0), 0) : null,
+        estimatedRange: allTimed ? {
+            minimum: options.reduce((n, o) => n + (o.durationRange?.minimum ?? o.minutes ?? 0), 0),
+            maximum: options.reduce((n, o) => n + (o.durationRange?.maximum ?? o.minutes ?? 0), 0),
+        } : null,
         attention: legs.filter(leg => stageAttention(leg, journey.selections)),
         expired: Date.parse(journey.template.expiresAt) < Date.now() };
 }
