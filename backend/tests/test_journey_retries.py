@@ -1,6 +1,7 @@
 import asyncio
 import importlib
 from types import SimpleNamespace
+import pytest
 
 from app.journeys.models import Point, PrepareRequest
 from app.journeys import store
@@ -61,3 +62,26 @@ def test_claim_merges_status_fields_instead_of_erasing_saved_checkpoint(monkeypa
     assert store.claim('d' * 24) is True
     assert calls['merge'] is True
     assert calls['data']['status'] == 'preparing'
+
+
+def test_cancelled_preparation_releases_lease_and_quota(monkeypatch):
+    started = asyncio.Event()
+    events = []
+    async def research(*args, **kwargs):
+        started.set()
+        await asyncio.Future()
+    monkeypatch.setattr(api, 'research', research)
+    monkeypatch.setattr(api.store, 'reserve_research', lambda: events.append('reserve'))
+    monkeypatch.setattr(api.store, 'release_research', lambda: events.append('release'))
+    monkeypatch.setattr(api.store, 'fail', lambda key, message: events.append(('fail', key, message)))
+
+    async def run():
+        task = asyncio.create_task(api.prepare(Point(id='mardi', name='Mardi Himal Trek', latitude=28.48, longitude=83.94), 'd' * 24, 'user-1'))
+        await started.wait()
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    asyncio.run(run())
+    assert events[0:2] == ['reserve', 'release']
+    assert events[2] == ('fail', 'd' * 24, 'Preparation was interrupted. Retry to continue.')

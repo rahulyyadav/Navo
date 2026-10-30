@@ -68,6 +68,47 @@ def test_evidence_team_is_bounded_and_revises_only_once(monkeypatch, closed, exp
     assert '28.48' not in serialized_prompts and '83.94' not in serialized_prompts
 
 
+def test_verbose_hank_gateway_uses_matching_short_query(monkeypatch):
+    destination = Point(id='mardi', name='Mardi Himal Trek', latitude=28.48, longitude=83.94)
+    calls, prompts, search, page, complete, geocode = packet(['unconfirmed'])
+    async def malformed_once(messages, schema, **kwargs):
+        response = await complete(messages, schema, **kwargs)
+        if 'You are Hank,' in messages[0]['content'] and sum('You are Hank,' in call for call in calls) == 1:
+            value = json.loads(response.content)
+            value['gateway'] = 'Pokhara is the practical public departure hub for reaching the Mardi Himal trailhead.'
+            response.content = json.dumps(value)
+        return response
+    monkeypatch.setattr(research, 'search', search)
+    monkeypatch.setattr(research, 'page', page)
+    monkeypatch.setattr(research, 'complete', malformed_once)
+    monkeypatch.setattr(research, 'geocode', geocode)
+    result = asyncio.run(research.research(destination, 'a' * 24, provider='openrouter'))
+    assert sum('You are Hank,' in call for call in calls) == 1
+    assert len(calls) == 4
+    assert len(result.modelEvidence) == 4
+    assert result.legs[0].start.name == 'Pokhara'
+
+
+def test_persistently_invalid_hank_gateway_fails_after_one_retry(monkeypatch):
+    destination = Point(id='mardi', name='Mardi Himal Trek', latitude=28.48, longitude=83.94)
+    calls, _, search, page, complete, geocode = packet(['unconfirmed'])
+    async def malformed(messages, schema, **kwargs):
+        response = await complete(messages, schema, **kwargs)
+        value = json.loads(response.content)
+        value['gateway'] = 'Pokhara is the practical public departure hub for reaching the Mardi Himal trailhead.'
+        value['gatewayQuery'] = 'Kathmandu, Nepal'
+        response.content = json.dumps(value)
+        return response
+    monkeypatch.setattr(research, 'search', search)
+    monkeypatch.setattr(research, 'page', page)
+    monkeypatch.setattr(research, 'complete', malformed)
+    monkeypatch.setattr(research, 'geocode', geocode)
+    with pytest.raises(HTTPException) as raised:
+        asyncio.run(research.research(destination, 'a' * 24, provider='openrouter'))
+    assert raised.value.status_code == 502
+    assert sum('You are Hank,' in call for call in calls) == 2
+
+
 @pytest.mark.parametrize('duplicate_option_ids', [False, True])
 def test_map_choice_resume_reuses_saved_route_without_recalling_hank_or_julia(monkeypatch, duplicate_option_ids):
     destination = Point(id='mardi', name='Mardi Himal Trek', latitude=28.48, longitude=83.94)

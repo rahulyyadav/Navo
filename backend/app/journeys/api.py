@@ -29,6 +29,16 @@ async def prepare(destination, key, uid, origin=None, start_date=None, map_choic
                 await asyncio.to_thread(store.finish, value)
             research_reserved = False
             event(key, 'preparation', 'ready')
+    except asyncio.CancelledError:
+        # A graceful development restart must not leave a five-minute lease
+        # that makes the next tap appear to be preparing with no worker.
+        if research_reserved:
+            try:
+                await asyncio.to_thread(store.release_research)
+            except Exception:
+                event(key, 'quota_release', 'failed')
+        await asyncio.to_thread(store.fail, key, 'Preparation was interrupted. Retry to continue.')
+        raise
     except Exception as error:
         if research_reserved:
             try:
